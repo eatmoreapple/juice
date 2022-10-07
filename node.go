@@ -2,13 +2,12 @@ package pillow
 
 import (
 	"fmt"
-	"github.com/eatmoreapple/pillow/driver"
 	"reflect"
 	"regexp"
 	"strings"
-)
 
-type Param map[string]reflect.Value
+	"github.com/eatmoreapple/pillow/driver"
+)
 
 // paramRegex is a regular expression for parameter.
 var paramRegex = regexp.MustCompile(`\#\{([a-zA-Z0-9_\.]+)\}`)
@@ -33,7 +32,7 @@ func (c TextNode) Accept(translator driver.Translate, p Param) (query string, ar
 		}
 		param := paramRegex.FindStringSubmatch(s)[1]
 
-		value, exists := getAttr(p, param)
+		value, exists := p.Get(param)
 		if !exists {
 			err = fmt.Errorf("parameter %s not found", param)
 			return s

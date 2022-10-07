@@ -46,8 +46,8 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (r
 	return x.FieldByName(exp.Sel.Name), nil
 }
 
-func evalIdent(exp *ast.Ident, params map[string]reflect.Value) (reflect.Value, error) {
-	value, ok := getAttr(params, exp.Name)
+func evalIdent(exp *ast.Ident, params Param) (reflect.Value, error) {
+	value, ok := params.Get(exp.Name)
 	if !ok {
 		return reflect.Value{}, errors.New("undefined identifier")
 	}

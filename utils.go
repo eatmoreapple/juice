@@ -8,48 +8,6 @@ import (
 	"strings"
 )
 
-func getAttr(param Param, name string) (reflect.Value, bool) {
-	items := strings.Split(name, ".")
-	var value reflect.Value
-	for i, item := range items {
-		if i == 0 {
-			var exists bool
-			value, exists = param[item]
-			if !exists {
-				return reflect.Value{}, false
-			}
-			continue
-		}
-
-		value = reflect.Indirect(value)
-
-		switch value.Kind() {
-		case reflect.Map:
-			value = value.MapIndex(reflect.ValueOf(item))
-		case reflect.Struct:
-			field := value.FieldByName(item)
-			if !field.IsValid() {
-				// try to find it from tag
-				for i := 0; i < value.NumField(); i++ {
-					field := value.Type().Field(i)
-					if field.Tag.Get("param") == item {
-						value = value.Field(i)
-						break
-					}
-				}
-			} else {
-				value = field
-			}
-			if !value.IsValid() {
-				return reflect.Value{}, false
-			}
-		default:
-			return reflect.Value{}, false
-		}
-	}
-	return value, value.IsValid()
-}
-
 func ParamConvert(v interface{}) (map[string]reflect.Value, error) {
 	if v == nil {
 		return make(map[string]reflect.Value), nil
