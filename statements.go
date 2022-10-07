@@ -1,8 +1,9 @@
 package pillow
 
 import (
-	"github.com/eatmoreapple/pillow/driver"
 	"strings"
+
+	"github.com/eatmoreapple/pillow/driver"
 )
 
 type Statement interface {
@@ -25,7 +26,7 @@ func (s *SampleStatement) Namespace() string {
 	return s.namespace
 }
 
-func (s *SampleStatement) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder strings.Builder
 	for i, node := range s.Nodes {
 		q, a, err := node.Accept(translator, p)

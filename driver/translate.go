@@ -1,6 +1,6 @@
 package driver
 
-type Translate interface {
+type Translator interface {
 	Translate(matched string) string
 }
 

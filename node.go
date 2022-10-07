@@ -15,7 +15,7 @@ var paramRegex = regexp.MustCompile(`\#\{([a-zA-Z0-9_\.]+)\}`)
 // Node is a node of SQL.
 type Node interface {
 	// Accept accepts parameters and returns query and arguments.
-	Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error)
+	Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error)
 }
 
 var _ Node = (*TextNode)(nil)
@@ -25,7 +25,7 @@ type TextNode string
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c TextNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (c TextNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
 		if err != nil {
 			return s
@@ -53,7 +53,7 @@ type IfNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c IfNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (c IfNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	matched, err := c.Match(p)
 	if err != nil {
 		return "", nil, err
@@ -103,7 +103,7 @@ type WhereNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (w WhereNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (w WhereNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder strings.Builder
 	for i, node := range w.Nodes {
 		q, a, err := node.Accept(translator, p)
@@ -145,7 +145,7 @@ type TrimNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (t TrimNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (t TrimNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder strings.Builder
 	for _, node := range t.Nodes {
 		q, a, err := node.Accept(translator, p)
@@ -188,7 +188,7 @@ type ForeachNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (f ForeachNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
+func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 
 	// if item already exists
 	if _, exists := p.Get(f.Item); exists {

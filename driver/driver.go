@@ -7,8 +7,8 @@ import (
 
 // Driver is a driver of database.
 type Driver interface {
-	// Translate returns a translator of SQL.
-	Translate() Translate
+	// Translator returns a translator of SQL.
+	Translate() Translator
 }
 
 var (
@@ -49,8 +49,8 @@ func Get(name string) (Driver, error) {
 // MySQLDriver is a driver of MySQL.
 type MySQLDriver struct{}
 
-// Translate returns a translator of SQL.
-func (d MySQLDriver) Translate() Translate {
+// Translator returns a translator of SQL.
+func (d MySQLDriver) Translate() Translator {
 	return TranslateFunc(func(matched string) string {
 		return "?"
 	})
