@@ -11,6 +11,7 @@ type Param map[string]reflect.Value
 func (p Param) Get(name string) (reflect.Value, bool) {
 	items := strings.Split(name, ".")
 	var value reflect.Value
+
 	for i, item := range items {
 		if i == 0 {
 			var exists bool
@@ -57,5 +58,6 @@ func (p Param) Get(name string) (reflect.Value, bool) {
 			value = value.Elem()
 		}
 	}
+
 	return value, value.IsValid()
 }

@@ -191,12 +191,12 @@ type ForeachNode struct {
 func (f ForeachNode) Accept(translator driver.Translate, p Param) (query string, args []interface{}, err error) {
 
 	// if item already exists
-	if _, exists := p[f.Item]; exists {
+	if _, exists := p.Get(f.Item); exists {
 		return "", nil, fmt.Errorf("item %s already exists", f.Item)
 	}
 
 	// get collection from parameter
-	value, exists := p[f.Collection]
+	value, exists := p.Get(f.Collection)
 	if !exists {
 		return "", nil, fmt.Errorf("collection %s not found", f.Collection)
 	}
@@ -207,6 +207,10 @@ func (f ForeachNode) Accept(translator driver.Translate, p Param) (query string,
 	}
 
 	// if value is not a slice
+	for value.Kind() == reflect.Interface {
+		value = value.Elem()
+	}
+
 	if value.Kind() != reflect.Slice {
 		return "", nil, fmt.Errorf("collection %s is not a slice", f.Collection)
 	}
