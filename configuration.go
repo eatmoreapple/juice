@@ -1,4 +1,4 @@
-package pillow
+package juice
 
 // Configuration is a Configuration of pillow.
 type Configuration struct {

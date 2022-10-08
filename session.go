@@ -1,4 +1,4 @@
-package pillow
+package juice
 
 import (
 	"context"

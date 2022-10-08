@@ -1,11 +1,12 @@
-package pillow
+package juice
 
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eatmoreapple/pillow/driver"
 	"log"
 	"os"
+
+	"github.com/eatmoreapple/juice/driver"
 )
 
 // Engine is the main struct of pillow

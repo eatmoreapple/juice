@@ -1,4 +1,4 @@
-package pillow
+package juice
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/eatmoreapple/pillow/driver"
+	"github.com/eatmoreapple/juice/driver"
 )
 
 // paramRegex is a regular expression for parameter.
@@ -228,7 +228,8 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 
 	for i := 0; i < length; i++ {
 
-		p[f.Item] = value.Index(i)
+		// set or replace item
+		p[f.Item] = reflect.Indirect(value.Index(i))
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, p)

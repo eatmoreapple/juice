@@ -1,3 +1,3 @@
-module github.com/eatmoreapple/pillow
+module github.com/eatmoreapple/juice
 
 go 1.18

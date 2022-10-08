@@ -1,14 +1,14 @@
-package pillow
+package juice
 
 import (
 	"io/fs"
 	"os"
 )
 
-// FS is a file system.
-type FS struct{}
+// LocalFS is a file system.
+type LocalFS struct{}
 
 // Open implements fs.FS.
-func (f FS) Open(name string) (fs.File, error) {
+func (f LocalFS) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }

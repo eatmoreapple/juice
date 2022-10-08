@@ -1,4 +1,4 @@
-package pillow
+package juice
 
 import (
 	"encoding/xml"
@@ -589,12 +589,12 @@ func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder) (int, error) {
 }
 
 func NewXMLConfigurationWithReader(reader io.Reader) (*Configuration, error) {
-	parser := &XMLParser{FS: FS{}}
+	parser := &XMLParser{FS: LocalFS{}}
 	return parser.Parse(reader)
 }
 
 func NewXMLConfiguration(filename string) (*Configuration, error) {
-	return NewXMLConfigurationWithFS(FS{}, filename)
+	return NewXMLConfigurationWithFS(LocalFS{}, filename)
 }
 
 // NewXMLConfigurationWithFS creates a new Configuration from an XML file.
