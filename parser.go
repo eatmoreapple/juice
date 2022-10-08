@@ -499,7 +499,7 @@ func (p XMLParser) parseForeach(decoder *xml.Decoder, token xml.StartElement) (N
 		}
 	}
 	if foreachNode.Collection == "" {
-		return nil, errors.New("collection is required")
+		foreachNode.Collection = defaultParamKey
 	}
 	if foreachNode.Item == "" {
 		return nil, errors.New("item is required")
