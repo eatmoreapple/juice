@@ -3,7 +3,7 @@ package juice
 import (
 	"strings"
 
-	"github.com/eatmoreapple/pillow/driver"
+	"github.com/eatmoreapple/juice/driver"
 )
 
 type Statement interface {
