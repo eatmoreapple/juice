@@ -1,11 +1,34 @@
-## Pillow
+## Juice SQL Mapper Framework For Golang
+
+This is a SQL mapper framework for Golang. It is inspired by MyBatis.
+
+Juice is a simple and lightweight framework. It is easy to use and easy to extend.
+
+### Features
+
+* Simple and lightweight
+* Easy to use
+* Easy to extend
+* Support for multiple databases
+* Dynamic SQL
+* Result to entity mapping
+* Generic type support
+* Todo support more
+
+### Quick Start
+
+#### Install
+
+```bash
+go get github.com/eatmoreapple/juice
+```
+
+#### Example
 
 ```shell
 touch config.xml
 ```
-
-add the following to config.xml
-
+and write the following content into config.xml
 ```xml
 
 <configuration>
@@ -45,7 +68,7 @@ add the following to config.xml
 
             <insert id="BatchCreateUser">
                 insert into user (`name`, `age`) values
-                <foreach collection="users" item="user" separator=", ">
+                <foreach collection="params" item="user" separator=", ">
                     (#{user.name}, #{user.age})
                 </foreach>
             </insert>
@@ -54,15 +77,16 @@ add the following to config.xml
     </mappers>
 </configuration>
 
-
 ```
 
-```golang
+```go
 package main
 
 import (
 	"fmt"
-	"github.com/eatmoreapple/pillow"
+
+	"github.com/eatmoreapple/juice"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -81,93 +105,97 @@ type UserRepository interface {
 	BatchCreateUser(users []*User) (int64, error)
 }
 
-var instance UserRepository = &userRepository{}
+type UserRepositoryImpl struct{}
 
-func NewUserRepository(engine *pillow.Engine) UserRepository {
-	return &userRepository{engine}
+func (u UserRepositoryImpl) Count() (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-type userRepository struct {
-	engine *pillow.Engine
+func (u UserRepositoryImpl) GetUserByID(user *User) (*User, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (u *userRepository) Count() (int64, error) {
-	return pillow.NewGenericEngine[int64, any](u.engine).Statement(instance.Count).Query(nil).One()
+func (u UserRepositoryImpl) UpdateUser(user *User) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (u *userRepository) GetUserByID(user *User) (*User, error) {
-	return pillow.NewGenericEngine[*User, *User](u.engine).Statement(instance.GetUserByID).Query(user).One()
+func (u UserRepositoryImpl) DeleteUserByID(user *User) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (u *userRepository) UpdateUser(user *User) (int64, error) {
-	result, err := pillow.NewGenericEngine[int64, *User](u.engine).Statement(instance.UpdateUser).Exec(user)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+func (u UserRepositoryImpl) CreateUser(user *User) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (u *userRepository) DeleteUserByID(user *User) (int64, error) {
-	result, err := pillow.NewGenericEngine[int64, *User](u.engine).Statement(instance.DeleteUserByID).Exec(user)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-func (u *userRepository) CreateUser(user *User) (int64, error) {
-	result, err := pillow.NewGenericEngine[int64, *User](u.engine).Statement(instance.CreateUser).Exec(user)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-func (u *userRepository) BatchCreateUser(users []*User) (int64, error) {
-	param := map[string][]*User{
-		"users": users,
-	}
-	result, err := pillow.NewGenericEngine[int64, map[string][]*User](u.engine).Statement(instance.BatchCreateUser).Exec(param)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+func (u UserRepositoryImpl) BatchCreateUser(users []*User) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func main() {
 
-	cfg, err := pillow.NewXMLConfiguration("config.xml")
+	cfg, err := juice.NewXMLConfiguration("/Users/eatmoreapple/GolandProjects/pillow/.example/config.xml")
+	if err != nil {
+		panic(err)
+	}
+	engine, err := juice.DefaultEngine(cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	engine, err := pillow.DefaultEngine(cfg)
+	var repo UserRepository = UserRepositoryImpl{}
+
+	fmt.Println(juice.NewGenericEngine[int, any](engine).Statement(repo.Count).Query(nil).One())
+
+	var user = User{Id: 1, Name: "eatmoreapple", Age: 18}
+
+	fmt.Println(juice.NewGenericEngine[int, *User](engine).Statement(repo.GetUserByID).Query(&user).One())
+    
+	// Using Transaction
+	tx := engine.Tx()
+
+	result, err := tx.Statement(repo.CreateUser).Exec(&user)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		tx.Rollback()
 	}
 
-	var repo = NewUserRepository(engine)
+	user.Id, err = result.LastInsertId()
 
-	var user = User{
-		Id:   1,
-		Name: "test",
-		Age:  18,
+	if err != nil {
+		fmt.Println(err)
+		tx.Rollback()
 	}
 
-	fmt.Println(repo.CreateUser(&user))
+	if _, err = tx.Statement(repo.DeleteUserByID).Exec(&user); err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+	}
 
-	fmt.Println(repo.Count())
+	if err = tx.Commit(); err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+	}
 
-	fmt.Println(repo.GetUserByID(&user))
+	fmt.Println(juice.NewGenericEngine[int, *User](engine).Statement(repo.UpdateUser).Exec(&user))
 
-	fmt.Println(repo.UpdateUser(&user))
-
-	fmt.Println(repo.DeleteUserByID(&user))
-
-	user.Age++
-
-	fmt.Println(repo.BatchCreateUser([]*User{&user}))
+	fmt.Println(juice.NewGenericEngine[int, []*User](engine).Statement(repo.BatchCreateUser).Exec([]*User{&user}))
 
 }
 
 ```
+
+### License
+
+Juice is licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+
+### Contact
+
+If you have any questions, please contact me by wechat: eatmoreapple
+
+if you like this project, please give me a star, thank you very much.
