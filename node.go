@@ -2,6 +2,7 @@ package juice
 
 import (
 	"fmt"
+	"go/ast"
 	"reflect"
 	"regexp"
 	"strings"
@@ -47,8 +48,9 @@ var _ Node = (*IfNode)(nil)
 
 // IfNode is a node of if.
 type IfNode struct {
-	Test  string
-	Nodes []Node
+	Test     string
+	testExpr ast.Expr
+	Nodes    []Node
 }
 
 // Accept accepts parameters and returns query and arguments.
@@ -75,7 +77,7 @@ func (c IfNode) Accept(translator driver.Translator, p Param) (query string, arg
 
 // Match returns true if test is matched.
 func (c IfNode) Match(p Param) (bool, error) {
-	value, err := Eval(c.Test, p)
+	value, err := eval(c.testExpr, p)
 	if err != nil {
 		return false, err
 	}

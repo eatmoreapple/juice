@@ -115,7 +115,6 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 		exprFunc = quo
 	case token.REM:
 		exprFunc = rem
-	case token.AND:
 	default:
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}

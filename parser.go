@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"go/parser"
 	"io"
 	"io/fs"
 	"net/http"
@@ -370,11 +371,19 @@ func (p XMLParser) parseIf(decoder *xml.Decoder, token xml.StartElement) (Node, 
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "test" {
 			ifNode.Test = attr.Value
+			break
 		}
 	}
 	if ifNode.Test == "" {
 		return nil, errors.New("test is required")
 	}
+
+	// parse condition expression
+	expr, err := parser.ParseExpr(ifNode.Test)
+	if err != nil {
+		return nil, err
+	}
+	ifNode.testExpr = expr
 	for {
 		token, err := decoder.Token()
 		if err != nil {
