@@ -5,10 +5,6 @@ import (
 	"database/sql"
 )
 
-type StatementExecutor interface {
-	Statement(v interface{}) Executor
-}
-
 // Executor is an executor of SQL.
 type Executor interface {
 	Query(param interface{}) (*sql.Rows, error)
@@ -133,18 +129,4 @@ func (e *genericExecutor[result, param]) Exec(p param) (sql.Result, error) {
 
 func (e *genericExecutor[result, param]) ExecContext(ctx context.Context, p param) (sql.Result, error) {
 	return e.Executor.ExecContext(ctx, p)
-}
-
-type TxGenericStatementExecutor[result, param any] interface {
-	GenericMapperExecutor[result, param]
-	Commit() error
-	Rollback() error
-}
-
-type txGenericStatement[result, param any] struct {
-	TxMapperExecutor
-}
-
-func (t *txGenericStatement[result, param]) Statement(v any) GenericExecutor[result, param] {
-	return &genericExecutor[result, param]{Executor: t.TxMapperExecutor.Statement(v)}
 }

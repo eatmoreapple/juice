@@ -223,20 +223,3 @@ func (r *rowsScanner[T]) One() (T, error) {
 func (r *rowsScanner[T]) Many() ([]T, error) {
 	return List[T](r.rows, r.err)
 }
-
-func NewGenericEngine[result, param any](engine *Engine) *GenericEngine[result, param] {
-	return &GenericEngine[result, param]{engine: engine}
-}
-
-type GenericEngine[result any, param any] struct {
-	engine *Engine
-}
-
-func (s *GenericEngine[result, param]) Statement(v any) GenericExecutor[result, param] {
-	exe := s.engine.Statement(v)
-	return &genericExecutor[result, param]{Executor: exe}
-}
-
-func (s *GenericEngine[result, param]) Tx() TxGenericStatementExecutor[result, param] {
-	return &txGenericStatement[result, param]{TxMapperExecutor: s.engine.Tx()}
-}
