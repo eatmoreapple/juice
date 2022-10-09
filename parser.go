@@ -223,9 +223,10 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			switch token.Name.Local {
-			case "select", "insert", "update", "delete":
-				statement, err := p.parseStatement(mapper.namespace, decoder, token)
+			action := Action(token.Name.Local)
+			switch action {
+			case Select, Insert, Update, Delete:
+				statement, err := p.parseStatement(action, mapper.namespace, decoder, token)
 				if err != nil {
 					return nil, err
 				}
@@ -306,8 +307,8 @@ func (p XMLParser) parseMapperByURL(url string) (*Mapper, error) {
 	}
 }
 
-func (p XMLParser) parseStatement(namespace string, decoder *xml.Decoder, token xml.StartElement) (Statement, error) {
-	statements := &SampleStatement{namespace: namespace}
+func (p XMLParser) parseStatement(action Action, namespace string, decoder *xml.Decoder, token xml.StartElement) (Statement, error) {
+	statements := &SampleStatement{namespace: namespace, action: action}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
 			statements.id = attr.Value

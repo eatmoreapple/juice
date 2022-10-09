@@ -6,15 +6,25 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
+// Statement defines the interface for a statement
 type Statement interface {
 	Node
+
+	// ID returns the id of the statement
 	ID() string
+
+	// Namespace returns the namespace of the statement
 	Namespace() string
+
+	// Action returns the action of the statement
+	Action() Action
 }
 
+// SampleStatement implements the Statement interface
 type SampleStatement struct {
 	id        string
 	namespace string
+	action    Action
 	Nodes     []Node
 }
 
@@ -24,6 +34,10 @@ func (s *SampleStatement) ID() string {
 
 func (s *SampleStatement) Namespace() string {
 	return s.namespace
+}
+
+func (s *SampleStatement) Action() Action {
+	return s.action
 }
 
 func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
