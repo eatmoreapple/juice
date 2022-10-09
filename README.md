@@ -1,5 +1,9 @@
 ## Juice SQL Mapper Framework For Golang
 
+![Go Doc](https://pkg.go.dev/badge/github.com/eatmoreapple/juice)
+![Go Report Card](https://goreportcard.com/badge/github.com/eatmoreapple/juice)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+
 This is a SQL mapper framework for Golang. It is inspired by MyBatis.
 
 Juice is a simple and lightweight framework. It is easy to use and easy to extend.
@@ -28,7 +32,9 @@ go get github.com/eatmoreapple/juice
 ```shell
 touch config.xml
 ```
+
 and write the following content into config.xml
+
 ```xml
 
 <configuration>
@@ -202,4 +208,8 @@ Juice is licensed under the Apache License, Version 2.0. See LICENSE for the ful
 
 ### Contact
 
-If you have any questions, please contact me by wechat: eatmoreapple. And if you like this project, please give me a star. Thank you.
+If you like this project, please give me a star. Thank you.
+And If you have any questions, please contact me by WeChat: eatmoreapple or scan the following QR code.
+
+
+<img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat.jpg" align="left">
