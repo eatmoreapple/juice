@@ -139,7 +139,7 @@ func (u UserRepositoryImpl) BatchCreateUser(users []*User) (int64, error) {
 
 func main() {
 
-	cfg, err := juice.NewXMLConfiguration("/Users/eatmoreapple/GolandProjects/pillow/.example/config.xml")
+	cfg, err := juice.NewXMLConfiguration("config.xml")
 	if err != nil {
 		panic(err)
 	}
