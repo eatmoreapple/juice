@@ -6,6 +6,7 @@ import (
 	"reflect"
 )
 
+// One scan one row to given entity
 func One[T any](rows *sql.Rows, err error) (T, error) {
 	var result T
 
@@ -94,6 +95,7 @@ func One[T any](rows *sql.Rows, err error) (T, error) {
 	return result, rows.Close()
 }
 
+// List scan rows to given entity slice
 func List[T any](rows *sql.Rows, err error) ([]T, error) {
 
 	var result = make([]T, 0)
@@ -206,6 +208,7 @@ func List[T any](rows *sql.Rows, err error) ([]T, error) {
 	return result, rows.Close()
 }
 
+// Scanner is the interface that wraps the rows returned by a query.
 type Scanner[T any] interface {
 	One() (T, error)
 	Many() ([]T, error)
