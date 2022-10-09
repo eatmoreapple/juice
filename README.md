@@ -150,12 +150,12 @@ func main() {
 
 	var repo UserRepository = UserRepositoryImpl{}
 
-	fmt.Println(juice.NewGenericEngine[int, any](engine).Statement(repo.Count).Query(nil).One())
+	fmt.Println(juice.NewGenericGenericStatementExecutor[int, any](engine).Statement(repo.Count).Query(nil).One())
 
 	var user = User{Id: 1, Name: "eatmoreapple", Age: 18}
 
-	fmt.Println(juice.NewGenericEngine[int, *User](engine).Statement(repo.GetUserByID).Query(&user).One())
-    
+	fmt.Println(juice.NewGenericGenericStatementExecutor[int, *User](engine).Statement(repo.GetUserByID).Query(&user).One())
+
 	// Using Transaction
 	tx := engine.Tx()
 
@@ -177,16 +177,22 @@ func main() {
 		tx.Rollback()
 	}
 
-	if err = tx.Commit(); err != nil {
+	if _, err = juice.NewGenericGenericStatementExecutor[int, *User](tx).Statement(repo.UpdateUser).Exec(&user); err != nil {
 		fmt.Println(err)
 		tx.Rollback()
 	}
 
-	fmt.Println(juice.NewGenericEngine[int, *User](engine).Statement(repo.UpdateUser).Exec(&user))
+	if _, err = juice.NewGenericGenericStatementExecutor[int, []*User](tx).Statement(repo.BatchCreateUser).Exec([]*User{&user}); err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+	}
 
-	fmt.Println(juice.NewGenericEngine[int, []*User](engine).Statement(repo.BatchCreateUser).Exec([]*User{&user}))
-
+	if err = tx.Commit(); err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+	}
 }
+
 
 ```
 
@@ -196,6 +202,4 @@ Juice is licensed under the Apache License, Version 2.0. See LICENSE for the ful
 
 ### Contact
 
-If you have any questions, please contact me by wechat: eatmoreapple
-
-if you like this project, please give me a star, thank you very much.
+If you have any questions, please contact me by wechat: eatmoreapple. And if you like this project, please give me a star. Thank you.
