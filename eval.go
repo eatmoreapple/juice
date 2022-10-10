@@ -10,10 +10,21 @@ import (
 	"strconv"
 )
 
+// SyntaxError represents a syntax error.
+// The error occurs when parsing the expression.
+type SyntaxError struct {
+	err error
+}
+
+// Error returns the error message.
+func (s *SyntaxError) Error() string {
+	return fmt.Sprintf("syntax error: %v", s.err)
+}
+
 func Eval(expr string, params map[string]reflect.Value) (reflect.Value, error) {
 	exp, err := parser.ParseExpr(expr)
 	if err != nil {
-		return reflect.Value{}, err
+		return reflect.Value{}, &SyntaxError{err}
 	}
 	return eval(exp, params)
 }

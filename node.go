@@ -56,7 +56,10 @@ type IfNode struct {
 
 func (c *IfNode) init() (err error) {
 	c.testExpr, err = parser.ParseExpr(c.Test)
-	return err
+	if err != nil {
+		return &SyntaxError{err}
+	}
+	return nil
 }
 
 // Accept accepts parameters and returns query and arguments.
