@@ -66,7 +66,7 @@ type GenericStatementExecutor[result, param any] interface {
 	Statement(v interface{}) GenericExecutor[result, param]
 }
 
-func NewGenericGenericStatementExecutor[result, param any](statementExecutor StatementExecutor) GenericStatementExecutor[result, param] {
+func NewGenericStatementExecutor[result, param any](statementExecutor StatementExecutor) GenericStatementExecutor[result, param] {
 	return &genericStatementExecutor[result, param]{statementExecutor}
 }
 
