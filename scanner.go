@@ -210,19 +210,28 @@ func List[T any](rows *sql.Rows, err error) ([]T, error) {
 
 // Scanner is the interface that wraps the rows returned by a query.
 type Scanner[T any] interface {
+	// One scan one row to given entity
+	// If no row found, return sql.ErrNoRows
 	One() (T, error)
+	// Many scan rows to given entity slice
+	// If no row found, return made slice with length 0 and nil error
 	Many() ([]T, error)
 }
 
+// rowsScanner is the implementation of Scanner
 type rowsScanner[T any] struct {
 	rows *sql.Rows
 	err  error
 }
 
+// One scan one row to given entity
+// If no row found, return sql.ErrNoRows
 func (r *rowsScanner[T]) One() (T, error) {
 	return One[T](r.rows, r.err)
 }
 
+// Many scan rows to given entity slice
+// If no row found, return made slice with length 0 and nil error
 func (r *rowsScanner[T]) Many() ([]T, error) {
 	return List[T](r.rows, r.err)
 }
