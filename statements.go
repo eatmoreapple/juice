@@ -41,7 +41,8 @@ func (s *SampleStatement) Action() Action {
 }
 
 func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
-	var builder strings.Builder
+	var builder = getBuilder()
+	defer putBuilder(builder)
 	for i, node := range s.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {

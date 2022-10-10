@@ -61,7 +61,8 @@ func (c IfNode) Accept(translator driver.Translator, p Param) (query string, arg
 		return "", nil, err
 	}
 	if matched {
-		var builder strings.Builder
+		var builder = getBuilder()
+		defer putBuilder(builder)
 		for _, node := range c.Nodes {
 			q, a, err := node.Accept(translator, p)
 			if err != nil {
@@ -106,7 +107,8 @@ type WhereNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (w WhereNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
-	var builder strings.Builder
+	var builder = getBuilder()
+	defer putBuilder(builder)
 	for i, node := range w.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -148,7 +150,8 @@ type TrimNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (t TrimNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
-	var builder strings.Builder
+	var builder = getBuilder()
+	defer putBuilder(builder)
 	for _, node := range t.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -217,7 +220,8 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 		return "", nil, fmt.Errorf("collection %s is not a slice", f.Collection)
 	}
 
-	var builder strings.Builder
+	var builder = getBuilder()
+	defer putBuilder(builder)
 
 	length := value.Len()
 
