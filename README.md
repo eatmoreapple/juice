@@ -36,7 +36,7 @@ touch config.xml
 and write the following content into config.xml
 
 ```xml
-
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <environments default="prod">
         <environment id="prod">
@@ -48,41 +48,12 @@ and write the following content into config.xml
 
     <mappers>
         <mapper namespace="main.UserRepository">
-            <select id="Count">
-                select count(*) from user
-            </select>
-
             <select id="GetUserByID">
-                select * from user where id = #{id}
+                select * from user where id = #{params}
             </select>
-
-            <update id="UpdateUser">
-                update user set name = #{name}
-                <if test="age > 0">
-                    ,age = #{age}
-                </if>
-                where id = #{id}
-            </update>
-
-            <delete id="DeleteUserByID">
-                delete from user where id = #{id}
-            </delete>
-
-            <insert id="CreateUser">
-                insert into user (`name`, `age`) values (#{name}, #{age})
-            </insert>
-
-            <insert id="BatchCreateUser">
-                insert into user (`name`, `age`) values
-                <foreach collection="params" item="user" separator=", ">
-                    (#{user.name}, #{user.age})
-                </foreach>
-            </insert>
-
         </mapper>
     </mappers>
 </configuration>
-
 ```
 
 ```go
@@ -103,52 +74,22 @@ type User struct {
 }
 
 type UserRepository interface {
-	Count() (int64, error)
-	GetUserByID(user *User) (*User, error)
-	UpdateUser(user *User) (int64, error)
-	DeleteUserByID(user *User) (int64, error)
-	CreateUser(user *User) (int64, error)
-	BatchCreateUser(users []*User) (int64, error)
+	GetUserByID(id int64) (*User, error)
 }
 
 type UserRepositoryImpl struct{}
 
-func (u UserRepositoryImpl) Count() (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (u UserRepositoryImpl) GetUserByID(user *User) (*User, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (u UserRepositoryImpl) UpdateUser(user *User) (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (u UserRepositoryImpl) DeleteUserByID(user *User) (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (u UserRepositoryImpl) CreateUser(user *User) (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (u UserRepositoryImpl) BatchCreateUser(users []*User) (int64, error) {
+func (u UserRepositoryImpl) GetUserByID(id int64) (*User, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
 func main() {
-
 	cfg, err := juice.NewXMLConfiguration("config.xml")
 	if err != nil {
 		panic(err)
 	}
+
 	engine, err := juice.DefaultEngine(cfg)
 	if err != nil {
 		panic(err)
@@ -156,49 +97,12 @@ func main() {
 
 	var repo UserRepository = UserRepositoryImpl{}
 
-	fmt.Println(juice.NewGenericGenericStatementExecutor[int, any](engine).Statement(repo.Count).Query(nil).One())
-
-	var user = User{Id: 1, Name: "eatmoreapple", Age: 18}
-
-	fmt.Println(juice.NewGenericGenericStatementExecutor[int, *User](engine).Statement(repo.GetUserByID).Query(&user).One())
-
-	// Using Transaction
-	tx := engine.Tx()
-
-	result, err := tx.Statement(repo.CreateUser).Exec(&user)
+	user, err := juice.NewGenericStatementExecutor[*User, int64](engine).Statement(repo.GetUserByID).Query(3).One()
 	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
+		panic(err)
 	}
-
-	user.Id, err = result.LastInsertId()
-
-	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-	}
-
-	if _, err = tx.Statement(repo.DeleteUserByID).Exec(&user); err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-	}
-
-	if _, err = juice.NewGenericGenericStatementExecutor[int, *User](tx).Statement(repo.UpdateUser).Exec(&user); err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-	}
-
-	if _, err = juice.NewGenericGenericStatementExecutor[int, []*User](tx).Statement(repo.BatchCreateUser).Exec([]*User{&user}); err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-	}
-
-	if err = tx.Commit(); err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-	}
+	fmt.Printf("%+v", user)
 }
-
 
 ```
 
