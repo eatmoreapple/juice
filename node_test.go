@@ -44,6 +44,12 @@ func TestIfNode_Accept(t *testing.T) {
 		Test:  "id > 0",
 		Nodes: []Node{TextNode("select * from user where id = #{id}")},
 	}
+
+	if node.init() != nil {
+		t.Error("init error")
+		return
+	}
+
 	query, args, err := node.Accept(drv.Translate(), map[string]reflect.Value{"id": reflect.ValueOf(1)})
 	if err != nil {
 		t.Error(err)

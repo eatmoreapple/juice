@@ -3,6 +3,7 @@ package juice
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"reflect"
 	"regexp"
 	"strings"
@@ -53,9 +54,14 @@ type IfNode struct {
 	Nodes    []Node
 }
 
+func (c *IfNode) init() (err error) {
+	c.testExpr, err = parser.ParseExpr(c.Test)
+	return err
+}
+
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c IfNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+func (c *IfNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	matched, err := c.Match(p)
 	if err != nil {
 		return "", nil, err
@@ -77,7 +83,7 @@ func (c IfNode) Accept(translator driver.Translator, p Param) (query string, arg
 }
 
 // Match returns true if test is matched.
-func (c IfNode) Match(p Param) (bool, error) {
+func (c *IfNode) Match(p Param) (bool, error) {
 	value, err := eval(c.testExpr, p)
 	if err != nil {
 		return false, err
