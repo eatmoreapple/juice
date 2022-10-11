@@ -24,14 +24,10 @@ var (
 // Register registers a driver.
 // The name is used to get a driver.
 // If the name is already registered, it returns an error.
-func Register(name string, driver Driver) error {
+func Register(name string, driver Driver) {
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := registeredDrivers[name]; ok {
-		return fmt.Errorf("driver %s already registered", name)
-	}
 	registeredDrivers[name] = driver
-	return nil
 }
 
 // Get returns a driver of the name.
@@ -49,7 +45,7 @@ func Get(name string) (Driver, error) {
 // MySQLDriver is a driver of MySQL.
 type MySQLDriver struct{}
 
-// Translator returns a translator of SQL.
+// Translate returns a translator of SQL.
 func (d MySQLDriver) Translate() Translator {
 	return TranslateFunc(func(matched string) string {
 		return "?"
@@ -61,5 +57,5 @@ func (d MySQLDriver) String() string {
 }
 
 func init() {
-	_ = Register("mysql", &MySQLDriver{})
+	Register("mysql", &MySQLDriver{})
 }
