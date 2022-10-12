@@ -13,6 +13,10 @@ type Executor interface {
 	ExecContext(ctx context.Context, param interface{}) (sql.Result, error)
 }
 
+func inValidExecutor(err error) Executor {
+	return &executor{err: err}
+}
+
 type executor struct {
 	id        string
 	err       error
@@ -67,23 +71,29 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 	return query, args, nil
 }
 
+// TxMapperExecutor is a transactional mapper executor
 type TxMapperExecutor interface {
 	StatementExecutor
 	Commit() error
 	Rollback() error
 }
 
+// txStatement is a transaction statement
 type txStatement struct {
-	engine *Engine
-	tx     *sql.Tx
-	err    error
+	stmt StatementExecutor
+	tx   *sql.Tx
+	err  error
 }
 
+// Statement implements the Statement interface
 func (t *txStatement) Statement(v interface{}) Executor {
-	stat, err := t.engine.getMapperStatement(v)
-	return &executor{err: err, engine: t.engine, statement: stat, session: t.tx}
+	if t.err != nil {
+		return inValidExecutor(t.err)
+	}
+	return t.stmt.Statement(v)
 }
 
+// Commit commits the transaction
 func (t *txStatement) Commit() error {
 	if t.err != nil {
 		return t.err
@@ -91,6 +101,7 @@ func (t *txStatement) Commit() error {
 	return t.tx.Commit()
 }
 
+// Rollback rollbacks the transaction
 func (t *txStatement) Rollback() error {
 	if t.err != nil {
 		return t.err

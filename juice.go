@@ -33,13 +33,16 @@ type Engine struct {
 // Statement implements the Statement interface
 func (e *Engine) Statement(v interface{}) Executor {
 	stat, err := e.getMapperStatement(v)
-	return &executor{err: err, engine: e, statement: stat, session: e.DB}
+	if err != nil {
+		return inValidExecutor(err)
+	}
+	return &executor{engine: e, statement: stat, session: e.DB}
 }
 
 // Tx returns a TxMapperExecutor
 func (e *Engine) Tx() TxMapperExecutor {
 	tx, err := e.DB.Begin()
-	return &txStatement{engine: e, tx: tx, err: err}
+	return &txStatement{stmt: e, tx: tx, err: err}
 }
 
 // GetConfiguration returns the configuration of the engine
