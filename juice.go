@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/eatmoreapple/juice/driver"
 )
@@ -12,9 +13,9 @@ import (
 // Engine is the main struct of pillow
 type Engine struct {
 
-	// Configuration is the configuration of the engine
+	// configuration is the configuration of the engine
 	// It is used to initialize the engine and to get the mapper statements
-	Configuration *Configuration
+	configuration *Configuration
 
 	// Driver is the driver used by the engine
 	// It is used to initialize the database connection and translate the mapper statements
@@ -25,6 +26,8 @@ type Engine struct {
 
 	// Logger is the logger used by the engine
 	Logger *log.Logger
+
+	rw sync.RWMutex
 }
 
 // Statement implements the Statement interface
@@ -39,11 +42,25 @@ func (e *Engine) Tx() TxMapperExecutor {
 	return &txStatement{engine: e, tx: tx, err: err}
 }
 
+// GetConfiguration returns the configuration of the engine
+func (e *Engine) GetConfiguration() *Configuration {
+	e.rw.RLock()
+	defer e.rw.RUnlock()
+	return e.configuration
+}
+
+// SetConfiguration sets the configuration of the engine
+func (e *Engine) SetConfiguration(cfg *Configuration) {
+	e.rw.Lock()
+	defer e.rw.Unlock()
+	e.configuration = cfg
+}
+
 // init initializes the engine
 func (e *Engine) init() error {
 
 	// get the default environment from the configuration
-	env, err := e.Configuration.Environments.DefaultEnv()
+	env, err := e.configuration.Environments.DefaultEnv()
 	if err != nil {
 		return err
 	}
@@ -78,7 +95,7 @@ func (e *Engine) getMapperStatement(v any) (stat Statement, err error) {
 	}
 
 	// try to get the statement from the configuration
-	stat, err = e.Configuration.Mappers.GetStatementByID(id)
+	stat, err = e.GetConfiguration().Mappers.GetStatementByID(id)
 
 	if err != nil {
 		return nil, fmt.Errorf("mapper %s not found", id)
@@ -99,9 +116,8 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 
 // NewEngine creates a new Engine
 func NewEngine(configuration *Configuration) (*Engine, error) {
-	engine := &Engine{
-		Configuration: configuration,
-	}
+	engine := &Engine{}
+	engine.SetConfiguration(configuration)
 	if err := engine.init(); err != nil {
 		return nil, err
 	}
