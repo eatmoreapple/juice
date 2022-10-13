@@ -57,24 +57,3 @@ func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query s
 
 	return builder.String(), args, nil
 }
-
-type StatementExecutor interface {
-	Statement(v interface{}) Executor
-}
-
-type GenericStatementExecutor[result, param any] interface {
-	Statement(v interface{}) GenericExecutor[result, param]
-}
-
-func NewGenericStatementExecutor[result, param any](statementExecutor StatementExecutor) GenericStatementExecutor[result, param] {
-	return &genericStatementExecutor[result, param]{statementExecutor}
-}
-
-type genericStatementExecutor[result any, param any] struct {
-	statementExecutor StatementExecutor
-}
-
-func (s *genericStatementExecutor[result, param]) Statement(v any) GenericExecutor[result, param] {
-	exe := s.statementExecutor.Statement(v)
-	return &genericExecutor[result, param]{Executor: exe}
-}
