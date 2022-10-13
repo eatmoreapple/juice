@@ -13,10 +13,12 @@ type Executor interface {
 	ExecContext(ctx context.Context, param interface{}) (sql.Result, error)
 }
 
+// inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {
 	return &executor{err: err}
 }
 
+// executor is an executor of SQL.
 type executor struct {
 	id        string
 	err       error
@@ -25,10 +27,12 @@ type executor struct {
 	statement Statement
 }
 
+// Query executes the query and returns the result.
 func (e *executor) Query(param interface{}) (*sql.Rows, error) {
 	return e.QueryContext(context.Background(), param)
 }
 
+// QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Rows, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
@@ -37,10 +41,12 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	return e.session.QueryContext(ctx, query, args...)
 }
 
+// Exec executes the query and returns the result.
 func (e *executor) Exec(param interface{}) (sql.Result, error) {
 	return e.ExecContext(context.Background(), param)
 }
 
+// ExecContext executes the query and returns the result.
 func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Result, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
@@ -49,6 +55,7 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	return e.session.ExecContext(ctx, query, args...)
 }
 
+// prepare
 func (e *executor) prepare(param interface{}) (query string, args []interface{}, err error) {
 	if e.err != nil {
 		return "", nil, e.err
@@ -71,73 +78,36 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 	return query, args, nil
 }
 
-// TxMapperExecutor is a transactional mapper executor
-type TxMapperExecutor interface {
-	StatementExecutor
-	Commit() error
-	Rollback() error
+// GenericExecutor is a generic executor.
+type GenericExecutor[result any] interface {
+	Query(param any) Scanner[result]
+	QueryContext(ctx context.Context, param any) Scanner[result]
+	Exec(param any) (sql.Result, error)
+	ExecContext(ctx context.Context, param any) (sql.Result, error)
 }
 
-// txStatement is a transaction statement
-type txStatement struct {
-	stmt StatementExecutor
-	tx   *sql.Tx
-	err  error
-}
-
-// Statement implements the Statement interface
-func (t *txStatement) Statement(v interface{}) Executor {
-	if t.err != nil {
-		return inValidExecutor(t.err)
-	}
-	return t.stmt.Statement(v)
-}
-
-// Commit commits the transaction
-func (t *txStatement) Commit() error {
-	if t.err != nil {
-		return t.err
-	}
-	return t.tx.Commit()
-}
-
-// Rollback rollbacks the transaction
-func (t *txStatement) Rollback() error {
-	if t.err != nil {
-		return t.err
-	}
-	return t.tx.Rollback()
-}
-
-type GenericMapperExecutor[result, param any] interface {
-	Statement(v any) GenericExecutor[result, param]
-}
-
-type GenericExecutor[result, param any] interface {
-	Query(param param) Scanner[result]
-	QueryContext(ctx context.Context, param param) Scanner[result]
-	Exec(param param) (sql.Result, error)
-	ExecContext(ctx context.Context, param param) (sql.Result, error)
-}
-
-type genericExecutor[result, param any] struct {
+// genericExecutor is a generic executor.
+type genericExecutor[result any] struct {
 	Executor
 }
 
-func (e *genericExecutor[T, param]) Query(p param) Scanner[T] {
-	rows, err := e.Executor.Query(p)
+// Query executes the query and returns the scanner.
+func (e *genericExecutor[T]) Query(p any) Scanner[T] {
+	return e.QueryContext(context.Background(), p)
+}
+
+// QueryContext executes the query and returns the scanner.
+func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) Scanner[T] {
+	rows, err := e.Executor.QueryContext(ctx, p)
 	return &rowsScanner[T]{rows: rows, err: err}
 }
 
-func (e *genericExecutor[result, param]) QueryContext(ctx context.Context, p param) Scanner[result] {
-	rows, err := e.Executor.QueryContext(ctx, p)
-	return &rowsScanner[result]{rows: rows, err: err}
+// Exec executes the query and returns the result.
+func (e *genericExecutor[result]) Exec(p any) (sql.Result, error) {
+	return e.ExecContext(context.Background(), p)
 }
 
-func (e *genericExecutor[result, param]) Exec(p param) (sql.Result, error) {
-	return e.Executor.Exec(p)
-}
-
-func (e *genericExecutor[result, param]) ExecContext(ctx context.Context, p param) (sql.Result, error) {
+// ExecContext executes the query and returns the result.
+func (e *genericExecutor[result]) ExecContext(ctx context.Context, p any) (sql.Result, error) {
 	return e.Executor.ExecContext(ctx, p)
 }

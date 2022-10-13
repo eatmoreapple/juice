@@ -30,8 +30,8 @@ type Engine struct {
 	rw sync.RWMutex
 }
 
-// Statement implements the Statement interface
-func (e *Engine) Statement(v interface{}) Executor {
+// Object implements the Manager interface
+func (e *Engine) Object(v interface{}) Executor {
 	stat, err := e.getMapperStatement(v)
 	if err != nil {
 		return inValidExecutor(err)
@@ -39,10 +39,10 @@ func (e *Engine) Statement(v interface{}) Executor {
 	return &executor{engine: e, statement: stat, session: e.DB}
 }
 
-// Tx returns a TxMapperExecutor
-func (e *Engine) Tx() TxMapperExecutor {
+// Tx returns a TxManager
+func (e *Engine) Tx() TxManager {
 	tx, err := e.DB.Begin()
-	return &txStatement{stmt: e, tx: tx, err: err}
+	return &txManager{manager: e, tx: tx, err: err}
 }
 
 // GetConfiguration returns the configuration of the engine
