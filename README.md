@@ -85,7 +85,7 @@ func (u UserRepositoryImpl) GetUserByID(id int64) (*User, error) {
 }
 
 func main() {
-	cfg, err := juice.NewXMLConfiguration("config.xml")
+	cfg, err := juice.NewXMLConfiguration("/Users/eatmoreapple/GolandProjects/pillow/.example/config.xml")
 	if err != nil {
 		panic(err)
 	}
@@ -97,12 +97,13 @@ func main() {
 
 	var repo UserRepository = UserRepositoryImpl{}
 
-	user, err := juice.NewGenericStatementExecutor[*User, int64](engine).Statement(repo.GetUserByID).Query(3).One()
+	user, err := juice.NewGenericManager[*User](engine).Object(repo.GetUserByID).Query(3).One()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%+v", user)
 }
+
 
 ```
 
