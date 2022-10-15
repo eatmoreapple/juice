@@ -137,16 +137,12 @@ func (w WhereNode) Accept(translator driver.Translator, p Param) (query string, 
 	if query != "" {
 		if strings.HasPrefix(query, "and") || strings.HasPrefix(query, "AND") {
 			query = query[3:]
-			query = "WHERE" + query
 		} else if strings.HasPrefix(query, "or") || strings.HasPrefix(query, "OR") {
 			query = query[2:]
-			query = "WHERE" + query
 		}
 	}
 
-	if !(strings.HasPrefix(query, "where") || strings.HasPrefix(query, "WHERE")) {
-		query = "WHERE " + query
-	}
+	query = "WHERE" + query
 
 	return query, args, nil
 }
