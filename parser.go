@@ -49,6 +49,12 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 					return nil, err
 				}
 				p.configuration.Mappers = mappers
+			case "settings":
+				settings, err := p.parseSettings(decoder)
+				if err != nil {
+					return nil, err
+				}
+				p.configuration.Settings = *settings
 			}
 		}
 	}
@@ -593,6 +599,14 @@ func (p XMLParser) parseMaxConnLifetime(decoder *xml.Decoder) (int, error) {
 
 func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder) (int, error) {
 	return p.parseIntCharData(decoder, "maxIdleConnLifetime")
+}
+
+func (p XMLParser) parseSettings(decoder *xml.Decoder) (*Settings, error) {
+	var setting Settings
+	if err := decoder.DecodeElement(&setting, nil); err != nil {
+		return nil, err
+	}
+	return &setting, nil
 }
 
 func NewXMLConfigurationWithReader(reader io.Reader) (*Configuration, error) {

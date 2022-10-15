@@ -1,0 +1,92 @@
+package juice
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"strconv"
+	"time"
+)
+
+// Settings is a slice of Setting.
+type Settings []*Setting
+
+// Get returns the value of the key.
+func (s Settings) Get(name string) StringValue {
+	for _, setting := range s {
+		if setting.Name == name {
+			return setting.Value
+		}
+	}
+	return emptyStringValue
+}
+
+// Debug returns true if debug is enabled.
+func (s Settings) Debug() bool {
+	return s.Get("debug").Bool()
+}
+
+// Setting is a setting element.
+type Setting struct {
+	// The name of the setting.
+	Name string `xml:"name,attr"`
+	// The value of the setting.
+	Value StringValue `xml:"value,attr"`
+}
+
+// emptyStringValue defines an empty string value.
+var emptyStringValue = StringValue("")
+
+// StringValue is a string value which can be converted to other types.
+type StringValue string
+
+// Bool returns true if the value is "true".
+func (s StringValue) Bool() bool {
+	value, _ := strconv.ParseBool(string(s))
+	return value
+}
+
+// Int64 returns the value as int64.
+func (s StringValue) Int64() int64 {
+	value, _ := strconv.ParseInt(string(s), 10, 64)
+	return value
+}
+
+// String returns the value as string.
+func (s StringValue) String() string {
+	return string(s)
+}
+
+// Float64 returns the value as float64.
+func (s StringValue) Float64() float64 {
+	value, _ := strconv.ParseFloat(string(s), 64)
+	return value
+}
+
+// debugForQuery executes the query and logs the result.
+// If debug is enabled, it will log the query and the arguments.
+// If debug is disabled, it will execute the query directly.
+func debugForQuery(ctx context.Context, engine *Engine, session Session, id string, query string, args ...any) (*sql.Rows, error) {
+	if engine.configuration.Settings.Debug() {
+		start := time.Now()
+		rows, err := session.QueryContext(ctx, query, args...)
+		spent := time.Since(start)
+		log.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", id, query, args, spent)
+		return rows, err
+	}
+	return session.QueryContext(ctx, query, args...)
+}
+
+// debugForExec executes the query and logs the result.
+// If debug is enabled, it will log the query and the arguments.
+// If debug is disabled, it will execute the query directly.
+func debugForExec(ctx context.Context, engine *Engine, session Session, id string, query string, args ...any) (sql.Result, error) {
+	if engine.configuration.Settings.Debug() {
+		start := time.Now()
+		rows, err := session.ExecContext(ctx, query, args...)
+		spent := time.Since(start)
+		log.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", id, query, args, spent)
+		return rows, err
+	}
+	return session.ExecContext(ctx, query, args...)
+}

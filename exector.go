@@ -38,7 +38,8 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
-	return e.session.QueryContext(ctx, query, args...)
+	id := e.statement.Namespace() + "." + e.statement.ID()
+	return debugForQuery(ctx, e.engine, e.session, id, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -52,7 +53,8 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	return e.session.ExecContext(ctx, query, args...)
+	id := e.statement.Namespace() + "." + e.statement.ID()
+	return debugForExec(ctx, e.engine, e.session, id, query, args...)
 }
 
 // prepare
@@ -67,15 +69,7 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 
 	translator := e.engine.Driver.Translate()
 
-	query, args, err = e.statement.Accept(translator, values)
-	if err != nil {
-		return "", nil, err
-	}
-
-	if e.engine.Logger != nil {
-		e.engine.Logger.Printf("[%s] query: {%s} args: %v", e.statement.Namespace()+"."+e.statement.ID(), query, args)
-	}
-	return query, args, nil
+	return e.statement.Accept(translator, values)
 }
 
 // GenericExecutor is a generic executor.

@@ -3,8 +3,6 @@ package juice
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"os"
 	"sync"
 
 	"github.com/eatmoreapple/juice/driver"
@@ -23,9 +21,6 @@ type Engine struct {
 
 	// DB is the database connection
 	DB *sql.DB
-
-	// Logger is the logger used by the engine
-	Logger *log.Logger
 
 	rw sync.RWMutex
 }
@@ -104,17 +99,6 @@ func (e *Engine) getMapperStatement(v any) (stat Statement, err error) {
 		return nil, fmt.Errorf("mapper %s not found", id)
 	}
 	return stat, nil
-}
-
-// DefaultEngine is the default engine
-// It is initialized with the default configuration
-func DefaultEngine(configuration *Configuration) (*Engine, error) {
-	engine, err := NewEngine(configuration)
-	if err != nil {
-		return nil, err
-	}
-	engine.Logger = log.New(os.Stdout, "[Pillow] ", log.LstdFlags)
-	return engine, nil
 }
 
 // NewEngine creates a new Engine
