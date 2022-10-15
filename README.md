@@ -45,6 +45,9 @@ and write the following content into config.xml
         </environment>
     </environments>
 
+    <settings>
+        <setting name="debug" value="true"/>
+    </settings>
 
     <mappers>
         <mapper namespace="main.UserRepository">
@@ -85,26 +88,24 @@ func (u UserRepositoryImpl) GetUserByID(id int64) (*User, error) {
 }
 
 func main() {
-	cfg, err := juice.NewXMLConfiguration("/Users/eatmoreapple/GolandProjects/pillow/.example/config.xml")
+	cfg, err := juice.NewXMLConfiguration("config.xml")
 	if err != nil {
 		panic(err)
 	}
 
-	engine, err := juice.DefaultEngine(cfg)
+	engine, err := juice.NewEngine(cfg)
 	if err != nil {
 		panic(err)
 	}
 
 	var repo UserRepository = UserRepositoryImpl{}
 
-	user, err := juice.NewGenericManager[*User](engine).Object(repo.GetUserByID).Query(3).One()
+	user, err := juice.NewGenericManager[*User](engine.Tx()).Object(repo.GetUserByID).Query(3).One()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%+v", user)
 }
-
-
 ```
 
 ### License
