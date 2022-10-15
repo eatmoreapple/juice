@@ -120,4 +120,25 @@ func TestWhereNode_Accept(t *testing.T) {
 		t.Error("args error")
 		return
 	}
+
+	node = WhereNode{
+		Nodes: []Node{
+			TextNode("id = #{id}"),
+			TextNode("AND name = #{name}"),
+		},
+	}
+
+	if query != "WHERE id = ? AND name = ?" {
+		t.Error("query error")
+		return
+	}
+	if len(args) != 2 {
+		t.Error("args error")
+		return
+	}
+	if args[0] != 1 || args[1] != "a" {
+		t.Error("args error")
+		return
+	}
+
 }

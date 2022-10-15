@@ -143,6 +143,11 @@ func (w WhereNode) Accept(translator driver.Translator, p Param) (query string, 
 			query = "WHERE" + query
 		}
 	}
+
+	if !(strings.HasPrefix(query, "where") || strings.HasPrefix(query, "WHERE")) {
+		query = "WHERE " + query
+	}
+
 	return query, args, nil
 }
 
