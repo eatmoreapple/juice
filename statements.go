@@ -57,3 +57,8 @@ func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query s
 
 	return builder.String(), args, nil
 }
+
+// statementIdentity returns the identity of the statement
+func statementIdentity(statement Statement) string {
+	return statement.Namespace() + "." + statement.ID()
+}
