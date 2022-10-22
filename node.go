@@ -78,7 +78,9 @@ func (c *IfNode) Accept(translator driver.Translator, p Param) (query string, ar
 				return "", nil, err
 			}
 			builder.WriteString(q)
-			args = append(args, a...)
+			if len(a) > 0 {
+				args = append(args, a...)
+			}
 		}
 		return builder.String(), args, nil
 	}
@@ -162,29 +164,29 @@ type TrimNode struct {
 func (t TrimNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
-	for _, node := range t.Nodes {
+	if t.Prefix != "" {
+		builder.WriteString(t.Prefix)
+	}
+	for i, node := range t.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
 			return "", nil, err
 		}
 		builder.WriteString(q)
-		if !strings.HasSuffix(q, " ") {
+		if !strings.HasSuffix(q, " ") && i < len(t.Nodes)-1 {
 			builder.WriteString(" ")
 		}
 		args = append(args, a...)
 	}
 	query = builder.String()
-	if t.Prefix != "" {
-		query = strings.TrimPrefix(query, t.Prefix)
-	}
 	if t.PrefixOverrides != "" {
 		query = strings.TrimPrefix(query, t.PrefixOverrides)
 	}
-	if t.Suffix != "" {
-		query = strings.TrimSuffix(query, t.Suffix)
-	}
 	if t.SuffixOverrides != "" {
 		query = strings.TrimSuffix(query, t.SuffixOverrides)
+	}
+	if t.Suffix != "" {
+		query += t.Suffix
 	}
 	return query, args, nil
 }

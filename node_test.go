@@ -142,3 +142,39 @@ func TestWhereNode_Accept(t *testing.T) {
 	}
 
 }
+
+func TestTrimNode_Accept(t *testing.T) {
+	drv := driver.MySQLDriver{}
+	ifNode := &IfNode{
+		Test:  "id > 0",
+		Nodes: []Node{TextNode("name,")},
+	}
+	ifNode.init()
+	node := TrimNode{
+		Nodes: []Node{
+			ifNode,
+		},
+		Prefix:          "(",
+		Suffix:          ")",
+		SuffixOverrides: ",",
+	}
+	params := map[string]reflect.Value{
+		"id":   reflect.ValueOf(1),
+		"name": reflect.ValueOf("a"),
+	}
+	query, args, err := node.Accept(drv.Translate(), params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if query != "(name)" {
+		t.Log(query)
+		t.Error("query error")
+		return
+	}
+	if len(args) != 0 {
+		t.Error("args error")
+		return
+	}
+
+}
