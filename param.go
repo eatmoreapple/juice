@@ -89,17 +89,16 @@ const (
 )
 
 // ParamConvert converts any type to Param
-func ParamConvert(v interface{}) (Param, error) {
+func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 	if v == nil {
 		return make(Param), nil
-	}
-	if p, ok := v.(Param); ok {
-		return p, nil
 	}
 	if p, ok := v.(ParamConverter); ok {
 		return p.ParamConvert()
 	}
-
+	if p, ok := v.(Param); ok {
+		return p, nil
+	}
 	// get the value of the interface
 	value := reflect.Indirect(reflect.ValueOf(v))
 	switch value.Kind() {
@@ -110,7 +109,7 @@ func ParamConvert(v interface{}) (Param, error) {
 	default:
 		// if the value is not a struct or a map, try to get the value from the default key
 		param := make(Param)
-		param[defaultParamKey] = value
+		param[defaultParamName] = value
 		return param, nil
 	}
 }

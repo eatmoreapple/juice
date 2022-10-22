@@ -79,7 +79,7 @@ func (e *Engine) init() error {
 }
 
 // try to get the statement from the configuration with the given interface
-func (e *Engine) getMapperStatement(v any) (stat Statement, err error) {
+func (e *Engine) getMapperStatement(v any) (stat *Statement, err error) {
 	var id string
 
 	// if the interface is a string, use it as the id

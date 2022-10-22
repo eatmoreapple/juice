@@ -6,41 +6,28 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
-// Statement defines the interface for a statement
-type Statement interface {
-	Node
-
-	// ID returns the id of the statement
-	ID() string
-
-	// Namespace returns the namespace of the statement
-	Namespace() string
-
-	// Action returns the action of the statement
-	Action() Action
-}
-
-// SampleStatement implements the Statement interface
-type SampleStatement struct {
+// Statement defines a sql statement.
+type Statement struct {
 	id        string
 	namespace string
 	action    Action
 	Nodes     []Node
+	paramName string
 }
 
-func (s *SampleStatement) ID() string {
+func (s *Statement) ID() string {
 	return s.id
 }
 
-func (s *SampleStatement) Namespace() string {
+func (s *Statement) Namespace() string {
 	return s.namespace
 }
 
-func (s *SampleStatement) Action() Action {
+func (s *Statement) Action() Action {
 	return s.action
 }
 
-func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+func (s *Statement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range s.Nodes {
@@ -54,11 +41,16 @@ func (s *SampleStatement) Accept(translator driver.Translator, p Param) (query s
 			builder.WriteString(" ")
 		}
 	}
-
 	return builder.String(), args, nil
 }
 
-// statementIdentity returns the identity of the statement
-func statementIdentity(statement Statement) string {
-	return statement.Namespace() + "." + statement.ID()
+func (s *Statement) Key() string {
+	return s.Namespace() + "." + s.ID()
+}
+
+func (s *Statement) ParamName() string {
+	if s.paramName == "" {
+		return defaultParamKey
+	}
+	return s.paramName
 }

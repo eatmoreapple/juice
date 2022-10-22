@@ -218,7 +218,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 	if mapper.namespace == "" {
 		return nil, errors.New("namespace is required")
 	}
-	mapper.statements = make(map[string]Statement)
+	mapper.statements = make(map[string]*Statement)
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -232,15 +232,15 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 			action := Action(token.Name.Local)
 			switch action {
 			case Select, Insert, Update, Delete:
-				statement, err := p.parseStatement(action, mapper.namespace, decoder, token)
-				if err != nil {
+				stmt := &Statement{action: action, namespace: mapper.namespace}
+				if err = p.parseStatement(stmt, decoder, token); err != nil {
 					return nil, err
 				}
-				key := fmt.Sprintf("%s.%s", mapper.namespace, statement.ID())
+				key := stmt.Key()
 				if _, exists := mapper.statements[key]; exists {
-					return nil, fmt.Errorf("duplicate statement id: %s", statement.ID())
+					return nil, fmt.Errorf("duplicate statement id: %s", stmt.ID())
 				}
-				mapper.statements[key] = statement
+				mapper.statements[key] = stmt
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mapper" {
@@ -313,16 +313,17 @@ func (p XMLParser) parseMapperByURL(url string) (*Mapper, error) {
 	}
 }
 
-func (p XMLParser) parseStatement(action Action, namespace string, decoder *xml.Decoder, token xml.StartElement) (Statement, error) {
-	statements := &SampleStatement{namespace: namespace, action: action}
+func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
-			statements.id = attr.Value
-			break
+			stmt.id = attr.Value
+		}
+		if attr.Name.Local == "paramName" {
+			stmt.paramName = attr.Value
 		}
 	}
-	if statements.id == "" {
-		return nil, errors.New("id is required")
+	if stmt.id == "" {
+		return errors.New("id is required")
 	}
 	for {
 		token, err := decoder.Token()
@@ -330,31 +331,31 @@ func (p XMLParser) parseStatement(action Action, namespace string, decoder *xml.
 			if err == io.EOF {
 				break
 			}
-			return nil, err
+			return err
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
 			node, err := p.parseTags(decoder, token)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			statements.Nodes = append(statements.Nodes, node)
+			stmt.Nodes = append(stmt.Nodes, node)
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
 				node := TextNode(char)
-				statements.Nodes = append(statements.Nodes, node)
+				stmt.Nodes = append(stmt.Nodes, node)
 			}
 		case xml.EndElement:
 			switch token.Name.Local {
-			case "select", "insert", "update", "delete":
-				return statements, nil
+			case stmt.action.String():
+				return nil
 			default:
-				return nil, fmt.Errorf("unexpected end element: %s", token.Name.Local)
+				return fmt.Errorf("unexpected end element: %s", token.Name.Local)
 			}
 		}
 	}
-	return statements, nil
+	return nil
 }
 
 func (p XMLParser) parseTags(decoder *xml.Decoder, token xml.StartElement) (Node, error) {

@@ -26,7 +26,7 @@ type executor struct {
 	err       error
 	session   Session
 	engine    *Engine
-	statement Statement
+	statement *Statement
 }
 
 // Query executes the query and returns the result.
@@ -41,8 +41,7 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 		return nil, err
 	}
 	if e.engine.configuration.Settings.Debug() {
-		id := statementIdentity(e.statement)
-		return debugForQuery(ctx, e.session, id, query, args...)
+		return debugForQuery(ctx, e.session, e.statement.Key(), query, args...)
 	}
 	return e.session.QueryContext(ctx, query, args...)
 }
@@ -59,8 +58,7 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 		return nil, err
 	}
 	if e.engine.configuration.Settings.Debug() {
-		id := statementIdentity(e.statement)
-		return debugForExec(ctx, e.session, id, query, args...)
+		return debugForExec(ctx, e.session, e.statement.Key(), query, args...)
 	}
 	return e.session.ExecContext(ctx, query, args...)
 }
@@ -70,7 +68,7 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 	if e.err != nil {
 		return "", nil, e.err
 	}
-	values, err := ParamConvert(param)
+	values, err := ParamConvert(param, e.statement.ParamName())
 	if err != nil {
 		return "", nil, err
 	}
