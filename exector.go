@@ -3,8 +3,6 @@ package juice
 import (
 	"context"
 	"database/sql"
-	"log"
-	"time"
 )
 
 // Executor is an executor of SQL.
@@ -40,10 +38,9 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
-	if e.engine.configuration.Settings.Debug() {
-		return debugForQuery(ctx, e.session, e.statement.Key(), query, args...)
-	}
-	return e.session.QueryContext(ctx, query, args...)
+	c := &Context{Statement: e.statement, Configuration: e.engine.configuration}
+	middlewares := e.engine.middlewares
+	return middlewares.QueryContext(c, e.session.QueryContext)(ctx, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -57,10 +54,9 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	if e.engine.configuration.Settings.Debug() {
-		return debugForExec(ctx, e.session, e.statement.Key(), query, args...)
-	}
-	return e.session.ExecContext(ctx, query, args...)
+	c := &Context{Statement: e.statement, Configuration: e.engine.configuration}
+	middlewares := e.engine.middlewares
+	return middlewares.ExecContext(c, e.session.ExecContext)(ctx, query, args...)
 }
 
 // prepare
@@ -112,28 +108,3 @@ func (e *genericExecutor[result]) ExecContext(ctx context.Context, p any) (sql.R
 }
 
 var _ GenericExecutor[interface{}] = (*genericExecutor[interface{}])(nil)
-
-// logger is a default logger for debug.
-var logger = log.New(log.Writer(), "[juice] ", log.Flags())
-
-// debugForQuery executes the query and logs the result.
-// If debug is enabled, it will log the query and the arguments.
-// If debug is disabled, it will execute the query directly.
-func debugForQuery(ctx context.Context, session Session, id string, query string, args ...any) (*sql.Rows, error) {
-	start := time.Now()
-	rows, err := session.QueryContext(ctx, query, args...)
-	spent := time.Since(start)
-	logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", id, query, args, spent)
-	return rows, err
-}
-
-// debugForExec executes the query and logs the result.
-// If debug is enabled, it will log the query and the arguments.
-// If debug is disabled, it will execute the query directly.
-func debugForExec(ctx context.Context, session Session, id string, query string, args ...any) (sql.Result, error) {
-	start := time.Now()
-	rows, err := session.ExecContext(ctx, query, args...)
-	spent := time.Since(start)
-	logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", id, query, args, spent)
-	return rows, err
-}

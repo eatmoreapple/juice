@@ -22,7 +22,13 @@ type Engine struct {
 	// DB is the database connection
 	DB *sql.DB
 
+	// rw is the read write lock
 	rw sync.RWMutex
+
+	// middlewares is the middlewares of the engine
+	// It is used to intercept the execution of the statements
+	// like logging, tracing, etc.
+	middlewares MiddlewareGroup
 }
 
 // Object implements the Manager interface
@@ -52,6 +58,11 @@ func (e *Engine) SetConfiguration(cfg *Configuration) {
 	e.rw.Lock()
 	defer e.rw.Unlock()
 	e.configuration = cfg
+}
+
+// Use adds a middleware to the engine
+func (e *Engine) Use(middleware Middleware) {
+	e.middlewares = append(e.middlewares, middleware)
 }
 
 // init initializes the engine
@@ -108,5 +119,16 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	if err := engine.init(); err != nil {
 		return nil, err
 	}
+	return engine, nil
+}
+
+// DefaultEngine is the default engine
+// It adds an interceptor to log the statements
+func DefaultEngine(configuration *Configuration) (*Engine, error) {
+	engine, err := NewEngine(configuration)
+	if err != nil {
+		return nil, err
+	}
+	engine.Use(NewDebugMiddleware())
 	return engine, nil
 }
