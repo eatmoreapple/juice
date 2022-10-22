@@ -1,6 +1,6 @@
 package juice
 
-// Action defines an sql action.
+// Action defines a sql action.
 type Action string
 
 const (
@@ -16,3 +16,7 @@ const (
 	// Delete is an action for delete
 	Delete Action = "delete"
 )
+
+func (a Action) String() string {
+	return string(a)
+}
