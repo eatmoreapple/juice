@@ -7,7 +7,9 @@ import (
 
 // Context is a context of the middleware.
 type Context struct {
-	Statement     *Statement
+	// Statement is the statement of current sql.
+	Statement *Statement
+	// Configuration is the configuration of the engine.
 	Configuration *Configuration
 	ctx           context.Context
 }
@@ -33,6 +35,8 @@ func (c *Context) release() {
 }
 
 var (
+	// contextPool is a pool of context.
+	// It is used to reduce the memory allocation.
 	contextPool = sync.Pool{
 		New: func() interface{} {
 			return &Context{}
