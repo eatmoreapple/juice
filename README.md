@@ -17,6 +17,7 @@ Juice is a simple and lightweight framework. It is easy to use and easy to exten
 * Dynamic SQL
 * Result to entity mapping
 * Generic type support
+* Middleware support
 * Todo support more
 
 ### Quick Start
@@ -93,7 +94,7 @@ func main() {
 		panic(err)
 	}
 
-	engine, err := juice.NewEngine(cfg)
+	engine, err := juice.DefaultEngine(cfg)
 	if err != nil {
 		panic(err)
 	}
