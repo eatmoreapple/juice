@@ -52,7 +52,7 @@ and write the following content into config.xml
     <mappers>
         <mapper namespace="main.UserRepository">
             <select id="GetUserByID">
-                select * from user where id = #{params}
+                select * from user where id = #{param}
             </select>
         </mapper>
     </mappers>
