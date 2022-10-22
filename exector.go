@@ -38,7 +38,8 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
-	c := &Context{Statement: e.statement, Configuration: e.engine.configuration}
+	c := newContext(e.statement, e.engine.configuration)
+	defer c.release()
 	middlewares := e.engine.middlewares
 	return middlewares.QueryContext(c, e.session.QueryContext)(ctx, query, args...)
 }
@@ -54,7 +55,8 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	c := &Context{Statement: e.statement, Configuration: e.engine.configuration}
+	c := newContext(e.statement, e.engine.configuration)
+	defer c.release()
 	middlewares := e.engine.middlewares
 	return middlewares.ExecContext(c, e.session.ExecContext)(ctx, query, args...)
 }
