@@ -21,8 +21,8 @@ type MiddlewareGroup []Middleware
 // QueryContext implements Middleware.
 // Call QueryContext will call all the QueryContext of the middlewares in the group.
 func (m MiddlewareGroup) QueryContext(c *Context, next QueryHandler) QueryHandler {
-	for i := len(m) - 1; i >= 0; i-- {
-		next = m[i].QueryContext(c, next)
+	for _, middleware := range m {
+		next = middleware.QueryContext(c, next)
 	}
 	return next
 }
@@ -30,8 +30,8 @@ func (m MiddlewareGroup) QueryContext(c *Context, next QueryHandler) QueryHandle
 // ExecContext implements Middleware.
 // Call ExecContext will call all the ExecContext of the middlewares in the group.
 func (m MiddlewareGroup) ExecContext(c *Context, next ExecHandler) ExecHandler {
-	for i := len(m) - 1; i >= 0; i-- {
-		next = m[i].ExecContext(c, next)
+	for _, middleware := range m {
+		next = middleware.ExecContext(c, next)
 	}
 	return next
 }
