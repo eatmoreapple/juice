@@ -232,7 +232,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 			action := Action(token.Name.Local)
 			switch action {
 			case Select, Insert, Update, Delete:
-				stmt := &Statement{action: action, namespace: mapper.namespace}
+				stmt := &Statement{action: action, mapper: mapper}
 				if err = p.parseStatement(stmt, decoder, token); err != nil {
 					return nil, err
 				}
@@ -315,15 +315,10 @@ func (p XMLParser) parseMapperByURL(url string) (*Mapper, error) {
 
 func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "id" {
-			stmt.id = attr.Value
-		}
-		if attr.Name.Local == "paramName" {
-			stmt.paramName = attr.Value
-		}
+		stmt.SetAttribute(attr.Name.Local, attr.Value)
 	}
-	if stmt.id == "" {
-		return errors.New("id is required")
+	if stmt.ID() == "" {
+		return fmt.Errorf("%s statement id is required", stmt.Action())
 	}
 	for {
 		token, err := decoder.Token()

@@ -84,11 +84,12 @@ type ParamConverter interface {
 }
 
 const (
-	defaultParamKey = "params"
 	paramTag        = "param"
+	defaultParamKey = paramTag
 )
 
 // ParamConvert converts any type to Param
+// defaultParamName will be used if the type is not a struct or a map
 func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 	if v == nil {
 		return make(Param), nil
@@ -109,6 +110,10 @@ func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 	default:
 		// if the value is not a struct or a map, try to get the value from the default key
 		param := make(Param)
+		// if the default key is empty, use the defaultParamKey instead
+		if defaultParamName == "" {
+			defaultParamName = defaultParamKey
+		}
 		param[defaultParamName] = value
 		return param, nil
 	}

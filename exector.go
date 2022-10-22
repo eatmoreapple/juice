@@ -68,11 +68,10 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 	if e.err != nil {
 		return "", nil, e.err
 	}
-	values, err := ParamConvert(param, e.statement.ParamName())
+	values, err := ParamConvert(param, e.statement.Attribute("paramName"))
 	if err != nil {
 		return "", nil, err
 	}
-
 	translator := e.engine.Driver.Translate()
 
 	return e.statement.Accept(translator, values)

@@ -8,19 +8,34 @@ import (
 
 // Statement defines a sql statement.
 type Statement struct {
-	id        string
-	namespace string
-	action    Action
-	Nodes     []Node
-	paramName string
+	mapper *Mapper
+	action Action
+	Nodes  []Node
+	attrs  map[string]string
+}
+
+func (s *Statement) Attribute(key string) string {
+	return s.attrs[key]
+}
+
+func (s *Statement) SetAttribute(key, value string) {
+	if s.attrs == nil {
+		s.attrs = make(map[string]string)
+	}
+	s.attrs[key] = value
 }
 
 func (s *Statement) ID() string {
-	return s.id
+	return s.Attribute("id")
 }
 
 func (s *Statement) Namespace() string {
-	return s.namespace
+	return s.mapper.Namespace()
+}
+
+// Key is a unique key of the whole statement.
+func (s *Statement) Key() string {
+	return s.Namespace() + "." + s.ID()
 }
 
 func (s *Statement) Action() Action {
@@ -42,15 +57,4 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 		}
 	}
 	return builder.String(), args, nil
-}
-
-func (s *Statement) Key() string {
-	return s.Namespace() + "." + s.ID()
-}
-
-func (s *Statement) ParamName() string {
-	if s.paramName == "" {
-		return defaultParamKey
-	}
-	return s.paramName
 }
