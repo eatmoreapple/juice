@@ -1,6 +1,7 @@
 package juice
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
@@ -43,6 +44,12 @@ func (e *Engine) Object(v interface{}) Executor {
 // Tx returns a TxManager
 func (e *Engine) Tx() TxManager {
 	tx, err := e.DB.Begin()
+	return &txManager{manager: e, tx: tx, err: err}
+}
+
+// ContextTx returns a TxManager with the given context
+func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
+	tx, err := e.DB.BeginTx(ctx, opt)
 	return &txManager{manager: e, tx: tx, err: err}
 }
 
