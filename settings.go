@@ -17,11 +17,6 @@ func (s Settings) Get(name string) StringValue {
 	return emptyStringValue
 }
 
-// Debug returns true if debug is enabled.
-func (s Settings) Debug() bool {
-	return s.Get("debug").Bool()
-}
-
 // Setting is a setting element.
 type Setting struct {
 	// The name of the setting.
