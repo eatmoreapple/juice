@@ -46,15 +46,26 @@ and write the following content into config.xml
         </environment>
     </environments>
 
-    <settings>
-        <setting name="debug" value="true"/>
-    </settings>
 
     <mappers>
         <mapper namespace="main.UserRepository">
-            <select id="GetUserByID">
+
+            <select id="GetUserByID" debug="true">
                 select * from user where id = #{param}
             </select>
+
+            <insert id="CreateUser" debug="true">
+                insert into user (`name`, `age`) values (#{name}, #{age})
+            </insert>
+
+            <update id="UpdateUser" debug="true">
+                update user set `name` = #{name}, `age` = #{age} where id = #{id}
+            </update>
+
+            <delete id="DeleteUserByID" debug="true">
+                delete from user where id = #{param}
+            </delete>
+
         </mapper>
     </mappers>
 </configuration>
@@ -64,12 +75,22 @@ and write the following content into config.xml
 package main
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/eatmoreapple/juice"
+	"reflect"
 
 	_ "github.com/go-sql-driver/mysql"
 )
+
+var schema = `
+CREATE TABLE IF NOT EXISTS user (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  name varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  age int(11) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+`
 
 type User struct {
 	Id   int64  `column:"id" param:"id"`
@@ -78,12 +99,30 @@ type User struct {
 }
 
 type UserRepository interface {
-	GetUserByID(id int64) (*User, error)
+	GetUserByID(id int64)
+	CreateUser(user *User)
+	UpdateUser(user *User)
+	DeleteUserByID(id int64)
 }
 
 type UserRepositoryImpl struct{}
 
-func (u UserRepositoryImpl) GetUserByID(id int64) (*User, error) {
+func (u UserRepositoryImpl) UpdateUser(user *User) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserRepositoryImpl) DeleteUserByID(id int64) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserRepositoryImpl) CreateUser(user *User) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserRepositoryImpl) GetUserByID(id int64) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -91,21 +130,109 @@ func (u UserRepositoryImpl) GetUserByID(id int64) (*User, error) {
 func main() {
 	cfg, err := juice.NewXMLConfiguration("config.xml")
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 
 	engine, err := juice.DefaultEngine(cfg)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
+	}
+
+	// create table first
+	if _, err = engine.DB.Exec(schema); err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	var repo UserRepository = UserRepositoryImpl{}
 
-	user, err := juice.NewGenericManager[*User](engine.Tx()).Object(repo.GetUserByID).Query(3).One()
-	if err != nil {
-		panic(err)
+	// create user first
+	user := &User{
+		Name: "eatmoreapple",
+		Age:  18,
 	}
-	fmt.Printf("%+v", user)
+
+	result, err := engine.Object(repo.CreateUser).ExecContext(context.Background(), user)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	user.Id, err = result.LastInsertId()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// query user
+	rows, err := engine.Object(repo.GetUserByID).Query(user.Id)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer rows.Close()
+
+	// todo: iterate rows with your own way
+
+	// query user with auto mapping
+	user2, err := juice.NewGenericManager[*User](engine).Object(repo.GetUserByID).Query(user.Id).One()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if reflect.DeepEqual(user, user2) {
+		fmt.Println("user and user2 are equal")
+	} else {
+		fmt.Println("user and user2 are not equal")
+		return
+	}
+
+	// with transaction
+
+	// begin transaction
+
+	// begin
+	tx := engine.Tx()
+
+	// update user with tx
+	user.Name = "eatmoreapple2"
+	user.Age = 20
+	result, err = tx.Object(repo.UpdateUser).ExecContext(context.Background(), user)
+	if err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+		return
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+		return
+	}
+	fmt.Printf("update affected rows: %d\n", affected)
+
+	// delete user with tx
+	result, err = tx.Object(repo.DeleteUserByID).ExecContext(context.Background(), user.Id)
+	if err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+		return
+	}
+	affected, err = result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+		tx.Rollback()
+		return
+	}
+	fmt.Printf("delete affected rows: %d\n", affected)
+
+	// commit
+	if err = tx.Commit(); err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 ```
 
