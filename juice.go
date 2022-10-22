@@ -129,6 +129,6 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	engine.Use(NewDebugMiddleware())
+	engine.Use(&DebugMiddleware{})
 	return engine, nil
 }
