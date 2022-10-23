@@ -28,20 +28,22 @@ type TextNode string
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
 func (c TextNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
-	query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
-		if err != nil {
-			return s
-		}
-		param := paramRegex.FindStringSubmatch(s)[1]
+	if len(p) > 0 {
+		query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
+			if err != nil {
+				return s
+			}
+			param := paramRegex.FindStringSubmatch(s)[1]
 
-		value, exists := p.Get(param)
-		if !exists {
-			err = fmt.Errorf("parameter %s not found", param)
-			return s
-		}
-		args = append(args, value.Interface())
-		return translator.Translate(s)
-	})
+			value, exists := p.Get(param)
+			if !exists {
+				err = fmt.Errorf("parameter %s not found", param)
+				return s
+			}
+			args = append(args, value.Interface())
+			return translator.Translate(s)
+		})
+	}
 	return query, args, err
 }
 
