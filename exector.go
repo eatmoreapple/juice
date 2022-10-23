@@ -38,10 +38,9 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
-	c := newContext(e.statement, e.engine.configuration)
-	defer c.release()
 	middlewares := e.engine.middlewares
-	return middlewares.QueryContext(c, e.session.QueryContext)(ctx, query, args...)
+	stmt := e.statement
+	return middlewares.QueryContext(stmt, e.session.QueryContext)(ctx, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -55,10 +54,9 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	c := newContext(e.statement, e.engine.configuration)
-	defer c.release()
 	middlewares := e.engine.middlewares
-	return middlewares.ExecContext(c, e.session.ExecContext)(ctx, query, args...)
+	stmt := e.statement
+	return middlewares.ExecContext(stmt, e.session.ExecContext)(ctx, query, args...)
 }
 
 // prepare
@@ -71,7 +69,6 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 		return "", nil, err
 	}
 	translator := e.engine.Driver.Translate()
-
 	return e.statement.Accept(translator, values)
 }
 

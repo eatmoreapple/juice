@@ -44,8 +44,8 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				}
 				p.configuration.Environments = *envs
 			case "mappers":
-				mappers, err := p.parseMappers(decoder)
-				if err != nil {
+				var mappers = Mappers{cfg: &p.configuration}
+				if err := p.parseMappers(&mappers, decoder); err != nil {
 					return nil, err
 				}
 				p.configuration.Mappers = mappers
@@ -166,37 +166,36 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 	return &env, nil
 }
 
-func (p XMLParser) parseMappers(decoder *xml.Decoder) (Mappers, error) {
-	mappers := make(Mappers)
+func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
 	for {
 		token, err := decoder.Token()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return nil, err
+			return err
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
 			if token.Name.Local == "mapper" {
-				parsedMapper, err := p.parseMapper(decoder, token)
+				mapper, err := p.parseMapper(decoder, token)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				for key, stmt := range parsedMapper.statements {
-					if _, exists := mappers[key]; exists {
-						return nil, fmt.Errorf("duplicate statement id: %s", key)
+				for key, stmt := range mapper.statements {
+					if err = mappers.setStatementByID(key, stmt); err != nil {
+						return err
 					}
-					mappers[key] = stmt
 				}
+				mapper.mappers = mappers
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mappers" {
-				return mappers, nil
+				return nil
 			}
 		}
 	}
-	return mappers, nil
+	return nil
 }
 
 func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*Mapper, error) {

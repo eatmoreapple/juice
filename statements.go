@@ -88,3 +88,12 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 
 	return query, args, nil
 }
+
+func (s *Statement) String() string {
+	return s.Key()
+}
+
+// Mapper is an getter of statements.
+func (s *Statement) Mapper() *Mapper {
+	return s.mapper
+}
