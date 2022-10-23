@@ -736,6 +736,5 @@ func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	parser := &XMLParser{FS: fs}
-	return parser.Parse(file)
+	return NewXMLConfigurationWithReader(file)
 }
