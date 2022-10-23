@@ -19,10 +19,14 @@ type Statement struct {
 }
 
 func (s *Statement) Attribute(key string) string {
-	return s.attrs[key]
+	value := s.attrs[key]
+	if value == "" {
+		value = s.mapper.Attribute(key)
+	}
+	return value
 }
 
-func (s *Statement) SetAttribute(key, value string) {
+func (s *Statement) setAttribute(key, value string) {
 	if s.attrs == nil {
 		s.attrs = make(map[string]string)
 	}
@@ -68,24 +72,29 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 	// format query
 	// replace ${xxx} to an argument
 	query = builder.String()
-	query = formatRegexp.ReplaceAllStringFunc(query, func(find string) string {
-		if err != nil {
-			return find
-		}
-		param := formatRegexp.FindStringSubmatch(find)[1]
-		value, exists := p.Get(param)
-		if exists {
-			return reflectValueToString(value)
-		}
-		// try to get from current statement attributes
-		if attribute := s.Attribute(param); attribute == "" {
-			err = fmt.Errorf("param %s not found in param or statement attributes", param)
-			return find
-		} else {
-			return attribute
-		}
-	})
 
+	// cause the query may be a sql template, so we need to format it
+	// for example, the query is "select * from ${table} where id = 1"
+	// we need to replace ${table} to an argument
+	if len(p) > 0 || len(s.attrs) > 1 {
+		query = formatRegexp.ReplaceAllStringFunc(query, func(find string) string {
+			if err != nil {
+				return find
+			}
+			param := formatRegexp.FindStringSubmatch(find)[1]
+			value, exists := p.Get(param)
+			if exists {
+				return reflectValueToString(value)
+			}
+			// try to get from current statement attributes
+			if attribute := s.Attribute(param); attribute == "" {
+				err = fmt.Errorf("param %s not found in param or statement attributes", param)
+				return find
+			} else {
+				return attribute
+			}
+		})
+	}
 	return query, args, nil
 }
 

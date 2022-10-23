@@ -12,16 +12,28 @@ type Mapper struct {
 	resource   string
 	url        string
 	statements map[string]*Statement
+	attrs      map[string]string
 }
 
 // Namespace returns the namespace of the mapper.
-func (m Mapper) Namespace() string {
+func (m *Mapper) Namespace() string {
 	return m.namespace
 }
 
 // Mappers is an getter of mappers.
-func (m Mapper) Mappers() *Mappers {
+func (m *Mapper) Mappers() *Mappers {
 	return m.mappers
+}
+
+func (m *Mapper) setAttribute(key, value string) {
+	if m.attrs == nil {
+		m.attrs = make(map[string]string)
+	}
+	m.attrs[key] = value
+}
+
+func (m *Mapper) Attribute(key string) string {
+	return m.attrs[key]
 }
 
 // Mappers is a map of mappers.

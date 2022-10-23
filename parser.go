@@ -201,23 +201,23 @@ func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
 func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*Mapper, error) {
 	mapper := &Mapper{}
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "namespace" {
-			mapper.namespace = attr.Value
-			break
-		}
-		if attr.Name.Local == "resource" {
-			mapper.resource = attr.Value
-			return p.parseMapperByResource(mapper.resource)
-		}
-		if attr.Name.Local == "url" {
-			mapper.url = attr.Value
-			return p.parseMapperByURL(mapper.url)
-		}
+		mapper.setAttribute(attr.Name.Local, attr.Value)
 	}
-	if mapper.namespace == "" {
+
+	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
 		return nil, errors.New("namespace is required")
 	}
+
+	if mapper.resource = mapper.Attribute("resource"); mapper.resource != "" {
+		return p.parseMapperByResource(mapper.resource)
+	}
+
+	if mapper.url = mapper.Attribute("url"); mapper.url != "" {
+		return p.parseMapperByURL(mapper.url)
+	}
+
 	mapper.statements = make(map[string]*Statement)
+
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -314,7 +314,7 @@ func (p XMLParser) parseMapperByURL(url string) (*Mapper, error) {
 
 func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
-		stmt.SetAttribute(attr.Name.Local, attr.Value)
+		stmt.setAttribute(attr.Name.Local, attr.Value)
 	}
 	if stmt.ID() == "" {
 		return fmt.Errorf("%s statement id is required", stmt.Action())
