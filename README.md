@@ -48,22 +48,59 @@ and write the following content into config.xml
 
 
     <mappers>
-        <mapper namespace="main.UserRepository">
+        <mapper namespace="main.UserRepository" table="user">
+
+            <sql id="columns">
+                `id`, `name`, `age`
+            </sql>
+
+            <sql id="selectAll">
+                select
+                <include refid="columns"/>
+                from ${table}
+            </sql>
+
 
             <select id="GetUserByID" debug="true">
-                select * from user where id = #{param}
+                <include refid="selectAll"/>
+                where id = #{param}
             </select>
 
             <insert id="CreateUser" debug="true">
-                insert into user (`name`, `age`) values (#{name}, #{age})
+                insert into ${table}
+                <trim prefix="(" suffixOverrides="," suffix=")">
+                    <if test='name != ""'>
+                        name,
+                    </if>
+                    <if test="age > 0">
+                        age,
+                    </if>
+                </trim>
+                <trim prefix="values (" suffix=")" suffixOverrides=",">
+                    <if test='name != ""'>
+                        #{name},
+                    </if>
+                    <if test="age > 0">
+                        #{age},
+                    </if>
+                </trim>
             </insert>
 
             <update id="UpdateUser" debug="true">
-                update user set `name` = #{name}, `age` = #{age} where id = #{id}
+                update ${table}
+                <set>
+                    <if test='name != ""'>
+                        `name` = #{name},
+                    </if>
+                    <if test="age > 0">
+                        `age` = #{age},
+                    </if>
+                </set>
+                where id = #{id}
             </update>
 
-            <delete id="DeleteUserByID" debug="true">
-                delete from user where id = #{param}
+            <delete id="DeleteUserByID" debug="true" table="user">
+                delete from ${table} where id = #{param}
             </delete>
 
         </mapper>
