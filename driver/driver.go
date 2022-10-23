@@ -24,8 +24,10 @@ var (
 
 // Register registers a driver.
 // The name is used to get a driver.
-// If the name is already registered, it returns an error.
 func Register(name string, driver Driver) {
+	if driver == nil {
+		panic("driver: Register driver is nil")
+	}
 	lock.Lock()
 	defer lock.Unlock()
 	registeredDrivers[name] = driver
