@@ -277,3 +277,37 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 
 	return builder.String(), args, nil
 }
+
+// SetNode is a node of set.
+type SetNode struct {
+	Nodes []Node
+}
+
+// Accept accepts parameters and returns query and arguments.
+func (s SetNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+	var builder = getBuilder()
+	defer putBuilder(builder)
+	for i, node := range s.Nodes {
+		q, a, err := node.Accept(translator, p)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
+		if i < len(s.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+			builder.WriteString(" ")
+		}
+	}
+	query = builder.String()
+	if query != "" {
+		query = "SET " + query
+	}
+	if strings.HasSuffix(query, ",") {
+		query = query[:len(query)-1]
+	}
+	return query, args, nil
+}

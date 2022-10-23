@@ -178,3 +178,34 @@ func TestTrimNode_Accept(t *testing.T) {
 	}
 
 }
+
+func TestSetNode_Accept(t *testing.T) {
+	drv := driver.MySQLDriver{}
+	node := SetNode{
+		Nodes: []Node{
+			TextNode("id = #{id},"),
+			TextNode("name = #{name},"),
+		},
+	}
+	params := map[string]reflect.Value{
+		"id":   reflect.ValueOf(1),
+		"name": reflect.ValueOf("a"),
+	}
+	query, args, err := node.Accept(drv.Translate(), params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if query != "SET id = ?, name = ?" {
+		t.Error("query error")
+		return
+	}
+	if len(args) != 2 {
+		t.Error("args error")
+		return
+	}
+	if args[0] != 1 || args[1] != "a" {
+		t.Error("args error")
+		return
+	}
+}
