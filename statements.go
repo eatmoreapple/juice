@@ -1,10 +1,14 @@
 package juice
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/eatmoreapple/juice/driver"
 )
+
+var formatRegexp = regexp.MustCompile(`\$\{([a-zA-Z0-9_\.]+)\}`)
 
 // Statement defines a sql statement.
 type Statement struct {
@@ -50,11 +54,37 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 		if err != nil {
 			return "", nil, err
 		}
-		builder.WriteString(q)
-		args = append(args, a...)
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
 		if i < len(s.Nodes)-1 && !strings.HasSuffix(q, " ") {
 			builder.WriteString(" ")
 		}
 	}
-	return builder.String(), args, nil
+
+	// format query
+	// replace ${xxx} to an argument
+	query = builder.String()
+	query = formatRegexp.ReplaceAllStringFunc(query, func(find string) string {
+		if err != nil {
+			return find
+		}
+		param := formatRegexp.FindStringSubmatch(find)[1]
+		value, exists := p.Get(param)
+		if exists {
+			return reflectValueToString(value)
+		}
+		// try to get from current statement attributes
+		if attribute := s.Attribute(param); attribute == "" {
+			err = fmt.Errorf("param %s not found in param or statement attributes", param)
+			return find
+		} else {
+			return attribute
+		}
+	})
+
+	return query, args, nil
 }

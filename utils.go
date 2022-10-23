@@ -2,8 +2,10 @@ package juice
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -39,4 +41,24 @@ func FuncForPC(v any) (string, error) {
 	name = strings.ReplaceAll(strings.ReplaceAll(name, "/", "."), "*", "")
 
 	return strings.TrimSuffix(name, "-fm"), nil
+}
+
+// reflectValueToString converts reflect.Value to string
+func reflectValueToString(v reflect.Value) string {
+	switch v.Kind() {
+	case reflect.String:
+		return v.String()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.FormatInt(v.Int(), 10)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(v.Uint(), 10)
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool())
+	}
+	if stringer, ok := v.Interface().(fmt.Stringer); ok {
+		return stringer.String()
+	}
+	return fmt.Sprintf("%v", v.Interface())
 }
