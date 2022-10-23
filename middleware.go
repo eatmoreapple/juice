@@ -75,6 +75,8 @@ func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHan
 }
 
 // isBugMode returns true if the debug mode is on.
+// Default debug mode is on.
+// You can turn off the debug mode by setting the debug tag to false in the mapper statement attribute or the configuration.
 func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
 	// try to get the bug mode from the Statement
 	debug := stmt.Attribute("debug")
@@ -82,6 +84,8 @@ func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
 	if debug == "false" {
 		return false
 	}
-	cfg := stmt.Mapper().Mappers().Configuration()
-	return debug == "true" || cfg.Settings.Get("debug") == "true"
+	if cfg := stmt.Mapper().Mappers().Configuration(); cfg.Settings.Get("debug") == "false" {
+		return false
+	}
+	return true
 }
