@@ -84,7 +84,7 @@ func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
 	if debug == "false" {
 		return false
 	}
-	if cfg := stmt.Mapper().Mappers().Configuration(); cfg.Settings.Get("debug") == "false" {
+	if cfg := stmt.Configuration(); cfg.Settings.Get("debug") == "false" {
 		return false
 	}
 	return true

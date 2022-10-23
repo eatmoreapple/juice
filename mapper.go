@@ -56,6 +56,10 @@ func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
 	return node, nil
 }
 
+func (m *Mapper) Configuration() *Configuration {
+	return m.mappers.Configuration()
+}
+
 // Mappers is a map of mappers.
 type Mappers struct {
 	statements map[string]*Statement

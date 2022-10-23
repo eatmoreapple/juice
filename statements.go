@@ -104,3 +104,7 @@ func (s *Statement) String() string {
 func (s *Statement) Mapper() *Mapper {
 	return s.mapper
 }
+
+func (s *Statement) Configuration() *Configuration {
+	return s.mapper.Configuration()
+}
