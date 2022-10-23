@@ -12,6 +12,7 @@ type Mapper struct {
 	resource   string
 	url        string
 	statements map[string]*Statement
+	sqlNodes   map[string]*SQLNode
 	attrs      map[string]string
 }
 
@@ -32,8 +33,27 @@ func (m *Mapper) setAttribute(key, value string) {
 	m.attrs[key] = value
 }
 
+func (m *Mapper) setSqlNode(node *SQLNode) error {
+	if m.sqlNodes == nil {
+		m.sqlNodes = make(map[string]*SQLNode)
+	}
+	if _, exists := m.sqlNodes[node.ID()]; exists {
+		return fmt.Errorf("sql node %s already exists", node.ID())
+	}
+	m.sqlNodes[node.ID()] = node
+	return nil
+}
+
 func (m *Mapper) Attribute(key string) string {
 	return m.attrs[key]
+}
+
+func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
+	node, exists := m.sqlNodes[id]
+	if !exists {
+		return nil, errors.New("sql node not found")
+	}
+	return node, nil
 }
 
 // Mappers is a map of mappers.

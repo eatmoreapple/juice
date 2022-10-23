@@ -240,6 +240,14 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 					return nil, fmt.Errorf("duplicate statement id: %s", stmt.ID())
 				}
 				mapper.statements[key] = stmt
+			case "sql":
+				sqlNode := &SQLNode{mapper: mapper}
+				if err = p.parseSQLNode(sqlNode, decoder, token); err != nil {
+					return nil, err
+				}
+				if err = mapper.setSqlNode(sqlNode); err != nil {
+					return nil, err
+				}
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mapper" {
@@ -329,7 +337,7 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node, err := p.parseTags(decoder, token)
+			node, err := p.parseTags(stmt.Mapper(), decoder, token)
 			if err != nil {
 				return err
 			}
@@ -352,21 +360,89 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 	return nil
 }
 
-func (p XMLParser) parseTags(decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	switch token.Name.Local {
 	case "if":
-		return p.parseIf(decoder, token)
+		return p.parseIf(mapper, decoder, token)
 	case "where":
-		return p.parseWhere(decoder)
+		return p.parseWhere(mapper, decoder)
 	case "trim":
-		return p.parseTrim(decoder, token)
+		return p.parseTrim(mapper, decoder, token)
 	case "foreach":
-		return p.parseForeach(decoder, token)
+		return p.parseForeach(mapper, decoder, token)
+	case "set":
+		return p.parseSet(mapper, decoder, token)
+	case "include":
+		return p.parseInclude(mapper, decoder, token)
 	}
 	return nil, fmt.Errorf("unknown tag: %s", token.Name.Local)
 }
 
-func (p XMLParser) parseIf(decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+	var ref string
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "refid":
+			ref = attr.Value
+		}
+	}
+	if ref == "" {
+		return nil, errors.New("include ref is required")
+	}
+
+	includeNode := &IncludeNode{RefId: ref, mapper: mapper}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.EndElement:
+			if token.Name.Local == "include" {
+				return includeNode, nil
+			}
+		}
+	}
+	return includeNode, nil
+}
+
+func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+	setNode := &SetNode{}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			node, err := p.parseTags(mapper, decoder, token)
+			if err != nil {
+				return nil, err
+			}
+			setNode.Nodes = append(setNode.Nodes, node)
+		case xml.CharData:
+			text := string(token)
+			if char := strings.TrimSpace(text); char != "" {
+				node := TextNode(char)
+				setNode.Nodes = append(setNode.Nodes, node)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "set" {
+				return setNode, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	ifNode := &IfNode{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "test" {
@@ -392,7 +468,7 @@ func (p XMLParser) parseIf(decoder *xml.Decoder, token xml.StartElement) (Node, 
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node, err := p.parseTags(decoder, token)
+			node, err := p.parseTags(mapper, decoder, token)
 			if err != nil {
 				return nil, err
 			}
@@ -412,7 +488,7 @@ func (p XMLParser) parseIf(decoder *xml.Decoder, token xml.StartElement) (Node, 
 	return ifNode, nil
 }
 
-func (p XMLParser) parseWhere(decoder *xml.Decoder) (Node, error) {
+func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	whereNode := &WhereNode{}
 	for {
 		token, err := decoder.Token()
@@ -424,7 +500,7 @@ func (p XMLParser) parseWhere(decoder *xml.Decoder) (Node, error) {
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node, err := p.parseTags(decoder, token)
+			node, err := p.parseTags(mapper, decoder, token)
 			if err != nil {
 				return nil, err
 			}
@@ -444,7 +520,7 @@ func (p XMLParser) parseWhere(decoder *xml.Decoder) (Node, error) {
 	return whereNode, nil
 }
 
-func (p XMLParser) parseTrim(decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	trimNode := &TrimNode{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "prefix" {
@@ -470,7 +546,7 @@ func (p XMLParser) parseTrim(decoder *xml.Decoder, token xml.StartElement) (Node
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node, err := p.parseTags(decoder, token)
+			node, err := p.parseTags(mapper, decoder, token)
 			if err != nil {
 				return nil, err
 			}
@@ -484,7 +560,7 @@ func (p XMLParser) parseTrim(decoder *xml.Decoder, token xml.StartElement) (Node
 	return trimNode, nil
 }
 
-func (p XMLParser) parseForeach(decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	foreachNode := &ForeachNode{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "collection" {
@@ -522,7 +598,7 @@ func (p XMLParser) parseForeach(decoder *xml.Decoder, token xml.StartElement) (N
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node, err := p.parseTags(decoder, token)
+			node, err := p.parseTags(mapper, decoder, token)
 			if err != nil {
 				return nil, err
 			}
@@ -602,6 +678,46 @@ func (p XMLParser) parseSettings(decoder *xml.Decoder) (*Settings, error) {
 		return nil, err
 	}
 	return &setting, nil
+}
+
+func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xml.StartElement) error {
+	for _, attr := range token.Attr {
+		if attr.Name.Local == "id" {
+			sqlNode.id = attr.Value
+			break
+		}
+	}
+	if sqlNode.id == "" {
+		return errors.New("id is required")
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			tags, err := p.parseTags(sqlNode.mapper, decoder, token)
+			if err != nil {
+				return err
+			}
+			sqlNode.nodes = append(sqlNode.nodes, tags)
+		case xml.CharData:
+			text := string(token)
+			if char := strings.TrimSpace(text); char != "" {
+				node := TextNode(char)
+				sqlNode.nodes = append(sqlNode.nodes, node)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "sql" {
+				return nil
+			}
+		}
+	}
+	return nil
 }
 
 func NewXMLConfigurationWithReader(reader io.Reader) (*Configuration, error) {

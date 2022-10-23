@@ -311,3 +311,48 @@ func (s SetNode) Accept(translator driver.Translator, p Param) (query string, ar
 	}
 	return query, args, nil
 }
+
+type SQLNode struct {
+	id     string
+	nodes  []Node
+	mapper *Mapper
+}
+
+func (s SQLNode) ID() string {
+	return s.id
+}
+
+func (s SQLNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+	var builder = getBuilder()
+	defer putBuilder(builder)
+	for i, node := range s.nodes {
+		q, a, err := node.Accept(translator, p)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
+		if i < len(s.nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+			builder.WriteString(" ")
+		}
+	}
+	return builder.String(), args, nil
+}
+
+type IncludeNode struct {
+	RefId  string
+	mapper *Mapper
+	nodes  []Node
+}
+
+func (i IncludeNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+	sqlNode, err := i.mapper.GetSQLNodeByID(i.RefId)
+	if err != nil {
+		return "", nil, fmt.Errorf("sql node %s not found", i.RefId)
+	}
+	return sqlNode.Accept(translator, p)
+}
