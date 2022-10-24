@@ -204,16 +204,16 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 		mapper.setAttribute(attr.Name.Local, attr.Value)
 	}
 
-	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
-		return nil, errors.New("namespace is required")
-	}
-
 	if mapper.resource = mapper.Attribute("resource"); mapper.resource != "" {
 		return p.parseMapperByResource(mapper.resource)
 	}
 
 	if mapper.url = mapper.Attribute("url"); mapper.url != "" {
 		return p.parseMapperByURL(mapper.url)
+	}
+
+	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
+		return nil, errors.New("namespace is required")
 	}
 
 	mapper.statements = make(map[string]*Statement)
