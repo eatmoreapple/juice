@@ -720,8 +720,8 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 	return nil
 }
 
-func NewXMLConfigurationWithReader(reader io.Reader) (*Configuration, error) {
-	parser := &XMLParser{FS: LocalFS{}}
+func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
+	parser := &XMLParser{FS: fs}
 	return parser.Parse(reader)
 }
 
@@ -736,5 +736,5 @@ func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	return NewXMLConfigurationWithReader(file)
+	return NewXMLConfigurationWithReader(fs, file)
 }
