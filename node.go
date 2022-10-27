@@ -314,16 +314,20 @@ func (s SetNode) Accept(translator driver.Translator, p Param) (query string, ar
 	return query, args, nil
 }
 
+// SQLNode is a node of sql.
+// SQLNode defines a SQL query.
 type SQLNode struct {
 	id     string
 	nodes  []Node
 	mapper *Mapper
 }
 
+// ID returns the id of the node.
 func (s SQLNode) ID() string {
 	return s.id
 }
 
+// Accept accepts parameters and returns query and arguments.
 func (s SQLNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
@@ -345,16 +349,83 @@ func (s SQLNode) Accept(translator driver.Translator, p Param) (query string, ar
 	return builder.String(), args, nil
 }
 
+// IncludeNode is a node of include.
+// It includes another SQL.
 type IncludeNode struct {
 	RefId  string
 	mapper *Mapper
 	nodes  []Node
 }
 
+// Accept accepts parameters and returns query and arguments.
 func (i IncludeNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	sqlNode, err := i.mapper.GetSQLNodeByID(i.RefId)
 	if err != nil {
 		return "", nil, fmt.Errorf("sql node %s not found", i.RefId)
 	}
 	return sqlNode.Accept(translator, p)
+}
+
+// ChooseNode is a node of choose.
+// ChooseNode can have multiple when nodes and one otherwise node.
+// WhenNode is executed when test is true.
+// OtherwiseNode is executed when all when nodes are false.
+type ChooseNode struct {
+	WhenNodes     []Node
+	OtherwiseNode Node
+}
+
+// Accept accepts parameters and returns query and arguments.
+func (c ChooseNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+	for _, node := range c.WhenNodes {
+		q, a, err := node.Accept(translator, p)
+		if err != nil {
+			return "", nil, err
+		}
+		// if one of when nodes is true, return query and arguments
+		if len(q) > 0 {
+			return q, a, nil
+		}
+	}
+	// if all when nodes are false, return otherwise node
+	if c.OtherwiseNode != nil {
+		return c.OtherwiseNode.Accept(translator, p)
+	}
+	return "", nil, nil
+}
+
+// WhenNode is a node of when.
+// WhenNode like if node, but it can not be used alone.
+// While one of WhenNode is true, the query of ChooseNode will be returned.
+type WhenNode struct {
+	*IfNode
+}
+
+// OtherwiseNode is a node of otherwise.
+// OtherwiseNode like else node, but it can not be used alone.
+// If all WhenNode is false, the query of OtherwiseNode will be returned.
+type OtherwiseNode struct {
+	Nodes []Node
+}
+
+// Accept accepts parameters and returns query and arguments.
+func (o OtherwiseNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+	var builder = getBuilder()
+	defer putBuilder(builder)
+	for i, node := range o.Nodes {
+		q, a, err := node.Accept(translator, p)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
+		if i < len(o.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+			builder.WriteString(" ")
+		}
+	}
+	return builder.String(), args, nil
 }

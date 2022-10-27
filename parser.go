@@ -374,6 +374,8 @@ func (p XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 		return p.parseSet(mapper, decoder, token)
 	case "include":
 		return p.parseInclude(mapper, decoder, token)
+	case "choose":
+		return p.parseChoose(mapper, decoder, token)
 	}
 	return nil, fmt.Errorf("unknown tag: %s", token.Name.Local)
 }
@@ -618,6 +620,45 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 	return foreachNode, nil
 }
 
+func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+	chooseNode := &ChooseNode{}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "when":
+				node, err := p.parseWhen(mapper, decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				chooseNode.WhenNodes = append(chooseNode.WhenNodes, node)
+			case "otherwise":
+				if chooseNode.OtherwiseNode != nil {
+					return nil, errors.New("otherwise is only once")
+				}
+				node, err := p.parseOtherwise(mapper, decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				chooseNode.OtherwiseNode = node
+			}
+
+		case xml.EndElement:
+			if token.Name.Local == "choose" {
+				return chooseNode, nil
+			}
+		}
+	}
+	return chooseNode, nil
+}
+
 func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (string, error) {
 	var charData string
 	for {
@@ -718,6 +759,84 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 		}
 	}
 	return nil
+}
+
+func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+	ifNode := &IfNode{}
+	for _, attr := range token.Attr {
+		if attr.Name.Local == "test" {
+			ifNode.Test = attr.Value
+			break
+		}
+	}
+	if ifNode.Test == "" {
+		return nil, errors.New("test is required")
+	}
+
+	// parse condition expression
+	if err := ifNode.init(); err != nil {
+		return nil, err
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			node, err := p.parseTags(mapper, decoder, token)
+			if err != nil {
+				return nil, err
+			}
+			ifNode.Nodes = append(ifNode.Nodes, node)
+		case xml.CharData:
+			text := string(token)
+			if char := strings.TrimSpace(text); char != "" {
+				node := TextNode(char)
+				ifNode.Nodes = append(ifNode.Nodes, node)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "when" {
+				return ifNode, nil
+			}
+		}
+	}
+	return &WhenNode{ifNode}, nil
+}
+
+func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+	otherwiseNode := &OtherwiseNode{}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			tags, err := p.parseTags(mapper, decoder, token)
+			if err != nil {
+				return nil, err
+			}
+			otherwiseNode.Nodes = append(otherwiseNode.Nodes, tags)
+		case xml.CharData:
+			text := string(token)
+			if char := strings.TrimSpace(text); char != "" {
+				node := TextNode(char)
+				otherwiseNode.Nodes = append(otherwiseNode.Nodes, node)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "otherwise" {
+				return otherwiseNode, nil
+			}
+		}
+	}
+	return otherwiseNode, nil
 }
 
 func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
