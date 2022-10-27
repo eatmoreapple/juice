@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -88,4 +89,51 @@ func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
 		return false
 	}
 	return true
+}
+
+// TimeoutMiddleware is a middleware that sets the timeout for the sql statement.
+type TimeoutMiddleware struct{}
+
+// QueryContext implements Middleware.
+// QueryContext will set the timeout for the sql statement.
+func (t TimeoutMiddleware) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
+	timeout, ok := t.getTimeout(stmt)
+	if !ok {
+		return next
+	}
+	return func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Millisecond)
+		defer cancel()
+		return next(ctx, query, args...)
+	}
+}
+
+// ExecContext implements Middleware.
+// ExecContext will set the timeout for the sql statement.
+func (t TimeoutMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+	timeout, ok := t.getTimeout(stmt)
+	if !ok {
+		return next
+	}
+	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Millisecond)
+		defer cancel()
+		return next(ctx, query, args...)
+	}
+}
+
+// getTimeout returns the timeout from the Statement.
+func (t TimeoutMiddleware) getTimeout(stmt *Statement) (int64, bool) {
+	timeoutAttr := stmt.Attribute("timeout")
+	if timeoutAttr == "" {
+		return 0, false
+	}
+	timeout, err := strconv.ParseInt(timeoutAttr, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	if timeout <= 0 {
+		return 0, false
+	}
+	return timeout, true
 }
