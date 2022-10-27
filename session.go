@@ -14,3 +14,17 @@ type Session interface {
 	Prepare(query string) (*sql.Stmt, error)
 	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }
+
+// sessionKey is the key of the session in the context.
+type sessionKey struct{}
+
+// WithSession returns a new context with the session.
+func WithSession(ctx context.Context, session Session) context.Context {
+	return context.WithValue(ctx, sessionKey{}, session)
+}
+
+// SessionFromContext returns the session from the context.
+func SessionFromContext(ctx context.Context) Session {
+	session, _ := ctx.Value(sessionKey{}).(Session)
+	return session
+}
