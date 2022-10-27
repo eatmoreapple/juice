@@ -38,6 +38,7 @@ func (e *Engine) Object(v interface{}) Executor {
 	if err != nil {
 		return inValidExecutor(err)
 	}
+	stat.engine = e
 	return &executor{engine: e, statement: stat, session: e.DB}
 }
 
@@ -136,6 +137,7 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.Use(&TimeoutMiddleware{})
 	engine.Use(&DebugMiddleware{})
 	return engine, nil
 }

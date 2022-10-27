@@ -12,6 +12,7 @@ var formatRegexp = regexp.MustCompile(`\$\{([a-zA-Z0-9_\.]+)\}`)
 
 // Statement defines a sql statement.
 type Statement struct {
+	engine *Engine
 	mapper *Mapper
 	action Action
 	Nodes  []Node
@@ -105,6 +106,12 @@ func (s *Statement) Mapper() *Mapper {
 	return s.mapper
 }
 
+// Configuration returns the configuration of the statement.
 func (s *Statement) Configuration() *Configuration {
 	return s.mapper.Configuration()
+}
+
+// Engine returns the engine of the statement.
+func (s *Statement) Engine() *Engine {
+	return s.engine
 }
