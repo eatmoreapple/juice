@@ -41,9 +41,40 @@ func eval(exp ast.Expr, params map[string]reflect.Value) (reflect.Value, error) 
 		return evalIdent(exp, params)
 	case *ast.SelectorExpr:
 		return evalSelectorExpr(exp, params)
+	case *ast.CallExpr:
+		return evalCallExpr(exp, params)
 	default:
 		return reflect.Value{}, errors.New("unsupported expression")
 	}
+}
+
+func evalCallExpr(exp *ast.CallExpr, params map[string]reflect.Value) (reflect.Value, error) {
+	fn, err := eval(exp.Fun, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	if fn.Kind() != reflect.Func {
+		return reflect.Value{}, errors.New("unsupported call expression")
+	}
+	if fn.Type().NumIn() != len(exp.Args) {
+		return reflect.Value{}, errors.New("invalid number of arguments")
+	}
+	if fn.Type().NumOut() != 1 {
+		return reflect.Value{}, errors.New("invalid number of return values")
+	}
+	var args []reflect.Value
+	for i, arg := range exp.Args {
+		value, err := eval(arg, params)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		// type conversion for function arguments
+		if fn.Type().In(i).Kind() != value.Kind() {
+			value = value.Convert(fn.Type().In(i))
+		}
+		args = append(args, value)
+	}
+	return fn.Call(args)[0], nil
 }
 
 func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (reflect.Value, error) {
@@ -58,6 +89,9 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (r
 }
 
 func evalIdent(exp *ast.Ident, params Param) (reflect.Value, error) {
+	if fn, ok := builtins[exp.Name]; ok {
+		return fn, nil
+	}
 	value, ok := params.Get(exp.Name)
 	if !ok {
 		return reflect.Value{}, errors.New("undefined identifier")
@@ -94,6 +128,11 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 	if err != nil {
 		return reflect.Value{}, err
 	}
+
+	if lhs.Kind() == reflect.Func {
+		return evalFunc(lhs, exp, params), nil
+	}
+
 	rhs, err := eval(exp.Y, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -130,6 +169,18 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
 	return exprFunc(lhs, rhs)
+}
+
+func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.Value) reflect.Value {
+	var args []reflect.Value
+	if exp.Y != nil {
+		arg, err := eval(exp.Y, params)
+		if err != nil {
+			return reflect.Value{}
+		}
+		args = append(args, arg)
+	}
+	return fn.Call(args)[0]
 }
 
 func eql(right, left reflect.Value) (reflect.Value, error) {
