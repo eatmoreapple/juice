@@ -5,6 +5,8 @@ import (
 )
 
 // Settings is a slice of Setting.
+// It is used to store the settings for your application.
+// Settings won't be so large, so we don't need to use map.
 type Settings []*Setting
 
 // Get returns the value of the key.
@@ -26,7 +28,7 @@ type Setting struct {
 }
 
 // emptyStringValue defines an empty string value.
-var emptyStringValue = StringValue("")
+const emptyStringValue = StringValue("")
 
 // StringValue is a string value which can be converted to other types.
 type StringValue string
