@@ -446,18 +446,19 @@ func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder, token xml.Star
 
 func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	ifNode := &IfNode{}
+	var test string
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "test" {
-			ifNode.Test = attr.Value
+			test = attr.Value
 			break
 		}
 	}
-	if ifNode.Test == "" {
-		return nil, errors.New("test is required")
+	if test == "" {
+		return nil, errors.New("if node requires test attribute")
 	}
 
 	// parse condition expression
-	if err := ifNode.init(); err != nil {
+	if err := ifNode.Parse(test); err != nil {
 		return nil, err
 	}
 	for {
@@ -762,19 +763,20 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 }
 
 func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
-	ifNode := &IfNode{}
+	whenNode := &WhenNode{}
+	var test string
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "test" {
-			ifNode.Test = attr.Value
+			test = attr.Value
 			break
 		}
 	}
-	if ifNode.Test == "" {
-		return nil, errors.New("test is required")
+	if test == "" {
+		return nil, errors.New("when node require test attribute")
 	}
 
 	// parse condition expression
-	if err := ifNode.init(); err != nil {
+	if err := whenNode.Parse(test); err != nil {
 		return nil, err
 	}
 	for {
@@ -791,20 +793,20 @@ func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 			if err != nil {
 				return nil, err
 			}
-			ifNode.Nodes = append(ifNode.Nodes, node)
+			whenNode.Nodes = append(whenNode.Nodes, node)
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
 				node := TextNode(char)
-				ifNode.Nodes = append(ifNode.Nodes, node)
+				whenNode.Nodes = append(whenNode.Nodes, node)
 			}
 		case xml.EndElement:
 			if token.Name.Local == "when" {
-				return ifNode, nil
+				return whenNode, nil
 			}
 		}
 	}
-	return &WhenNode{ifNode}, nil
+	return whenNode, nil
 }
 
 func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {

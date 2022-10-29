@@ -47,17 +47,14 @@ func (c TextNode) Accept(translator driver.Translator, p Param) (query string, a
 	return query, args, err
 }
 
-var _ Node = (*IfNode)(nil)
-
-// IfNode is a node of if.
-type IfNode struct {
-	Test     string
+type ConditionNode struct {
 	testExpr ast.Expr
 	Nodes    []Node
 }
 
-func (c *IfNode) init() (err error) {
-	c.testExpr, err = parser.ParseExpr(c.Test)
+// Parse with given expression.
+func (c *ConditionNode) Parse(test string) (err error) {
+	c.testExpr, err = parser.ParseExpr(test)
 	if err != nil {
 		return &SyntaxError{err}
 	}
@@ -66,7 +63,7 @@ func (c *IfNode) init() (err error) {
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c *IfNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+func (c *ConditionNode) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
 	matched, err := c.Match(p)
 	if err != nil {
 		return "", nil, err
@@ -90,7 +87,7 @@ func (c *IfNode) Accept(translator driver.Translator, p Param) (query string, ar
 }
 
 // Match returns true if test is matched.
-func (c *IfNode) Match(p Param) (bool, error) {
+func (c *ConditionNode) Match(p Param) (bool, error) {
 	value, err := eval(c.testExpr, p)
 	if err != nil {
 		return false, err
@@ -110,6 +107,11 @@ func (c *IfNode) Match(p Param) (bool, error) {
 		return false, fmt.Errorf("unsupported type %s", value.Kind())
 	}
 }
+
+var _ Node = (*IfNode)(nil)
+
+// IfNode is a node of if.
+type IfNode = ConditionNode
 
 var _ Node = (*WhereNode)(nil)
 
@@ -397,9 +399,7 @@ func (c ChooseNode) Accept(translator driver.Translator, p Param) (query string,
 // WhenNode is a node of when.
 // WhenNode like if node, but it can not be used alone.
 // While one of WhenNode is true, the query of ChooseNode will be returned.
-type WhenNode struct {
-	*IfNode
-}
+type WhenNode = ConditionNode
 
 // OtherwiseNode is a node of otherwise.
 // OtherwiseNode like else node, but it can not be used alone.
