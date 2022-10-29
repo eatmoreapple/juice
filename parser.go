@@ -566,30 +566,26 @@ func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	foreachNode := &ForeachNode{}
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "collection" {
+		switch attr.Name.Local {
+		case "collection":
 			foreachNode.Collection = attr.Value
-		}
-		if attr.Name.Local == "item" {
+		case "item":
 			foreachNode.Item = attr.Value
-		}
-		if attr.Name.Local == "index" {
+		case "index":
 			foreachNode.Index = attr.Value
-		}
-		if attr.Name.Local == "open" {
+		case "open":
 			foreachNode.Open = attr.Value
-		}
-		if attr.Name.Local == "close" {
-			foreachNode.Close = attr.Value
-		}
-		if attr.Name.Local == "separator" {
+		case "separator":
 			foreachNode.Separator = attr.Value
+		case "close":
+			foreachNode.Close = attr.Value
 		}
 	}
 	if foreachNode.Collection == "" {
 		foreachNode.Collection = defaultParamKey
 	}
 	if foreachNode.Item == "" {
-		return nil, errors.New("item is required")
+		return nil, errors.New("foreach node requires item attribute")
 	}
 	for {
 		token, err := decoder.Token()
