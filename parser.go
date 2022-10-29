@@ -213,7 +213,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 	}
 
 	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
-		return nil, errors.New("namespace is required")
+		return nil, errors.New("mapper requires namespace attribute")
 	}
 
 	mapper.statements = make(map[string]*Statement)
@@ -371,11 +371,11 @@ func (p XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 	case "foreach":
 		return p.parseForeach(mapper, decoder, token)
 	case "set":
-		return p.parseSet(mapper, decoder, token)
+		return p.parseSet(mapper, decoder)
 	case "include":
 		return p.parseInclude(mapper, decoder, token)
 	case "choose":
-		return p.parseChoose(mapper, decoder, token)
+		return p.parseChoose(mapper, decoder)
 	}
 	return nil, fmt.Errorf("unknown tag: %s", token.Name.Local)
 }
@@ -412,7 +412,7 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 	return includeNode, nil
 }
 
-func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	setNode := &SetNode{}
 	for {
 		token, err := decoder.Token()
@@ -526,16 +526,14 @@ func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error
 func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	trimNode := &TrimNode{}
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "prefix" {
+		switch attr.Name.Local {
+		case "prefix":
 			trimNode.Prefix = attr.Value
-		}
-		if attr.Name.Local == "prefixOverrides" {
+		case "prefixOverrides":
 			trimNode.PrefixOverrides = attr.Value
-		}
-		if attr.Name.Local == "suffix" {
+		case "suffix":
 			trimNode.Suffix = attr.Value
-		}
-		if attr.Name.Local == "suffixOverrides" {
+		case "suffixOverrides":
 			trimNode.SuffixOverrides = attr.Value
 		}
 	}
@@ -617,7 +615,7 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 	return foreachNode, nil
 }
 
-func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	chooseNode := &ChooseNode{}
 	for {
 		token, err := decoder.Token()
@@ -640,7 +638,7 @@ func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder, token xml.S
 				if chooseNode.OtherwiseNode != nil {
 					return nil, errors.New("otherwise is only once")
 				}
-				node, err := p.parseOtherwise(mapper, decoder, token)
+				node, err := p.parseOtherwise(mapper, decoder)
 				if err != nil {
 					return nil, err
 				}
@@ -726,7 +724,7 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 		}
 	}
 	if sqlNode.id == "" {
-		return errors.New("id is required")
+		return errors.New("sql node requires id attribute")
 	}
 	for {
 		token, err := decoder.Token()
@@ -805,7 +803,7 @@ func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 	return whenNode, nil
 }
 
-func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	otherwiseNode := &OtherwiseNode{}
 	for {
 		token, err := decoder.Token()

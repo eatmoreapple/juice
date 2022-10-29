@@ -41,11 +41,10 @@ func TestForeachNode_Accept(t *testing.T) {
 func TestIfNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	node := IfNode{
-		Test:  "id > 0",
 		Nodes: []Node{TextNode("select * from user where id = #{id}")},
 	}
 
-	if node.init() != nil {
+	if node.Parse("id > 0") != nil {
 		t.Error("init error")
 		return
 	}
@@ -146,10 +145,12 @@ func TestWhereNode_Accept(t *testing.T) {
 func TestTrimNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	ifNode := &IfNode{
-		Test:  "id > 0",
 		Nodes: []Node{TextNode("name,")},
 	}
-	ifNode.init()
+	if err := ifNode.Parse("id > 0"); err != nil {
+		t.Error(err)
+		return
+	}
 	node := TrimNode{
 		Nodes: []Node{
 			ifNode,
