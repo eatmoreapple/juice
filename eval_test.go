@@ -98,3 +98,151 @@ func BenchmarkEval2(b *testing.B) {
 	}
 	// BenchmarkEval2-8   	 5736370	       180.8 ns/op
 }
+
+func TestLen(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]interface{}{"a", "b", "c"}),
+		"b": reflect.ValueOf("aaa"),
+		"c": reflect.ValueOf(map[string]interface{}{"a": "a", "b": "b", "c": "c"}),
+	}
+	result, err := Eval(`len(a)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 3 {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`len(b)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 3 {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`len(c)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 3 {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestSubStr(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf("eatmoreapple"),
+	}
+	result, err := Eval(`substr(a, 0, 3)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "eat" {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`substr(a, 3, 4)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "more" {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`substr(a, 7, 5)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "apple" {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestSubJoin(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	}
+	result, err := Eval(`join(a, "")`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "eatmoreapple" {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestContains(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+		"b": reflect.ValueOf([]int64{1, 2, 3}),
+	}
+	result, err := Eval(`contains(a, "eat")`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`contains("eatmoreapple", "eat")`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`contains(b, 3)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`contains(b, 4)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestSlice(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	}
+	result, err := Eval(`slice(a, 0, 1)`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Len() != 1 {
+		t.Error("eval error")
+		return
+	}
+	if result.Index(0).Interface() != "eat" {
+		t.Error("eval error")
+		return
+	}
+}
