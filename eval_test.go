@@ -246,3 +246,24 @@ func TestSlice(t *testing.T) {
 		return
 	}
 }
+
+func TestLparenRparen(t *testing.T) {
+	result, err := Eval(`2 * (2 + 5) == 14`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`2 * (2 + 5) / 2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 7 {
+		t.Error("eval error")
+		return
+	}
+}

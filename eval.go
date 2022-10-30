@@ -165,6 +165,10 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 		exprFunc = quo
 	case token.REM:
 		exprFunc = rem
+	case token.LPAREN:
+		exprFunc = lparen
+	case token.RPAREN:
+		exprFunc = rparen
 	default:
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
@@ -452,4 +456,12 @@ func rem(right, left reflect.Value) (reflect.Value, error) {
 		}
 	}
 	return reflect.ValueOf(false), fmt.Errorf("unsupported rem expression: %v, %v", right.Kind(), left.Kind())
+}
+
+func lparen(_, left reflect.Value) (reflect.Value, error) {
+	return left, nil
+}
+
+func rparen(right, _ reflect.Value) (reflect.Value, error) {
+	return right, nil
 }
