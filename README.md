@@ -20,6 +20,45 @@ Juice is a simple and lightweight framework. It is easy to use and easy to exten
 * Middleware support
 * Todo support more
 
+### support xml tags
+
+* select
+* insert
+* update
+* delete
+* sql
+* if
+* where
+* trim
+* set
+* foreach
+* choose
+* when
+* otherwise
+* include
+
+
+### Condition Method
+The condition method can be used with `if` or `when` tags.
+
+For example:
+```xml
+<!--ids = []int{1,2,3}-->
+<if test='len(ids) > 0 && substr("eatmoreapple", 0, 3) == "eat"'>
+    your sql node here
+</if>
+```
+
+It can register to the framework with your own condition method.
+
+Here are some default condition methods.
+
+* len: return the length of the given parameter
+* strsub: return the substring of the given parameter
+* join: join the given parameters with the given separator
+* contains: return true if the given parameter contains the given element
+* slice: return the slice of the given parameter
+
 ### Quick Start
 
 #### Install
