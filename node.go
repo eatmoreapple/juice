@@ -43,6 +43,8 @@ func (c TextNode) Accept(translator driver.Translator, p Param) (query string, a
 			args = append(args, value.Interface())
 			return translator.Translate(s)
 		})
+	} else {
+		query = string(c)
 	}
 	return query, args, err
 }
