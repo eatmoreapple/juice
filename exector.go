@@ -38,6 +38,9 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
+	if len(query) == 0 {
+		return nil, ErrEmptyQuery
+	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
 	ctx = WithSession(ctx, e.session)
@@ -54,6 +57,9 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	query, args, err := e.prepare(param)
 	if err != nil {
 		return nil, err
+	}
+	if len(query) == 0 {
+		return nil, ErrEmptyQuery
 	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
