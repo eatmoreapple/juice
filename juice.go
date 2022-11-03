@@ -20,8 +20,8 @@ type Engine struct {
 	// It is used to initialize the database connection and translate the mapper statements
 	Driver driver.Driver
 
-	// DB is the database connection
-	DB *sql.DB
+	// db is the database connection
+	db *sql.DB
 
 	// rw is the read write lock
 	rw sync.RWMutex
@@ -39,18 +39,18 @@ func (e *Engine) Object(v interface{}) Executor {
 		return inValidExecutor(err)
 	}
 	stat.engine = e
-	return &executor{engine: e, statement: stat, session: e.DB}
+	return &executor{engine: e, statement: stat, session: e.DB()}
 }
 
 // Tx returns a TxManager
 func (e *Engine) Tx() TxManager {
-	tx, err := e.DB.Begin()
+	tx, err := e.DB().Begin()
 	return &txManager{manager: e, tx: tx, err: err}
 }
 
 // ContextTx returns a TxManager with the given context
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
-	tx, err := e.DB.BeginTx(ctx, opt)
+	tx, err := e.DB().BeginTx(ctx, opt)
 	return &txManager{manager: e, tx: tx, err: err}
 }
 
@@ -73,6 +73,10 @@ func (e *Engine) Use(middleware Middleware) {
 	e.middlewares = append(e.middlewares, middleware)
 }
 
+func (e *Engine) DB() *sql.DB {
+	return e.db
+}
+
 // init initializes the engine
 func (e *Engine) init() error {
 
@@ -90,7 +94,7 @@ func (e *Engine) init() error {
 	e.Driver = drv
 
 	// open the database connection
-	e.DB, err = env.Connect()
+	e.db, err = env.Connect()
 	if err != nil {
 		return err
 	}
