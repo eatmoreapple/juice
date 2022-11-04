@@ -154,8 +154,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/eatmoreapple/juice"
-	"reflect"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -176,12 +174,18 @@ type User struct {
 
 type UserRepository interface {
 	GetUserByID(id int64)
-	CreateUser(user *User)
+	Create(user *User)
 	UpdateUser(user *User)
 	DeleteUserByID(id int64)
+	List()
 }
 
 type UserRepositoryImpl struct{}
+
+func (u UserRepositoryImpl) List() {
+	//TODO implement me
+	panic("implement me")
+}
 
 func (u UserRepositoryImpl) UpdateUser(user *User) {
 	//TODO implement me
@@ -193,7 +197,7 @@ func (u UserRepositoryImpl) DeleteUserByID(id int64) {
 	panic("implement me")
 }
 
-func (u UserRepositoryImpl) CreateUser(user *User) {
+func (u UserRepositoryImpl) Create(user *User) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -217,7 +221,7 @@ func main() {
 	}
 
 	// create table first
-	if _, err = engine.DB.Exec(schema); err != nil {
+	if _, err = engine.DB().Exec(schema); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -230,84 +234,20 @@ func main() {
 		Age:  18,
 	}
 
-	result, err := engine.Object(repo.CreateUser).ExecContext(context.Background(), user)
+	result, err := engine.Object(repo.Create).ExecContext(context.Background(), user)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	user.Id, err = result.LastInsertId()
+	fmt.Println(result.RowsAffected())
+
+	users, err := juice.NewGenericManager[[]*User](engine).Object(repo.List).Query(nil)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	// query user
-	rows, err := engine.Object(repo.GetUserByID).Query(user.Id)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer rows.Close()
-
-	// todo: iterate rows with your own way
-
-	// query user with auto mapping
-	user2, err := juice.NewGenericManager[*User](engine).Object(repo.GetUserByID).Query(user.Id).One()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if reflect.DeepEqual(user, user2) {
-		fmt.Println("user and user2 are equal")
-	} else {
-		fmt.Println("user and user2 are not equal")
-		return
-	}
-
-	// with transaction
-
-	// begin transaction
-
-	// begin
-	tx := engine.Tx()
-
-	// update user with tx
-	user.Name = "eatmoreapple2"
-	user.Age = 20
-	result, err = tx.Object(repo.UpdateUser).ExecContext(context.Background(), user)
-	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-		return
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-		return
-	}
-	fmt.Printf("update affected rows: %d\n", affected)
-
-	// delete user with tx
-	result, err = tx.Object(repo.DeleteUserByID).ExecContext(context.Background(), user.Id)
-	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-		return
-	}
-	affected, err = result.RowsAffected()
-	if err != nil {
-		fmt.Println(err)
-		tx.Rollback()
-		return
-	}
-	fmt.Printf("delete affected rows: %d\n", affected)
-
-	// commit
-	if err = tx.Commit(); err != nil {
-		fmt.Println(err)
-		return
+	for _, user := range users {
+		fmt.Printf("%+v\n", user)
 	}
 }
 ```
