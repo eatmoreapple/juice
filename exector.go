@@ -38,13 +38,10 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	if err != nil {
 		return nil, err
 	}
-	if len(query) == 0 {
-		return nil, ErrEmptyQuery
-	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
 	ctx = WithSession(ctx, e.session)
-	return middlewares.QueryContext(stmt, e.session.QueryContext)(ctx, query, args...)
+	return middlewares.QueryContext(stmt, sessionQueryHandler())(ctx, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -58,13 +55,10 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	if len(query) == 0 {
-		return nil, ErrEmptyQuery
-	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
 	ctx = WithSession(ctx, e.session)
-	return middlewares.ExecContext(stmt, e.session.ExecContext)(ctx, query, args...)
+	return middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
 }
 
 // prepare
@@ -77,7 +71,14 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 		return "", nil, err
 	}
 	translator := e.engine.Driver.Translate()
-	return e.statement.Accept(translator, values)
+	query, args, err = e.statement.Accept(translator, values)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(query) == 0 {
+		return "", nil, ErrEmptyQuery
+	}
+	return query, args, nil
 }
 
 // GenericExecutor is a generic executor.
