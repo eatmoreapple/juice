@@ -3,6 +3,7 @@ package juice
 import (
 	"context"
 	"database/sql"
+	"reflect"
 )
 
 // Executor is an executor of SQL.
@@ -83,8 +84,8 @@ func (e *executor) prepare(param interface{}) (query string, args []interface{},
 
 // GenericExecutor is a generic executor.
 type GenericExecutor[result any] interface {
-	Query(param any) Scanner[result]
-	QueryContext(ctx context.Context, param any) Scanner[result]
+	Query(param any) (result, error)
+	QueryContext(ctx context.Context, param any) (result, error)
 	Exec(param any) (sql.Result, error)
 	ExecContext(ctx context.Context, param any) (sql.Result, error)
 }
@@ -95,14 +96,23 @@ type genericExecutor[result any] struct {
 }
 
 // Query executes the query and returns the scanner.
-func (e *genericExecutor[T]) Query(p any) Scanner[T] {
+func (e *genericExecutor[T]) Query(p any) (T, error) {
 	return e.QueryContext(context.Background(), p)
 }
 
 // QueryContext executes the query and returns the scanner.
-func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) Scanner[T] {
+func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T, err error) {
 	rows, err := e.Executor.QueryContext(ctx, p)
-	return &rowsScanner[T]{rows: rows, err: err}
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	rv := reflect.ValueOf(result)
+	if rv.Kind() == reflect.Ptr {
+		result = reflect.New(rv.Type().Elem()).Interface().(T)
+	}
+	err = Bind(rows, &result)
+	return
 }
 
 // Exec executes the query and returns the result.

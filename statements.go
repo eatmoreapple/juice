@@ -86,7 +86,7 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 		if exists {
 			return reflectValueToString(value)
 		}
-		// try to get from current statement attributes
+		// try to one from current statement attributes
 		if attribute := s.Attribute(param); attribute == "" {
 			err = fmt.Errorf("param %s not found in param or statement attributes", param)
 			return find

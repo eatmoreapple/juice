@@ -36,7 +36,7 @@ func FuncForPC(v any) (string, error) {
 		return "", errors.New("v must be a function")
 	}
 
-	// get id from function name
+	// one id from function name
 	name := runtime.FuncForPC(value.Pointer()).Name()
 	name = strings.ReplaceAll(strings.ReplaceAll(name, "/", "."), "*", "")
 

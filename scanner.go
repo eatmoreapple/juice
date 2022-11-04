@@ -6,63 +6,68 @@ import (
 	"reflect"
 )
 
-// One scan one row to given entity
-func One[T any](rows *sql.Rows, err error) (T, error) {
-	var result T
+// One convert sql.Rows to given entity
+func One(rows *sql.Rows, v any) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("v must be a pointer")
+	}
+	return one(rows, rv)
+}
 
-	if err != nil {
-		return result, err
+// one scan one row to given entity
+func one(rows *sql.Rows, rv reflect.Value) error {
+
+	// get element type
+	for rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
 	}
 
-	defer func() { _ = rows.Close() }()
+	re := rv.Type()
+
+	for re.Kind() == reflect.Ptr {
+		re = re.Elem()
+	}
 
 	if !rows.Next() {
-		if err = rows.Err(); err != nil {
-			return result, err
+		if err := rows.Err(); err != nil {
+			return err
 		}
-		return result, sql.ErrNoRows
+		return sql.ErrNoRows
 	}
 
-	rt := reflect.TypeOf(result)
+	var err error
 
-	isPtr := rt.Kind() == reflect.Ptr
-
-	if isPtr {
-		rt = rt.Elem()
-	}
-	rv := reflect.New(rt)
-
-	el := rv.Elem()
-
-	if el.Kind() == reflect.Struct {
+	if rv.Kind() == reflect.Struct {
 
 		columns, err := rows.Columns()
 		if err != nil {
-			return result, err
+			return err
 		}
 		// column reflect.Value mapping
 		columnValueMapping := make(map[string]reflect.Value)
 		var tag = new(columnTag)
-		for i := 0; i < rt.NumField(); i++ {
-			field := rt.Field(i)
+		for i := 0; i < re.NumField(); i++ {
+			field := re.Field(i)
 			if field.Anonymous {
 				continue
 			}
 			if column := field.Tag.Get("column"); column != "" {
 				tag.parse(column)
-				columnValueMapping[tag.Name] = el.Field(i)
+				columnValueMapping[tag.Name] = rv.Field(i)
 				tag.reset()
 			}
 		}
 
 		var dest = make([]any, len(columns))
+
 		for index, column := range columns {
-			// find field in columnValueMapping first
+			// many field in columnValueMapping first
 			if field, ok := columnValueMapping[column]; ok {
 				dest[index] = field.Addr().Interface()
 			} else {
 				fieldName := underlineToCamel(column)
-				elField := el.FieldByName(fieldName)
+				elField := rv.FieldByName(fieldName)
 				if !elField.IsValid() || !elField.CanSet() {
 					dest[index] = new(any)
 				} else {
@@ -72,63 +77,76 @@ func One[T any](rows *sql.Rows, err error) (T, error) {
 		}
 		for _, dp := range dest {
 			if _, ok := dp.(*sql.RawBytes); ok {
-				return result, errors.New("sql: RawBytes isn't allowed on SQLRowScanner.One")
+				return errors.New("sql: RawBytes isn't allowed on SQLRowScanner.One")
 			}
 		}
-
-		if err = rows.Scan(dest...); err != nil {
-			return result, err
-		}
-
+		err = rows.Scan(dest...)
 	} else {
-		if err = rows.Scan(el.Addr().Interface()); err != nil {
-			return result, err
-		}
+		err = rows.Scan(rv.Addr().Interface())
 	}
-	if isPtr {
-		result = rv.Interface().(T)
-	} else {
-		result = el.Interface().(T)
-	}
-
-	// Make sure the query can be processed to completion with no errors.
-	return result, rows.Close()
+	return err
 }
 
-// List scan rows to given entity slice
-func List[T any](rows *sql.Rows, err error) ([]T, error) {
+// Many cover sql.Rows to given entity
+func Many(rows *sql.Rows, v any) error {
+	rv := reflect.ValueOf(v)
 
-	var result = make([]T, 0)
-
-	if err != nil {
-		return result, err
+	// pointer required
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("v must be a pointer")
 	}
 
-	defer func() { _ = rows.Close() }()
-
-	var item T
-
-	rt := reflect.TypeOf(item)
-
-	isPtr := rt.Kind() == reflect.Ptr
-
-	if isPtr {
-		rt = rt.Elem()
+	// check if it's a slice or array
+	if kd := rv.Elem().Kind(); kd != reflect.Slice && kd != reflect.Array {
+		return errors.New("v must be a pointer to slice or array")
 	}
 
-	if rt.Kind() == reflect.Struct {
+	// check pass then call many
+	return many(rows, rv)
+}
+
+// many scan rows to given entity slice
+func many(rows *sql.Rows, rv reflect.Value) error {
+
+	// rv must be a pointer to slice or array
+	rv = rv.Elem()
+
+	// get the element type of slice or array
+	el := rv.Type().Elem()
+
+	// if it's a pointer, get the element type of pointer
+	isPtr := el.Kind() == reflect.Ptr
+
+	// make a new slice of element type
+	result := reflect.MakeSlice(rv.Type(), 0, 0)
+
+	// get the element type of pointer
+	for el.Kind() == reflect.Ptr {
+		el = el.Elem()
+	}
+
+	// if it's a struct, scan rows to struct
+	if el.Kind() == reflect.Struct {
+		// get columns from rows
 		columns, err := rows.Columns()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// column reflect.Value mapping
 		columnValueMapping := make(map[string]int)
 		var tag = new(columnTag)
-		for i := 0; i < rt.NumField(); i++ {
-			field := rt.Field(i)
+
+		// get the field of struct
+		// if the field has a tag named column, use the tag as column name
+		// else use the field name as column name
+		// then put the field index into columnValueMapping
+		for i := 0; i < el.NumField(); i++ {
+			field := el.Field(i)
 			if field.Anonymous {
 				continue
 			}
+
+			// get the tag of field
 			if column := field.Tag.Get("column"); column != "" {
 				tag.parse(column)
 				columnValueMapping[tag.Name] = i
@@ -138,19 +156,34 @@ func List[T any](rows *sql.Rows, err error) ([]T, error) {
 
 		var checked bool
 
+		// now, we start scan rows
 		for rows.Next() {
-			rv := reflect.New(rt)
 
+			// make a new element of slice
+			rv := reflect.New(el)
+
+			// get the reflect.Value of element
 			el := rv.Elem()
 
+			// dest is the slice of interface which will be passed to rows.Scan
 			var dest = make([]any, len(columns))
+
+			// for each column, check if it's in columnValueMapping
 			for index, column := range columns {
-				// find field in columnValueMapping first
+				// many field in columnValueMapping first
+				// try to find the field in columnValueMapping
 				if fieldIndex, ok := columnValueMapping[column]; ok {
 					dest[index] = el.Field(fieldIndex).Addr().Interface()
 				} else {
+
+					// here we can't find the field in columnValueMapping
 					fieldName := underlineToCamel(column)
+
+					// try to find the field in struct by field name
 					elField := el.FieldByName(fieldName)
+
+					// if the field is valid and can be set, use it
+					// else use a pointer to interface
 					if !elField.IsValid() || !elField.CanSet() {
 						dest[index] = new(any)
 					} else {
@@ -159,79 +192,82 @@ func List[T any](rows *sql.Rows, err error) ([]T, error) {
 				}
 			}
 
+			// check if dest has sql.RawBytes
 			if !checked {
 				for _, dp := range dest {
 					if _, ok := dp.(*sql.RawBytes); ok {
-						return nil, errors.New("sql: RawBytes isn't allowed on Row.Scan")
+						return errors.New("sql: RawBytes isn't allowed on Row.Scan")
 					}
 				}
 				checked = true
 			}
 
+			// scan rows to dest
 			if err = rows.Scan(dest...); err != nil {
-				return nil, err
+				return err
 			}
 
 			if err = rows.Err(); err != nil {
-				return nil, err
+				return err
 			}
 
+			// append the element to result
 			if isPtr {
-				result = append(result, rv.Interface().(T))
+				result = reflect.Append(result, rv)
 			} else {
-				result = append(result, rv.Elem().Interface().(T))
+				result = reflect.Append(result, el)
 			}
 		}
 	} else {
 		// TODO: support other types
 		// does not support map、slice
+
+		// if it's not a struct, scan rows to pointer of element type
 		for rows.Next() {
-			rv := reflect.New(rt)
 
-			el := rv.Elem()
-			if err = rows.Scan(el.Addr().Interface()); err != nil {
-				return nil, err
+			rv := reflect.New(el)
+
+			el := reflect.Indirect(rv)
+
+			// scan rows to pointer of element type
+			if err := rows.Scan(rv.Interface()); err != nil {
+				return err
 			}
 
-			if err = rows.Err(); err != nil {
-				return nil, err
+			if err := rows.Err(); err != nil {
+				return err
 			}
 
+			// append the element to result
 			if isPtr {
-				result = append(result, rv.Interface().(T))
+				result = reflect.Append(result, rv)
 			} else {
-				result = append(result, rv.Elem().Interface().(T))
+				result = reflect.Append(result, el)
 			}
 		}
 	}
 
-	return result, rows.Close()
+	// set result to given entity
+	rv.Set(result)
+
+	return nil
 }
 
-// Scanner is the interface that wraps the rows returned by a query.
-type Scanner[T any] interface {
-	// One scan one row to given entity
-	// If no row found, return sql.ErrNoRows
-	One() (T, error)
-	// Many scan rows to given entity slice
-	// If no row found, return made slice with length 0 and nil error
-	Many() ([]T, error)
+// Bind is a wrapper of bind
+func Bind(rows *sql.Rows, v any) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("v must be a pointer")
+	}
+	return bind(rows, rv)
 }
 
-// rowsScanner is the implementation of Scanner
-type rowsScanner[T any] struct {
-	rows *sql.Rows
-	err  error
-}
-
-// One scan one row to given entity
-// If no row found, return sql.ErrNoRows
-func (r *rowsScanner[T]) One() (T, error) {
-	return One[T](r.rows, r.err)
-}
-
-// Many scan rows to given entity slice
-// If no row found, return made slice with length 0 and nil error
-func (r *rowsScanner[T]) Many() ([]T, error) {
-	return List[T](r.rows, r.err)
+// bind cover sql.Rows to given entity
+// dest can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
+// rows won't be closed when the function returns.
+func bind(rows *sql.Rows, rv reflect.Value) error {
+	if kd := reflect.Indirect(rv).Kind(); kd == reflect.Slice || kd == reflect.Array {
+		return many(rows, rv)
+	}
+	return one(rows, rv)
 }
