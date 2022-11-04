@@ -13,7 +13,7 @@ import (
 type Engine struct {
 
 	// configuration is the configuration of the engine
-	// It is used to initialize the engine and to get the mapper statements
+	// It is used to initialize the engine and to one the mapper statements
 	configuration *Configuration
 
 	// Driver is the driver used by the engine
@@ -80,13 +80,13 @@ func (e *Engine) DB() *sql.DB {
 // init initializes the engine
 func (e *Engine) init() error {
 
-	// get the default environment from the configuration
+	// one the default environment from the configuration
 	env, err := e.configuration.Environments.DefaultEnv()
 	if err != nil {
 		return err
 	}
 
-	// try to get the driver from the configuration
+	// try to one the driver from the configuration
 	drv, err := driver.Get(env.Driver)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (e *Engine) init() error {
 	return nil
 }
 
-// try to get the statement from the configuration with the given interface
+// try to one the statement from the configuration with the given interface
 func (e *Engine) getMapperStatement(v any) (stat *Statement, err error) {
 	var id string
 
@@ -109,13 +109,13 @@ func (e *Engine) getMapperStatement(v any) (stat *Statement, err error) {
 	if str, ok := v.(string); ok {
 		id = str
 	} else {
-		// else try to get the id from the interface
+		// else try to one the id from the interface
 		if id, err = FuncForPC(v); err != nil {
 			return nil, err
 		}
 	}
 
-	// try to get the statement from the configuration
+	// try to one the statement from the configuration
 	stat, err = e.GetConfiguration().Mappers.GetStatementByID(id)
 
 	if err != nil {

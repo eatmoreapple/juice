@@ -9,7 +9,7 @@ import (
 // Settings won't be so large, so we don't need to use map.
 type Settings []*Setting
 
-// Get returns the value of the key.
+// One returns the value of the key.
 func (s Settings) Get(name string) StringValue {
 	for _, setting := range s {
 		if setting.Name == name {

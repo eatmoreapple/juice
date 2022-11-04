@@ -218,7 +218,7 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 		return "", nil, fmt.Errorf("item %s already exists", f.Item)
 	}
 
-	// get collection from parameter
+	// one collection from parameter
 	value, exists := p.Get(f.Collection)
 	if !exists {
 		return "", nil, fmt.Errorf("collection %s not found", f.Collection)

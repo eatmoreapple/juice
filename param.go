@@ -9,7 +9,7 @@ import (
 // Param is a map of string to reflect.Value
 type Param map[string]reflect.Value
 
-// Get returns the value of the key
+// One returns the value of the key
 // If the key is not found, it will return the default value
 func (p Param) Get(name string) (reflect.Value, bool) {
 
@@ -19,11 +19,11 @@ func (p Param) Get(name string) (reflect.Value, bool) {
 
 	var value reflect.Value
 
-	// try to get the value from the split name
+	// try to one the value from the split name
 	for i, item := range items {
 
-		// if it is the first item, try to get the value from the param
-		// otherwise, try to get the value from the previous value
+		// if it is the first item, try to one the value from the param
+		// otherwise, try to one the value from the previous value
 
 		if i == 0 {
 			var exists bool
@@ -43,7 +43,7 @@ func (p Param) Get(name string) (reflect.Value, bool) {
 		case reflect.Struct:
 			field := value.FieldByName(item)
 			if !field.IsValid() {
-				// try to find it from tag
+				// try to many it from tag
 				for i := 0; i < value.NumField(); i++ {
 					field := value.Type().Field(i)
 					if field.Tag.Get("param") == item {
@@ -69,7 +69,7 @@ func (p Param) Get(name string) (reflect.Value, bool) {
 			return reflect.Value{}, false
 		}
 
-		// if the value is a pointer, get the value from the pointer
+		// if the value is a pointer, one the value from the pointer
 		for value.Kind() == reflect.Interface {
 			value = value.Elem()
 		}
@@ -100,7 +100,7 @@ func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 	if p, ok := v.(Param); ok {
 		return p, nil
 	}
-	// get the value of the interface
+	// one the value of the interface
 	value := reflect.Indirect(reflect.ValueOf(v))
 	switch value.Kind() {
 	case reflect.Struct:
@@ -108,7 +108,7 @@ func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 	case reflect.Map:
 		return mapConvert(value)
 	default:
-		// if the value is not a struct or a map, try to get the value from the default key
+		// if the value is not a struct or a map, try to one the value from the default key
 		param := make(Param)
 		// if the default key is empty, use the defaultParamKey instead
 		if defaultParamName == "" {
