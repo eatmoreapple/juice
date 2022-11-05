@@ -44,8 +44,7 @@ func (e *Engine) Object(v interface{}) Executor {
 
 // Tx returns a TxManager
 func (e *Engine) Tx() TxManager {
-	tx, err := e.DB().Begin()
-	return &txManager{manager: e, tx: tx, err: err}
+	return e.ContextTx(context.Background(), nil)
 }
 
 // ContextTx returns a TxManager with the given context
