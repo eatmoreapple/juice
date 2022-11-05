@@ -94,7 +94,7 @@ func evalIdent(exp *ast.Ident, params Param) (reflect.Value, error) {
 	}
 	value, ok := params.Get(exp.Name)
 	if !ok {
-		return reflect.Value{}, errors.New("undefined identifier")
+		return reflect.Value{}, fmt.Errorf("undefined identifier: %s", exp.Name)
 	}
 	for value.Kind() == reflect.Interface {
 		value = value.Elem()
