@@ -169,10 +169,16 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 		exprFunc = lparen
 	case token.RPAREN:
 		exprFunc = rparen
+	case token.COMMENT:
+		exprFunc = comment
 	default:
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
 	return exprFunc(lhs, rhs)
+}
+
+func comment(lhs reflect.Value, rhs reflect.Value) (reflect.Value, error) {
+	return reflect.ValueOf(true), nil
 }
 
 func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.Value) reflect.Value {
