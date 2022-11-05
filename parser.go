@@ -146,7 +146,7 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 				if err != nil {
 					return nil, err
 				}
-			case "maxLifetime":
+			case "maxConnLifetime":
 				env.MaxConnLifetime, err = p.parseMaxConnLifetime(decoder)
 				if err != nil {
 					return nil, err
