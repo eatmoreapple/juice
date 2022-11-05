@@ -145,3 +145,12 @@ func structConvert(value reflect.Value) (Param, error) {
 // H is a shortcut for map[string]interface{}
 // It is used to create a map easily, and it can be converted to Param
 type H map[string]interface{}
+
+// ParamConvert converts H to Param
+func (h H) ParamConvert() (Param, error) {
+	var param = make(Param)
+	for k, v := range h {
+		param[k] = reflect.ValueOf(v)
+	}
+	return param, nil
+}
