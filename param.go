@@ -9,7 +9,7 @@ import (
 // Param is a map of string to reflect.Value
 type Param map[string]reflect.Value
 
-// One returns the value of the key
+// Get returns the value of the key
 // If the key is not found, it will return the default value
 func (p Param) Get(name string) (reflect.Value, bool) {
 
@@ -141,3 +141,7 @@ func structConvert(value reflect.Value) (Param, error) {
 	}
 	return param, nil
 }
+
+// H is a shortcut for map[string]interface{}
+// It is used to create a map easily, and it can be converted to Param
+type H map[string]interface{}
