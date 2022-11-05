@@ -3,6 +3,7 @@ package juice
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 // Mapper defines a set of statements.
@@ -76,6 +77,35 @@ func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
 	return stmt, nil
 }
 
+// GetStatement try to one the statement from the Mappers with the given interface
+func (m *Mappers) GetStatement(v any) (*Statement, error) {
+	var id string
+	// if the interface is StatementIDGetter, use the StatementID() method to get the id
+	// or if the interface is a string type, use the string as the id
+	// otherwise, use the reflection to get the id
+	switch t := v.(type) {
+	case StatementIDGetter:
+		id = t.StatementID()
+	case string:
+		id = t
+	default:
+		// else try to one the id from the interface
+		rv := reflect.Indirect(reflect.ValueOf(v))
+		switch rv.Kind() {
+		case reflect.Func:
+			id = runtimeFuncName(rv)
+		case reflect.Struct:
+			id = rv.Type().Name()
+		default:
+			return nil, errors.New("invalid type of statement id")
+		}
+	}
+	if len(id) == 0 {
+		return nil, errors.New("can not get the statement id from the given interface")
+	}
+	return m.GetStatementByID(id)
+}
+
 // Configuration represents a configuration of juice.
 func (m *Mappers) Configuration() *Configuration {
 	return m.cfg
@@ -91,4 +121,10 @@ func (m *Mappers) setStatementByID(id string, stmt *Statement) error {
 	}
 	m.statements[id] = stmt
 	return nil
+}
+
+// StatementIDGetter is an interface for getting statement id.
+type StatementIDGetter interface {
+	// StatementID returns a statement id.
+	StatementID() string
 }

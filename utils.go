@@ -1,7 +1,6 @@
 package juice
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -28,19 +27,11 @@ func underlineToCamel(text string) string {
 	return string(result[:])
 }
 
-func FuncForPC(v any) (string, error) {
-	value := reflect.ValueOf(v)
-
-	// Check if the value is a function
-	if value.Kind() != reflect.Func {
-		return "", errors.New("v must be a function")
-	}
-
+func runtimeFuncName(rv reflect.Value) string {
 	// one id from function name
-	name := runtime.FuncForPC(value.Pointer()).Name()
+	name := runtime.FuncForPC(rv.Pointer()).Name()
 	name = strings.ReplaceAll(strings.ReplaceAll(name, "/", "."), "*", "")
-
-	return strings.TrimSuffix(name, "-fm"), nil
+	return strings.TrimSuffix(name, "-fm")
 }
 
 // reflectValueToString converts reflect.Value to string
@@ -57,7 +48,9 @@ func reflectValueToString(v reflect.Value) string {
 	case reflect.Bool:
 		return strconv.FormatBool(v.Bool())
 	}
-	if stringer, ok := v.Interface().(fmt.Stringer); ok {
+	if stringer, ok := v.Interface().(interface {
+		String() string
+	}); ok {
 		return stringer.String()
 	}
 	return fmt.Sprintf("%v", v.Interface())

@@ -3,7 +3,6 @@ package juice
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sync"
 
 	"github.com/eatmoreapple/juice/driver"
@@ -34,7 +33,7 @@ type Engine struct {
 
 // Object implements the Manager interface
 func (e *Engine) Object(v interface{}) Executor {
-	stat, err := e.getMapperStatement(v)
+	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
 	if err != nil {
 		return inValidExecutor(err)
 	}
@@ -94,33 +93,7 @@ func (e *Engine) init() error {
 
 	// open the database connection
 	e.db, err = env.Connect()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// try to one the statement from the configuration with the given interface
-func (e *Engine) getMapperStatement(v any) (stat *Statement, err error) {
-	var id string
-
-	// if the interface is a string, use it as the id
-	if str, ok := v.(string); ok {
-		id = str
-	} else {
-		// else try to one the id from the interface
-		if id, err = FuncForPC(v); err != nil {
-			return nil, err
-		}
-	}
-
-	// try to one the statement from the configuration
-	stat, err = e.GetConfiguration().Mappers.GetStatementByID(id)
-
-	if err != nil {
-		return nil, fmt.Errorf("mapper %s not found", id)
-	}
-	return stat, nil
+	return err
 }
 
 // NewEngine creates a new Engine
