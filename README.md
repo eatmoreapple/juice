@@ -320,11 +320,7 @@ Juice is licensed under the Apache License, Version 2.0. See LICENSE for the ful
 ### Contact
 
 If you like this project, please give me a star. Thank you.
-And If you have any questions, please contact me by WeChat: eatmoreapple or scan the following QR code.
-
-
-<img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat.jpg" align="left">
-
+And If you have any questions, please contact me by WeChat: `eatmoreapple`.
 
 
 ### Invite the author to have a cup of coffee
