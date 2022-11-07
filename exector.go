@@ -21,7 +21,6 @@ func inValidExecutor(err error) Executor {
 
 // executor is an executor of SQL.
 type executor struct {
-	id        string
 	err       error
 	session   Session
 	engine    *Engine
@@ -106,7 +105,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T,
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	rv := reflect.ValueOf(result)
 	if rv.Kind() == reflect.Ptr {
 		result = reflect.New(rv.Type().Elem()).Interface().(T)

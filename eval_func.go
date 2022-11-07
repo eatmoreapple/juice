@@ -97,6 +97,65 @@ func slice(v interface{}, start, count int) []interface{} {
 	panic("slice: invalid argument type")
 }
 
+// title returns a copy of the string s with all Unicode letters that begin words mapped to their title case.
+func title(text string) string {
+	return strings.Title(text)
+}
+
+// lower returns a copy of the string s with all Unicode letters mapped to their lower case.
+func lower(text string) string {
+	return strings.ToLower(text)
+}
+
+// upper returns a copy of the string s with all Unicode letters mapped to their upper case.
+func upper(text string) string {
+	return strings.ToUpper(text)
+}
+
+// trim returns a slice of the string s with all leading and trailing Unicode code points contained in cutset removed.
+func trim(text, cutest string) string {
+	return strings.Trim(text, cutest)
+}
+
+// trimLeft returns a slice of the string s with all leading Unicode code points contained in cutset removed.
+func trimLeft(text, cutest string) string {
+	return strings.TrimLeft(text, cutest)
+}
+
+// trimRight returns a slice of the string s with all trailing Unicode code points contained in cutset removed.
+func trimRight(text, cutest string) string {
+	return strings.TrimRight(text, cutest)
+}
+
+// replace returns a copy of the string s with the first n non-overlapping instances of old replaced by new.
+// If old is empty, it matches at the beginning of the string and after each UTF-8 sequence, yielding up to k+1 replacements for a k-rune string.
+func replace(text, old, new string, n int) string {
+	return strings.Replace(text, old, new, n)
+}
+
+// replaceAll returns a copy of the string s with all non-overlapping instances of old replaced by new.
+// If old is empty, it matches at the beginning of the string and after each UTF-8 sequence, yielding up to k+1 replacements for a k-rune string.
+func replaceAll(text, old, new string) string {
+	return strings.ReplaceAll(text, old, new)
+}
+
+// split returns a slice of strings after splitting the string s at each instance of sep.
+func split(text, sep string) []string {
+	return strings.Split(text, sep)
+}
+
+// splitN returns a slice of strings after splitting the string s at each instance of sep, at most n times.
+// If n == 0, SplitN returns an unlimited number of substrings.
+// If n < 0, SplitN splits after each instance of sep.
+func splitN(text, sep string, n int) []string {
+	return strings.SplitN(text, sep, n)
+}
+
+// splitAfter returns a slice of strings after splitting the string s after each instance of sep.
+func splitAfter(text, sep string) []string {
+	return strings.SplitAfter(text, sep)
+}
+
 // RegisterEvalFunc registers a function for eval.
 // The function must be a function with one return value.
 // And Allowed to overwrite the built-in function.
@@ -130,4 +189,15 @@ func init() {
 	MustRegisterEvalFunc("join", strJoin)
 	MustRegisterEvalFunc("contains", contains)
 	MustRegisterEvalFunc("slice", slice)
+	MustRegisterEvalFunc("title", title)
+	MustRegisterEvalFunc("lower", lower)
+	MustRegisterEvalFunc("upper", upper)
+	MustRegisterEvalFunc("trim", trim)
+	MustRegisterEvalFunc("trimLeft", trimLeft)
+	MustRegisterEvalFunc("trimRight", trimRight)
+	MustRegisterEvalFunc("replace", replace)
+	MustRegisterEvalFunc("replaceAll", replaceAll)
+	MustRegisterEvalFunc("split", split)
+	MustRegisterEvalFunc("splitN", splitN)
+	MustRegisterEvalFunc("splitAfter", splitAfter)
 }

@@ -267,3 +267,15 @@ func TestLparenRparen(t *testing.T) {
 		return
 	}
 }
+
+func TestComment(t *testing.T) {
+	result, err := Eval(`2 * (2 + 5) + 1 // 2 * (2 + 5) == 14`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 15 {
+		t.Error("eval error")
+		return
+	}
+}
