@@ -323,7 +323,11 @@ If you like this project, please give me a star. Thank you.
 And If you have any questions, please contact me by WeChat: eatmoreapple or scan the following QR code.
 
 
-<img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat.jpg">
+<img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat.jpg" align="left">
+
+
 
 ### Invite the author to have a cup of coffee
+
+
 <img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat_pay.jpg" align="left">
