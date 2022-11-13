@@ -97,8 +97,8 @@ type TimeoutMiddleware struct{}
 // QueryContext implements Middleware.
 // QueryContext will set the timeout for the sql statement.
 func (t TimeoutMiddleware) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
-	timeout, ok := t.getTimeout(stmt)
-	if !ok {
+	timeout := t.getTimeout(stmt)
+	if timeout <= 0 {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
@@ -111,8 +111,8 @@ func (t TimeoutMiddleware) QueryContext(stmt *Statement, next QueryHandler) Quer
 // ExecContext implements Middleware.
 // ExecContext will set the timeout for the sql statement.
 func (t TimeoutMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
-	timeout, ok := t.getTimeout(stmt)
-	if !ok {
+	timeout := t.getTimeout(stmt)
+	if timeout <= 0 {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -123,17 +123,11 @@ func (t TimeoutMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHa
 }
 
 // getTimeout returns the timeout from the Statement.
-func (t TimeoutMiddleware) getTimeout(stmt *Statement) (int64, bool) {
+func (t TimeoutMiddleware) getTimeout(stmt *Statement) (timeout int64) {
 	timeoutAttr := stmt.Attribute("timeout")
 	if timeoutAttr == "" {
-		return 0, false
+		return
 	}
-	timeout, err := strconv.ParseInt(timeoutAttr, 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	if timeout <= 0 {
-		return 0, false
-	}
-	return timeout, true
+	timeout, _ = strconv.ParseInt(timeoutAttr, 10, 64)
+	return
 }
