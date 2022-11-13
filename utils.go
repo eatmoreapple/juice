@@ -36,6 +36,11 @@ func runtimeFuncName(rv reflect.Value) string {
 
 // reflectValueToString converts reflect.Value to string
 func reflectValueToString(v reflect.Value) string {
+	if stringer, ok := v.Interface().(interface {
+		String() string
+	}); ok {
+		return stringer.String()
+	}
 	switch v.Kind() {
 	case reflect.String:
 		return v.String()
@@ -47,11 +52,6 @@ func reflectValueToString(v reflect.Value) string {
 		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
 	case reflect.Bool:
 		return strconv.FormatBool(v.Bool())
-	}
-	if stringer, ok := v.Interface().(interface {
-		String() string
-	}); ok {
-		return stringer.String()
 	}
 	return fmt.Sprintf("%v", v.Interface())
 }
