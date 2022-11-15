@@ -125,3 +125,34 @@ func (e *genericExecutor[result]) ExecContext(ctx context.Context, p any) (sql.R
 }
 
 var _ GenericExecutor[interface{}] = (*genericExecutor[interface{}])(nil)
+
+// BinderExecutor is a binder executor.
+// It is used to bind the result to the given value.
+type BinderExecutor interface {
+	Query(param any) (Binder, error)
+	QueryContext(ctx context.Context, param any) (Binder, error)
+	Exec(param any) (sql.Result, error)
+	ExecContext(ctx context.Context, param any) (sql.Result, error)
+}
+
+// binderExecutor is a binder executor.
+// binderExecutor implements the BinderExecutor interface.
+type binderExecutor struct {
+	Executor
+}
+
+// Query executes the query and returns the scanner.
+func (b *binderExecutor) Query(param any) (Binder, error) {
+	return b.QueryContext(context.Background(), param)
+}
+
+// QueryContext executes the query and returns the scanner.
+func (b *binderExecutor) QueryContext(ctx context.Context, param any) (Binder, error) {
+	rows, err := b.Executor.QueryContext(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+	return &rowsBinder{rows: rows}, nil
+}
+
+var _ BinderExecutor = (*binderExecutor)(nil)

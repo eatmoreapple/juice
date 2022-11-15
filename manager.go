@@ -30,6 +30,26 @@ func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
 	return &genericExecutor[T]{Executor: exe}
 }
 
+type BinderManager interface {
+	Object(v any) BinderExecutor
+}
+
+// NewBinderManager returns a new BinderManager.
+func NewBinderManager(manager Manager) BinderManager {
+	return &binderManager{manager}
+}
+
+// binderManager implements the BinderManager interface.
+type binderManager struct {
+	Manager
+}
+
+// Object implements the BinderManager interface.
+func (b *binderManager) Object(v any) BinderExecutor {
+	exe := b.Manager.Object(v)
+	return &binderExecutor{Executor: exe}
+}
+
 // TxManager is a transactional mapper executor
 type TxManager interface {
 	Manager

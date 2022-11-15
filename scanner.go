@@ -271,3 +271,27 @@ func bind(rows *sql.Rows, rv reflect.Value) error {
 	}
 	return one(rows, rv)
 }
+
+// Binder bind sql.Rows to dest
+type Binder interface {
+	One(v any) error
+	Many(v any) error
+}
+
+// rowsBinder is a wrapper of sql.Rows
+// rowsBinder implements Binder
+type rowsBinder struct {
+	rows *sql.Rows
+}
+
+// One bind sql.Rows to dest
+func (r *rowsBinder) One(v any) error {
+	defer func() { _ = r.rows.Close() }()
+	return One(r.rows, v)
+}
+
+// Many bind sql.Rows to dest
+func (r *rowsBinder) Many(v any) error {
+	defer func() { _ = r.rows.Close() }()
+	return Many(r.rows, v)
+}
