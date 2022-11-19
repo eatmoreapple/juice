@@ -248,6 +248,17 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 				if err = mapper.setSqlNode(sqlNode); err != nil {
 					return nil, err
 				}
+			case "resultMap":
+				resultMap, err := p.parseResultMap(decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				if err := resultMap.init(); err != nil {
+					return nil, err
+				}
+				if err = mapper.setResultMap(resultMap); err != nil {
+					return nil, err
+				}
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mapper" {
@@ -833,6 +844,113 @@ func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, e
 		}
 	}
 	return otherwiseNode, nil
+}
+
+func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMap, error) {
+	resultMap := &resultMap{}
+	for _, attr := range token.Attr {
+		if attr.Name.Local == "id" {
+			resultMap.id = attr.Value
+			break
+		}
+	}
+	if resultMap.id == "" {
+		return nil, errors.New("resultMap node requires id attribute")
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "result":
+				result, err := p.parseResult(token)
+				if err != nil {
+					return nil, err
+				}
+				resultMap.results = append(resultMap.results, result)
+			case "association":
+				association, err := p.parseAssociation(decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				resultMap.associations = append(resultMap.associations, association)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "resultMap" {
+				return resultMap, nil
+			}
+		}
+	}
+	return resultMap, nil
+}
+
+func (p XMLParser) parseResult(token xml.StartElement) (*result, error) {
+	result := &result{}
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "column":
+			result.column = attr.Value
+		case "property":
+			result.property = attr.Value
+		}
+	}
+	if result.column == "" {
+		return nil, errors.New("result node requires column attribute")
+	}
+	if result.property == "" {
+		return nil, errors.New("result node requires property attribute")
+	}
+	return result, nil
+}
+
+func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement) (*association, error) {
+	association := &association{}
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "property":
+			association.property = attr.Value
+		}
+	}
+	if association.property == "" {
+		return nil, errors.New("association node requires property attribute")
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "result":
+				result, err := p.parseResult(token)
+				if err != nil {
+					return nil, err
+				}
+				association.results = append(association.results, result)
+			case "association":
+				association, err := p.parseAssociation(decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				association.associations = append(association.associations, association)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "association" {
+				return association, nil
+			}
+		}
+	}
+	return association, nil
 }
 
 func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {

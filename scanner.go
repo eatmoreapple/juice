@@ -3,105 +3,16 @@ package juice
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"reflect"
 )
-
-// One convert sql.Rows to given entity
-func One(rows *sql.Rows, v any) error {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr {
-		return errors.New("v must be a pointer")
-	}
-	return one(rows, rv)
-}
 
 var (
 	// scannerType is the reflect.Type of sql.Scanner
 	scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 )
 
-func scanFields(rv reflect.Value) (map[string]reflect.Value, error) {
-	var dest = make(map[string]reflect.Value)
-	if rv.Kind() == reflect.Struct {
-		for i := 0; i < rv.NumField(); i++ {
-			field := rv.Field(i)
-
-			// skip unexported field and sql.Scanner
-			if !field.CanSet() || field.Type().Implements(scannerType) {
-				continue
-			}
-
-			// is deep struct
-			if field.Kind() == reflect.Struct {
-				// recursive call
-				mapping, err := scanFields(field)
-				if err != nil {
-					return nil, err
-				}
-				for k, v := range mapping {
-					if _, ok := dest[k]; ok {
-						return nil, fmt.Errorf("field name %s is unbiguous", k)
-					}
-					dest[k] = v
-				}
-			} else {
-				// skip field with no tag
-				tag := rv.Type().Field(i).Tag.Get("column")
-				if tag == "" {
-					continue
-				}
-				if _, ok := dest[tag]; ok {
-					return nil, fmt.Errorf("field name %s is unbiguous", tag)
-				}
-				dest[tag] = field
-			}
-		}
-	}
-	return dest, nil
-}
-
-// scanIndex is a helper function to scan rows to given entity
-// it will return a map of column name to index of the field
-func scanIndex(rv reflect.Value) (map[string][]int, error) {
-	var dest = make(map[string][]int)
-	if rv.Kind() == reflect.Struct {
-		for i := 0; i < rv.NumField(); i++ {
-			field := rv.Field(i)
-
-			// is deep struct
-			if field.Kind() == reflect.Struct && !field.Type().Implements(scannerType) {
-
-				mapping, err := scanIndex(field)
-				if err != nil {
-					return nil, err
-				}
-				for k, v := range mapping {
-					if _, ok := dest[k]; ok {
-						return nil, fmt.Errorf("field name %s is unbiguous", k)
-					}
-					dest[k] = append([]int{i}, v...)
-				}
-			} else {
-
-				// skip field with no tag
-				tag := rv.Type().Field(i).Tag.Get("column")
-				if tag == "" {
-					continue
-				}
-
-				if _, ok := dest[tag]; ok {
-					return nil, fmt.Errorf("field name %s is unbiguous", tag)
-				}
-				dest[tag] = []int{i}
-			}
-		}
-	}
-	return dest, nil
-}
-
 // one scan one row to given entity
-func one(rows *sql.Rows, rv reflect.Value) error {
+func one(rows *sql.Rows, rv reflect.Value, mapper ResultMap) error {
 
 	// get element type
 	for rv.Kind() == reflect.Ptr {
@@ -129,21 +40,19 @@ func one(rows *sql.Rows, rv reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		// column reflect.Value mapping
-		valueMapping, err := scanFields(rv)
-		if err != nil {
-			return err
-		}
 
 		var dest = make([]any, len(columns))
 
 		for index, column := range columns {
 			// try to find field by column name
-			if field, ok := valueMapping[column]; ok {
+			field, ok, err := mapper.ColumnValue(rv, column)
+			if err != nil {
+				return err
+			}
+			if ok {
 				dest[index] = field.Addr().Interface()
 			} else {
-				// if not found, use any type
-				dest[index] = new(any)
+				dest[index] = new(interface{})
 			}
 		}
 		for _, dp := range dest {
@@ -158,26 +67,8 @@ func one(rows *sql.Rows, rv reflect.Value) error {
 	return err
 }
 
-// Many cover sql.Rows to given entity
-func Many(rows *sql.Rows, v any) error {
-	rv := reflect.ValueOf(v)
-
-	// pointer required
-	if rv.Kind() != reflect.Ptr {
-		return errors.New("v must be a pointer")
-	}
-
-	// check if it's a slice or array
-	if kd := rv.Elem().Kind(); kd != reflect.Slice {
-		return errors.New("v must be a pointer to slice")
-	}
-
-	// check pass then call many
-	return many(rows, rv)
-}
-
 // many scan rows to given entity slice
-func many(rows *sql.Rows, rv reflect.Value) error {
+func many(rows *sql.Rows, rv reflect.Value, mapper ResultMap) error {
 
 	// rv must be a pointer to slice or array
 	rv = rv.Elem()
@@ -204,8 +95,6 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 
 		var checked bool
 
-		var indexMapping map[string][]int
-
 		// now, we start scan rows
 		for rows.Next() {
 
@@ -215,25 +104,20 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 			// get the Value of element
 			el := rv.Elem()
 
-			if indexMapping == nil {
-				indexMapping, err = scanIndex(el)
-				if err != nil {
-					return err
-				}
-			}
-
 			// dest is the slice of interface which will be passed to rows.Scan
 			var dest = make([]any, len(columns))
 
 			// for each column, check if it's in indexMapping
 			for index, column := range columns {
 				// try to find the field in indexMapping
-				if fieldIndex, ok := indexMapping[column]; ok {
-					dest[index] = deepFieldByIndex(el, fieldIndex).Addr().Interface()
+				field, ok, err := mapper.ColumnValue(el, column)
+				if err != nil {
+					return err
+				}
+				if ok {
+					dest[index] = field.Addr().Interface()
 				} else {
-					// but we can't
-					// just ignore it
-					dest[index] = new(any)
+					dest[index] = new(interface{})
 				}
 			}
 
@@ -299,23 +183,52 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 	return nil
 }
 
-// Bind is a wrapper of bind
+// Bind sql.Rows to given entity with default mapper
 func Bind(rows *sql.Rows, v any) error {
+	return BindWithResultMap(rows, v, nil)
+}
+
+// BindWithResultMap bind sql.Rows to given entity with given ResultMap
+func BindWithResultMap(rows *sql.Rows, v any, mapper ResultMap) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr {
 		return errors.New("v must be a pointer")
 	}
-	return bind(rows, rv)
+	return bind(rows, rv, mapper)
 }
 
 // bind cover sql.Rows to given entity
 // dest can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
 // rows won't be closed when the function returns.
-func bind(rows *sql.Rows, rv reflect.Value) error {
+func bind(rows *sql.Rows, rv reflect.Value, mapper ResultMap) (err error) {
 	if kd := reflect.Indirect(rv).Kind(); kd == reflect.Slice || kd == reflect.Array {
-		return many(rows, rv)
+		return bindList(rows, rv, mapper)
 	}
-	return one(rows, rv)
+	return bindOne(rows, rv, mapper)
+}
+
+// bindOne cover sql.Rows to given entity
+func bindOne(rows *sql.Rows, rv reflect.Value, mapper ResultMap) (err error) {
+	if mapper == nil {
+		// try to get mapper from entity
+		mapper, err = newKeyValueResultMap(rv.Elem())
+		if err != nil {
+			return err
+		}
+	}
+	return one(rows, rv, mapper)
+}
+
+// bindList cover sql.Rows to given entity slice
+func bindList(rows *sql.Rows, rv reflect.Value, mapper ResultMap) (err error) {
+	if mapper == nil {
+		// try to get mapper from entity
+		mapper, err = newIndexResultMap(sliceElem(rv))
+		if err != nil {
+			return err
+		}
+	}
+	return many(rows, rv, mapper)
 }
 
 // Binder bind sql.Rows to dest
@@ -327,17 +240,36 @@ type Binder interface {
 // rowsBinder is a wrapper of sql.Rows
 // rowsBinder implements Binder
 type rowsBinder struct {
-	rows *sql.Rows
+	rows   *sql.Rows
+	mapper ResultMap
 }
 
 // One bind sql.Rows to dest
-func (r *rowsBinder) One(v any) error {
+func (r *rowsBinder) One(v any) (err error) {
 	defer func() { _ = r.rows.Close() }()
-	return One(r.rows, v)
+
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("v must be a pointer")
+	}
+	return bindOne(r.rows, rv, r.mapper)
 }
 
 // Many bind sql.Rows to dest
-func (r *rowsBinder) Many(v any) error {
+func (r *rowsBinder) Many(v any) (err error) {
 	defer func() { _ = r.rows.Close() }()
-	return Many(r.rows, v)
+
+	rv := reflect.ValueOf(v)
+
+	// pointer required
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("v must be a pointer")
+	}
+
+	// check if it's a slice or array
+	if kd := rv.Elem().Kind(); kd != reflect.Slice {
+		return errors.New("v must be a pointer to slice")
+	}
+
+	return bindList(r.rows, rv, r.mapper)
 }

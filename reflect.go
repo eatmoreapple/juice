@@ -12,9 +12,6 @@ func kindIndirect(t reflect.Type) reflect.Type {
 }
 
 // deepFieldByIndex get field by index
-func deepFieldByIndex(rv reflect.Value, index []int) reflect.Value {
-	for _, i := range index {
-		rv = rv.Field(i)
-	}
-	return rv
+func sliceElem(rv reflect.Value) reflect.Value {
+	return reflect.New(rv.Elem().Type().Elem()).Elem()
 }
