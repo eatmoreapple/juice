@@ -3,6 +3,7 @@ package juice
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -13,6 +14,90 @@ func One(rows *sql.Rows, v any) error {
 		return errors.New("v must be a pointer")
 	}
 	return one(rows, rv)
+}
+
+var (
+	// scannerType is the reflect.Type of sql.Scanner
+	scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+)
+
+func scanFields(rv reflect.Value) (map[string]reflect.Value, error) {
+	var dest = make(map[string]reflect.Value)
+	if rv.Kind() == reflect.Struct {
+		for i := 0; i < rv.NumField(); i++ {
+			field := rv.Field(i)
+
+			// skip unexported field and sql.Scanner
+			if !field.CanSet() || field.Type().Implements(scannerType) {
+				continue
+			}
+
+			// is deep struct
+			if field.Kind() == reflect.Struct {
+				// recursive call
+				mapping, err := scanFields(field)
+				if err != nil {
+					return nil, err
+				}
+				for k, v := range mapping {
+					if _, ok := dest[k]; ok {
+						return nil, fmt.Errorf("field name %s is unbiguous", k)
+					}
+					dest[k] = v
+				}
+			} else {
+				// skip field with no tag
+				tag := rv.Type().Field(i).Tag.Get("column")
+				if tag == "" {
+					continue
+				}
+				if _, ok := dest[tag]; ok {
+					return nil, fmt.Errorf("field name %s is unbiguous", tag)
+				}
+				dest[tag] = field
+			}
+		}
+	}
+	return dest, nil
+}
+
+// scanIndex is a helper function to scan rows to given entity
+// it will return a map of column name to index of the field
+func scanIndex(rv reflect.Value) (map[string][]int, error) {
+	var dest = make(map[string][]int)
+	if rv.Kind() == reflect.Struct {
+		for i := 0; i < rv.NumField(); i++ {
+			field := rv.Field(i)
+
+			// is deep struct
+			if field.Kind() == reflect.Struct && !field.Type().Implements(scannerType) {
+
+				mapping, err := scanIndex(field)
+				if err != nil {
+					return nil, err
+				}
+				for k, v := range mapping {
+					if _, ok := dest[k]; ok {
+						return nil, fmt.Errorf("field name %s is unbiguous", k)
+					}
+					dest[k] = append([]int{i}, v...)
+				}
+			} else {
+
+				// skip field with no tag
+				tag := rv.Type().Field(i).Tag.Get("column")
+				if tag == "" {
+					continue
+				}
+
+				if _, ok := dest[tag]; ok {
+					return nil, fmt.Errorf("field name %s is unbiguous", tag)
+				}
+				dest[tag] = []int{i}
+			}
+		}
+	}
+	return dest, nil
 }
 
 // one scan one row to given entity
@@ -45,34 +130,20 @@ func one(rows *sql.Rows, rv reflect.Value) error {
 			return err
 		}
 		// column reflect.Value mapping
-		columnValueMapping := make(map[string]reflect.Value)
-		var tag = new(columnTag)
-		for i := 0; i < re.NumField(); i++ {
-			field := re.Field(i)
-			if field.Anonymous {
-				continue
-			}
-			if column := field.Tag.Get("column"); column != "" {
-				tag.parse(column)
-				columnValueMapping[tag.Name] = rv.Field(i)
-				tag.reset()
-			}
+		valueMapping, err := scanFields(rv)
+		if err != nil {
+			return err
 		}
 
 		var dest = make([]any, len(columns))
 
 		for index, column := range columns {
-			// many field in columnValueMapping first
-			if field, ok := columnValueMapping[column]; ok {
+			// try to find field by column name
+			if field, ok := valueMapping[column]; ok {
 				dest[index] = field.Addr().Interface()
 			} else {
-				fieldName := underlineToCamel(column)
-				elField := rv.FieldByName(fieldName)
-				if !elField.IsValid() || !elField.CanSet() {
-					dest[index] = new(any)
-				} else {
-					dest[index] = elField.Addr().Interface()
-				}
+				// if not found, use any type
+				dest[index] = new(any)
 			}
 		}
 		for _, dp := range dest {
@@ -97,8 +168,8 @@ func Many(rows *sql.Rows, v any) error {
 	}
 
 	// check if it's a slice or array
-	if kd := rv.Elem().Kind(); kd != reflect.Slice && kd != reflect.Array {
-		return errors.New("v must be a pointer to slice or array")
+	if kd := rv.Elem().Kind(); kd != reflect.Slice {
+		return errors.New("v must be a pointer to slice")
 	}
 
 	// check pass then call many
@@ -121,9 +192,7 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 	result := reflect.MakeSlice(rv.Type(), 0, 0)
 
 	// get the element type of pointer
-	for el.Kind() == reflect.Ptr {
-		el = el.Elem()
-	}
+	el = kindIndirect(el)
 
 	// if it's a struct, scan rows to struct
 	if el.Kind() == reflect.Struct {
@@ -132,29 +201,10 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		// column reflect.Value mapping
-		columnValueMapping := make(map[string]int)
-		var tag = new(columnTag)
-
-		// get the field of struct
-		// if the field has a tag named column, use the tag as column name
-		// else use the field name as column name
-		// then put the field index into columnValueMapping
-		for i := 0; i < el.NumField(); i++ {
-			field := el.Field(i)
-			if field.Anonymous {
-				continue
-			}
-
-			// get the tag of field
-			if column := field.Tag.Get("column"); column != "" {
-				tag.parse(column)
-				columnValueMapping[tag.Name] = i
-				tag.reset()
-			}
-		}
 
 		var checked bool
+
+		var indexMapping map[string][]int
 
 		// now, we start scan rows
 		for rows.Next() {
@@ -162,33 +212,28 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 			// make a new element of slice
 			rv := reflect.New(el)
 
-			// get the reflect.Value of element
+			// get the Value of element
 			el := rv.Elem()
+
+			if indexMapping == nil {
+				indexMapping, err = scanIndex(el)
+				if err != nil {
+					return err
+				}
+			}
 
 			// dest is the slice of interface which will be passed to rows.Scan
 			var dest = make([]any, len(columns))
 
-			// for each column, check if it's in columnValueMapping
+			// for each column, check if it's in indexMapping
 			for index, column := range columns {
-				// many field in columnValueMapping first
-				// try to find the field in columnValueMapping
-				if fieldIndex, ok := columnValueMapping[column]; ok {
-					dest[index] = el.Field(fieldIndex).Addr().Interface()
+				// try to find the field in indexMapping
+				if fieldIndex, ok := indexMapping[column]; ok {
+					dest[index] = deepFieldByIndex(el, fieldIndex).Addr().Interface()
 				} else {
-
-					// here we can't find the field in columnValueMapping
-					fieldName := underlineToCamel(column)
-
-					// try to find the field in struct by field name
-					elField := el.FieldByName(fieldName)
-
-					// if the field is valid and can be set, use it
-					// else use a pointer to interface
-					if !elField.IsValid() || !elField.CanSet() {
-						dest[index] = new(any)
-					} else {
-						dest[index] = elField.Addr().Interface()
-					}
+					// but we can't
+					// just ignore it
+					dest[index] = new(any)
 				}
 			}
 
@@ -207,6 +252,7 @@ func many(rows *sql.Rows, rv reflect.Value) error {
 				return err
 			}
 
+			// has error, return it
 			if err = rows.Err(); err != nil {
 				return err
 			}
