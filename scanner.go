@@ -233,8 +233,9 @@ func bindList(rows *sql.Rows, rv reflect.Value, mapper ResultMap) (err error) {
 
 // Binder bind sql.Rows to dest
 type Binder interface {
-	One(v any) error
-	Many(v any) error
+	// Scan sql.Rows to dest
+	// dest can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
+	Scan(v any) error
 }
 
 // rowsBinder is a wrapper of sql.Rows
@@ -244,32 +245,8 @@ type rowsBinder struct {
 	mapper ResultMap
 }
 
-// One bind sql.Rows to dest
-func (r *rowsBinder) One(v any) (err error) {
+// Scan implement Binder.Scan
+func (r *rowsBinder) Scan(v any) error {
 	defer func() { _ = r.rows.Close() }()
-
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr {
-		return errors.New("v must be a pointer")
-	}
-	return bindOne(r.rows, rv, r.mapper)
-}
-
-// Many bind sql.Rows to dest
-func (r *rowsBinder) Many(v any) (err error) {
-	defer func() { _ = r.rows.Close() }()
-
-	rv := reflect.ValueOf(v)
-
-	// pointer required
-	if rv.Kind() != reflect.Ptr {
-		return errors.New("v must be a pointer")
-	}
-
-	// check if it's a slice or array
-	if kd := rv.Elem().Kind(); kd != reflect.Slice {
-		return errors.New("v must be a pointer to slice")
-	}
-
-	return bindList(r.rows, rv, r.mapper)
+	return BindWithResultMap(r.rows, v, r.mapper)
 }
