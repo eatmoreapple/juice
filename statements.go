@@ -120,3 +120,17 @@ func (s *Statement) Engine() *Engine {
 func (s *Statement) ForRead() bool {
 	return s.Action() == Select
 }
+
+// ForWrite returns true if the statement's Action is Insert, Update or Delete
+func (s *Statement) ForWrite() bool {
+	return s.Action() == Insert || s.Action() == Update || s.Action() == Delete
+}
+
+// ResultMap returns the ResultMap of the statement.
+func (s *Statement) ResultMap() (ResultMap, error) {
+	key := s.Attribute("resultMap")
+	if key == "" {
+		return nil, ErrResultMapNotSet
+	}
+	return s.Mapper().GetResultMapByID(key)
+}

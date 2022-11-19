@@ -3,6 +3,7 @@ package juice
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"reflect"
 )
 
@@ -12,6 +13,7 @@ type Executor interface {
 	QueryContext(ctx context.Context, param interface{}) (*sql.Rows, error)
 	Exec(param interface{}) (sql.Result, error)
 	ExecContext(ctx context.Context, param interface{}) (sql.Result, error)
+	Statement() *Statement
 }
 
 // inValidExecutor is an invalid executor.
@@ -61,6 +63,11 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	return middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
 }
 
+// Statement returns the statement.
+func (e *executor) Statement() *Statement {
+	return e.statement
+}
+
 // prepare
 func (e *executor) prepare(param interface{}) (query string, args []interface{}, err error) {
 	if e.err != nil {
@@ -106,11 +113,26 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T,
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	rv := reflect.ValueOf(result)
-	if rv.Kind() == reflect.Ptr {
-		result = reflect.New(rv.Type().Elem()).Interface().(T)
+
+	retMap, err := e.Executor.Statement().ResultMap()
+
+	// set but not found
+	if err != nil && !errors.Is(err, ErrResultMapNotSet) {
+		return result, err
 	}
-	err = Bind(rows, &result)
+
+	// prt is a pointer to T
+	var ptr any = &result
+
+	rv := reflect.ValueOf(result)
+
+	if rv.Kind() == reflect.Ptr {
+		// if T is a pointer, then set prt to T
+		result = reflect.New(rv.Type().Elem()).Interface().(T)
+		ptr = result
+	}
+	// bind the result to the pointer
+	err = BindWithResultMap(rows, ptr, retMap)
 	return
 }
 
@@ -152,7 +174,11 @@ func (b *binderExecutor) QueryContext(ctx context.Context, param any) (Binder, e
 	if err != nil {
 		return nil, err
 	}
-	return &rowsBinder{rows: rows}, nil
+	retMap, err := b.Executor.Statement().ResultMap()
+	if err != nil && !errors.Is(err, ErrResultMapNotSet) {
+		return nil, err
+	}
+	return &rowsBinder{rows: rows, mapper: retMap}, nil
 }
 
 var _ BinderExecutor = (*binderExecutor)(nil)
