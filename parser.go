@@ -938,11 +938,11 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 				}
 				association.results = append(association.results, result)
 			case "association":
-				association, err := p.parseAssociation(decoder, token)
+				newAssociation, err := p.parseAssociation(decoder, token)
 				if err != nil {
 					return nil, err
 				}
-				association.associations = append(association.associations, association)
+				association.associations = append(association.associations, newAssociation)
 			}
 		case xml.EndElement:
 			if token.Name.Local == "association" {
