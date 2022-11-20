@@ -169,7 +169,7 @@ func (m IndexResultMap) ColumnValue(rv reflect.Value, column string) (reflect.Va
 	for _, v := range indexes {
 		rv = rv.Field(v)
 		if !rv.IsValid() {
-			return reflect.Value{}, false, fmt.Errorf("index %d is invalid", v)
+			return reflect.Value{}, false, fmt.Errorf("column `%s` index %d is invalid", column, v)
 		}
 	}
 	return rv, true, nil
@@ -182,13 +182,15 @@ func newKeyValueResultMap(rv reflect.Value) (KeyValueResultMap, error) {
 		for i := 0; i < rv.NumField(); i++ {
 			field := rv.Field(i)
 
-			// skip unexported field and sql.Scanner
-			if !field.CanSet() || field.Type().Implements(scannerType) {
+			// skip unexported
+			if !field.CanSet() {
 				continue
 			}
 
+			tag := rv.Type().Field(i).Tag.Get("column")
+
 			// is deep struct
-			if field.Kind() == reflect.Struct {
+			if field.Kind() == reflect.Struct && tag == "" && !field.Type().Implements(scannerType) {
 				// recursive call
 				mapping, err := newKeyValueResultMap(field)
 				if err != nil {
@@ -202,7 +204,6 @@ func newKeyValueResultMap(rv reflect.Value) (KeyValueResultMap, error) {
 				}
 			} else {
 				// skip field with no tag
-				tag := rv.Type().Field(i).Tag.Get("column")
 				if tag == "" {
 					continue
 				}
@@ -236,9 +237,15 @@ func newIndexResultMap(rv reflect.Value) (IndexResultMap, error) {
 		for i := 0; i < rv.NumField(); i++ {
 			field := rv.Field(i)
 
-			// is deep struct
-			if field.Kind() == reflect.Struct && !field.Type().Implements(scannerType) {
+			// skip unexported field
+			if !field.CanSet() {
+				continue
+			}
 
+			tag := rv.Type().Field(i).Tag.Get("column")
+
+			// is deep struct
+			if field.Kind() == reflect.Struct && tag == "" && !field.Type().Implements(scannerType) {
 				mapping, err := newIndexResultMap(field)
 				if err != nil {
 					return nil, err
@@ -250,13 +257,9 @@ func newIndexResultMap(rv reflect.Value) (IndexResultMap, error) {
 					dest[k] = append([]int{i}, v...)
 				}
 			} else {
-
-				// skip field with no tag
-				tag := rv.Type().Field(i).Tag.Get("column")
 				if tag == "" {
 					continue
 				}
-
 				if _, ok := dest[tag]; ok {
 					return nil, fmt.Errorf("field name %s is unbiguous", tag)
 				}
