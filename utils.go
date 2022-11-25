@@ -30,7 +30,8 @@ func underlineToCamel(text string) string {
 func runtimeFuncName(rv reflect.Value) string {
 	// one id from function name
 	name := runtime.FuncForPC(rv.Pointer()).Name()
-	name = strings.ReplaceAll(strings.ReplaceAll(name, "/", "."), "*", "")
+	replacer := strings.NewReplacer("/", ".", "*", "")
+	name = replacer.Replace(name)
 	return strings.TrimSuffix(name, "-fm")
 }
 
