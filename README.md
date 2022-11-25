@@ -36,6 +36,7 @@ Juice is a simple and lightweight framework. It is easy to use and easy to exten
 * when
 * otherwise
 * include
+* resultMap
 
 
 ### Condition Method
