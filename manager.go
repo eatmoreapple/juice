@@ -53,7 +53,10 @@ func (b *binderManager) Object(v any) BinderExecutor {
 // TxManager is a transactional mapper executor
 type TxManager interface {
 	Manager
+	// Commit commits the transaction.
 	Commit() error
+	// Rollback rollbacks the transaction.
+	// The rollback will be ignored if the tx has been committed later in the function.
 	Rollback() error
 }
 
