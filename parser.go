@@ -87,13 +87,13 @@ func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElemen
 				if err != nil {
 					return nil, err
 				}
-				if _, exists := envs.envs[environment.ID]; exists {
-					return nil, fmt.Errorf("duplicate environment id: %s", environment.ID)
+				if _, exists := envs.envs[environment.ID()]; exists {
+					return nil, fmt.Errorf("duplicate environment id: %s", environment.ID())
 				}
 				if envs.envs == nil {
 					envs.envs = make(map[string]*Environment)
 				}
-				envs.envs[environment.ID] = environment
+				envs.envs[environment.ID()] = environment
 			}
 		case xml.EndElement:
 			if token.Name.Local == "environments" {
@@ -105,16 +105,14 @@ func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElemen
 }
 
 func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement) (*Environment, error) {
-	var env Environment
+	var env = &Environment{}
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "id" {
-			env.ID = attr.Value
-			break
-		}
+		env.setAttr(attr.Name.Local, attr.Value)
 	}
-	if env.ID == "" {
+	if env.ID() == "" {
 		return nil, errors.New("environment id is required")
 	}
+	provider := env.provider()
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -127,12 +125,12 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "dataSource":
-				env.DataSource, err = p.parseDataSource(decoder)
+				env.DataSource, err = p.parseDataSource(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
 			case "driver":
-				env.Driver, err = p.parseDriver(decoder)
+				env.Driver, err = p.parseDriver(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
@@ -142,28 +140,28 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 					return nil, err
 				}
 			case "maxOpenConnNum":
-				env.MaxOpenConnNum, err = p.parseMaxOpenConnNum(decoder)
+				env.MaxOpenConnNum, err = p.parseMaxOpenConnNum(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
 			case "maxConnLifetime":
-				env.MaxConnLifetime, err = p.parseMaxConnLifetime(decoder)
+				env.MaxConnLifetime, err = p.parseMaxConnLifetime(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
 			case "maxIdleConnLifetime":
-				env.MaxIdleConnLifetime, err = p.parseMaxIdleConnLifetime(decoder)
+				env.MaxIdleConnLifetime, err = p.parseMaxIdleConnLifetime(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
 			}
 		case xml.EndElement:
 			if token.Name.Local == "environment" {
-				return &env, nil
+				return env, nil
 			}
 		}
 	}
-	return &env, nil
+	return env, nil
 }
 
 func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
@@ -699,24 +697,44 @@ func (p XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder) (int, error) {
 	return p.parseIntCharData(decoder, "maxIdleConnNum")
 }
 
-func (p XMLParser) parseDataSource(decoder *xml.Decoder) (string, error) {
-	return p.parseCharData(decoder, "dataSource")
+func (p XMLParser) parseEnvString(key string, decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+	value, err := p.parseCharData(decoder, key)
+	if err != nil {
+		return "", err
+	}
+	return provider.Get(value)
 }
 
-func (p XMLParser) parseDriver(decoder *xml.Decoder) (string, error) {
-	return p.parseCharData(decoder, "driver")
+func (p XMLParser) parseEnvInt(key string, decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+	value, err := p.parseCharData(decoder, key)
+	if err != nil {
+		return 0, err
+	}
+	str, err := provider.Get(value)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(str)
 }
 
-func (p XMLParser) parseMaxOpenConnNum(decoder *xml.Decoder) (int, error) {
-	return p.parseIntCharData(decoder, "maxOpenConnNum")
+func (p XMLParser) parseDataSource(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+	return p.parseEnvString("dataSource", decoder, provider)
 }
 
-func (p XMLParser) parseMaxConnLifetime(decoder *xml.Decoder) (int, error) {
-	return p.parseIntCharData(decoder, "maxConnLifetime")
+func (p XMLParser) parseDriver(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+	return p.parseEnvString("driver", decoder, provider)
 }
 
-func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder) (int, error) {
-	return p.parseIntCharData(decoder, "maxIdleConnLifetime")
+func (p XMLParser) parseMaxOpenConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+	return p.parseEnvInt("maxOpenConnNum", decoder, provider)
+}
+
+func (p XMLParser) parseMaxConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+	return p.parseEnvInt("maxConnLifetime", decoder, provider)
+}
+
+func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+	return p.parseEnvInt("maxIdleConnLifetime", decoder, provider)
 }
 
 func (p XMLParser) parseSettings(decoder *xml.Decoder) (*Settings, error) {
