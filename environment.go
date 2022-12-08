@@ -2,7 +2,6 @@ package juice
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -97,7 +96,7 @@ func (e *Environments) DefaultEnv() (*Environment, error) {
 func (e *Environments) Use(id string) (*Environment, error) {
 	env, exists := e.envs[id]
 	if !exists {
-		return nil, errors.New("environment not found")
+		return nil, fmt.Errorf("environment %s not found", id)
 	}
 	return env, nil
 }
@@ -110,12 +109,12 @@ type EnvValueProvider interface {
 // envValueProviderLibraries is a map of environment value providers.
 var envValueProviderLibraries = map[string]EnvValueProvider{}
 
-// ValueProvider is a default environment value provider.
-type ValueProvider struct{}
+// EnvValueProviderFunc is a function type of environment value provider.
+type EnvValueProviderFunc func(key string) (string, error)
 
-// Get returns a value of the environment variable.
-func (p ValueProvider) Get(key string) (string, error) {
-	return key, nil
+// Get is a function type of environment value provider.
+func (f EnvValueProviderFunc) Get(key string) (string, error) {
+	return f(key)
 }
 
 // OsEnvValueProvider is a environment value provider that uses os.Getenv.
@@ -135,16 +134,24 @@ func (p OsEnvValueProvider) Get(key string) (string, error) {
 	return key, err
 }
 
-// RegisterEnvValueProvider registers a environment value provider.
+// RegisterEnvValueProvider registers an environment value provider.
 // The key is a name of the provider.
 // The value is a provider.
 // It allows to override the default provider.
 func RegisterEnvValueProvider(name string, provider EnvValueProvider) {
+	if len(name) == 0 {
+		panic("name is empty")
+	}
+	if provider == nil {
+		panic("juice: environment value provider is nil")
+	}
 	envValueProviderLibraries[name] = provider
 }
 
 // defaultEnvValueProvider is a default environment value provider.
-var defaultEnvValueProvider = &ValueProvider{}
+var defaultEnvValueProvider EnvValueProviderFunc = func(key string) (string, error) {
+	return key, nil
+}
 
 // GetEnvValueProvider returns a environment value provider.
 func GetEnvValueProvider(key string) EnvValueProvider {
