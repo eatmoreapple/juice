@@ -13,14 +13,14 @@ type ExecHandler func(ctx context.Context, query string, args ...any) (sql.Resul
 
 func sessionQueryHandler() QueryHandler {
 	return func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-		sess := SessionFromContext(ctx)
+		sess := FromContext(ctx)
 		return sess.QueryContext(ctx, query, args...)
 	}
 }
 
 func sessionExecHandler() ExecHandler {
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
-		sess := SessionFromContext(ctx)
+		sess := FromContext(ctx)
 		return sess.ExecContext(ctx, query, args...)
 	}
 }

@@ -23,8 +23,8 @@ func WithSession(ctx context.Context, session Session) context.Context {
 	return context.WithValue(ctx, sessionKey{}, session)
 }
 
-// SessionFromContext returns the session from the context.
-func SessionFromContext(ctx context.Context) Session {
+// FromContext returns the session from the context.
+func FromContext(ctx context.Context) Session {
 	session, _ := ctx.Value(sessionKey{}).(Session)
 	return session
 }
