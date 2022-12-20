@@ -42,7 +42,7 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
-	ctx = WithSession(ctx, e.session)
+	ctx = SessionWithContext(ctx, e.session)
 	return middlewares.QueryContext(stmt, sessionQueryHandler())(ctx, query, args...)
 }
 
@@ -59,7 +59,7 @@ func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Resu
 	}
 	middlewares := e.engine.middlewares
 	stmt := e.statement
-	ctx = WithSession(ctx, e.session)
+	ctx = SessionWithContext(ctx, e.session)
 	return middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
 }
 
