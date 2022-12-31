@@ -8,29 +8,10 @@ import (
 	"strings"
 )
 
-func underlineToCamel(text string) string {
-	var result = make([]byte, 0, len(text))
-	for i := 0; i < len(text); i++ {
-		if i == 0 {
-			result = append(result, text[i]-32)
-			continue
-		}
-		if text[i] == '_' {
-			i++
-			if i < len(text) {
-				result = append(result, text[i]-32)
-			}
-		} else {
-			result = append(result, text[i])
-		}
-	}
-	return string(result[:])
-}
-
 func runtimeFuncName(rv reflect.Value) string {
 	// one id from function name
 	name := runtime.FuncForPC(rv.Pointer()).Name()
-	replacer := strings.NewReplacer("/", ".", "*", "")
+	replacer := strings.NewReplacer("/", ".", "*", "", "(", "", ")", "")
 	name = replacer.Replace(name)
 	return strings.TrimSuffix(name, "-fm")
 }

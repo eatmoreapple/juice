@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <environments default="prod">
+        <environment id="prod">
+            <dataSource>user:pass@tcp(localhost:3306)/database</dataSource>
+            <driver>${driver}</driver>
+        </environment>
+    </environments>
+
+
+    <mappers>
+        <mapper namespace="main.UserRepository">
+            <select id="GetUserByID" resultMap="User">
+                select * from user limit 1
+            </select>
+            <insert id="CreateUser">
+                insert into user (name, age) values (#{Name}, #{Age.Age})
+            </insert>
+        </mapper>
+    </mappers>
+</configuration>

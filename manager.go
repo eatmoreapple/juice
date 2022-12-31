@@ -1,6 +1,7 @@
 package juice
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -89,4 +90,16 @@ func (t *txManager) Rollback() error {
 		return t.err
 	}
 	return t.tx.Rollback()
+}
+
+type managerKey struct{}
+
+// ManagerFromContext returns the Manager from the context.
+func ManagerFromContext(ctx context.Context) Manager {
+	return ctx.Value(managerKey{}).(Manager)
+}
+
+// ContextWithManager returns a new context with the given Manager.
+func ContextWithManager(ctx context.Context, manager Manager) context.Context {
+	return context.WithValue(ctx, managerKey{}, manager)
 }
