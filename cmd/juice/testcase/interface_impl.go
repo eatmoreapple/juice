@@ -12,15 +12,15 @@ import (
 type InterfaceImpl struct{}
 
 // GetUserByID 根据用户id查找用户
-func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) (*User, error) {
+func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) ([]*user.User, error) {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
-	executor := juice.NewGenericManager[*User](manager).Object(iface.GetUserByID)
+	executor := juice.NewGenericManager[[]*user.User](manager).Object(iface.GetUserByID)
 	return executor.QueryContext(ctx, id)
 }
 
 // CreateUser 创建用户
-func (i InterfaceImpl) CreateUser(ctx context.Context, u *user.User) error {
+func (i InterfaceImpl) CreateUser(ctx context.Context, u map[string]*user.User) error {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
 	executor := manager.Object(iface.CreateUser)

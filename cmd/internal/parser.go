@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"go/token"
 	"os"
 	"strings"
-	"unicode"
 
 	"github.com/eatmoreapple/juice"
 )
@@ -160,36 +158,35 @@ func parseValue(value *Value, file *ast.File, field *ast.Field) {
 		value.Type = t.Name
 	case *ast.SelectorExpr:
 		value.Type = t.Sel.Name
-		alias := t.X.(*ast.Ident).Name
-		for _, spec := range file.Imports {
-			pkgName := strings.Trim(spec.Path.Value, `"`)
-			if spec.Name != nil && spec.Name.Name == alias {
-				value.Import.Path = pkgName
-				value.Import.Name = alias
-				break
-			}
-			pkg := strings.Split(pkgName, "/")
-			if pkg[len(pkg)-1] == alias {
-				value.Import.Path = pkgName
-				value.Import.Name = alias
-				break
-			}
-		}
+		parseImport(value, file, t.X.(*ast.Ident).Name)
+	case *ast.ArrayType:
+		value.IsSlice = true
+		parseValue(value, file, &ast.Field{Type: t.Elt})
 	case *ast.StarExpr:
 		value.IsPointer = true
 		parseValue(value, file, &ast.Field{Type: t.X})
+	case *ast.MapType:
+		value.IsMap = true
+		if t.Key.(*ast.Ident).Name != "string" {
+			panic("map key must be string")
+		}
+		parseValue(value, file, &ast.Field{Type: t.Value})
 	}
 }
 
-func camelToUnderline(name string) string {
-	var (
-		buf bytes.Buffer
-	)
-	for i, c := range name {
-		if i > 0 && unicode.IsUpper(c) {
-			buf.WriteRune('_')
+func parseImport(value *Value, file *ast.File, alias string) {
+	for _, spec := range file.Imports {
+		pkgName := strings.Trim(spec.Path.Value, `"`)
+		if spec.Name != nil && spec.Name.Name == alias {
+			value.Import.Path = pkgName
+			value.Import.Name = alias
+			break
 		}
-		buf.WriteRune(unicode.ToLower(c))
+		pkg := strings.Split(pkgName, "/")
+		if pkg[len(pkg)-1] == alias {
+			value.Import.Path = pkgName
+			value.Import.Name = alias
+			break
+		}
 	}
-	return buf.String()
 }
