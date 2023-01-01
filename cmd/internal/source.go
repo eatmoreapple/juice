@@ -5,6 +5,9 @@ import (
 )
 
 func formatCode(code string) string {
-	result, _ := format.Source([]byte(code))
+	result, err := format.Source([]byte(code))
+	if err != nil {
+		panic(err)
+	}
 	return string(result)
 }

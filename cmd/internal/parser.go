@@ -114,6 +114,17 @@ func inspect(node ast.Node, input, output string) (*Implement, error) {
 						},
 						Type: input,
 					}
+
+					if method.Doc != nil {
+						var builder strings.Builder
+						for _, doc := range method.Doc.List {
+							builder.WriteString(doc.Text)
+							builder.WriteString("\n")
+						}
+						text := builder.String()
+						function.Doc = &text
+					}
+
 					impl.Methods = append(impl.Methods, function)
 				}
 				found = true
