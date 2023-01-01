@@ -20,10 +20,15 @@ type Function struct {
 	Body *string
 	// Type is a type of function.
 	Type string
+	// Doc method document
+	Doc *string
 }
 
 func (f Function) String() string {
 	var builder strings.Builder
+	if f.Doc != nil {
+		builder.WriteString(*f.Doc)
+	}
 	builder.WriteString("func ")
 	if f.Receiver != nil {
 		builder.WriteString(fmt.Sprintf("(%s) ", f.Receiver))
