@@ -171,6 +171,8 @@ func parseValue(value *Value, file *ast.File, field *ast.Field) {
 			panic("map key must be string")
 		}
 		parseValue(value, file, &ast.Field{Type: t.Value})
+	case *ast.InterfaceType:
+		value.Type = "interface{}"
 	}
 }
 

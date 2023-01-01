@@ -45,7 +45,23 @@ func (v Value) TypeName() string {
 			name = v.Import.Name + "." + v.Type
 		}
 	} else {
-		name = v.Type
+		if v.IsSlice {
+			if v.IsPointer {
+				name = fmt.Sprintf("[]*%s", v.Type)
+			} else {
+				name = fmt.Sprintf("[]%s", v.Type)
+			}
+			return name
+		} else if v.IsMap {
+			if v.IsPointer {
+				name = fmt.Sprintf("map[string]*%s", v.Type)
+			} else {
+				name = fmt.Sprintf("map[string]%s", v.Type)
+			}
+			return name
+		} else {
+			name = v.Type
+		}
 	}
 	if v.IsPointer {
 		return "*" + name
