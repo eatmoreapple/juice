@@ -119,7 +119,7 @@ func (f *FunctionBodyMaker) makeWrite() error {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
-	builder.WriteString(fmt.Sprintf("\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)", f.function.Results[0].TypeName(), f.function.Name))
+	builder.WriteString(fmt.Sprintf("\n\texecutor := manager.Object(iface.%s)", f.function.Name))
 	var query = "nil"
 	if len(f.function.Args) == 2 {
 		query = f.function.Args[1].Name

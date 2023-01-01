@@ -2,6 +2,7 @@ package testcase
 
 import (
 	"context"
+	"database/sql"
 	"os/user"
 )
 
@@ -9,6 +10,7 @@ import (
 type Interface interface {
 	GetUserByID(ctx context.Context, id int64) (*User, error)
 	CreateUser(ctx context.Context, u *user.User) error
+	DeleteUserByID(ctx context.Context, id int64) (sql.Result, error)
 }
 
 type User struct{}
