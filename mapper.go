@@ -92,7 +92,7 @@ type Mappers struct {
 func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
 	stmt, exists := m.statements[id]
 	if !exists {
-		return nil, errors.New("statement not found")
+		return nil, fmt.Errorf("statement %s not found", id)
 	}
 	return stmt, nil
 }
