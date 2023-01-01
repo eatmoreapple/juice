@@ -20,12 +20,30 @@ type Value struct {
 	IsStruct bool
 	// IsMap is a flag of map.
 	IsMap bool
+	// IsSlice is a flag of slice.
+	IsSlice bool
 }
 
 func (v Value) TypeName() string {
 	var name string
 	if v.Import.Name != "" {
-		name = v.Import.Name + "." + v.Type
+		if v.IsSlice {
+			if v.IsPointer {
+				name = fmt.Sprintf("[]*%s.%s", v.Import.Name, v.Type)
+			} else {
+				name = fmt.Sprintf("[]%s.%s", v.Import.Name, v.Type)
+			}
+			return name
+		} else if v.IsMap {
+			if v.IsPointer {
+				name = fmt.Sprintf("map[string]*%s.%s", v.Import.Name, v.Type)
+			} else {
+				name = fmt.Sprintf("map[string]%s.%s", v.Import.Name, v.Type)
+			}
+			return name
+		} else {
+			name = v.Import.Name + "." + v.Type
+		}
 	} else {
 		name = v.Type
 	}
