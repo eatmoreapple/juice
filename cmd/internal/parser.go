@@ -43,9 +43,6 @@ func (p Parser) Parse() (*Generator, error) {
 	if p.impl == "" {
 		p.impl = p.typeName + "Impl"
 	}
-	if p.output == "" {
-		p.output = camelToUnderline(p.impl) + ".go"
-	}
 	return p.parse()
 }
 
