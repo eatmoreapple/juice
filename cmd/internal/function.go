@@ -48,7 +48,7 @@ func (f Function) String() string {
 	return formatCode(builder.String())
 }
 
-type Functions []Function
+type Functions []*Function
 
 type FunctionBodyMaker struct {
 	statement *juice.Statement
@@ -56,13 +56,33 @@ type FunctionBodyMaker struct {
 }
 
 func (f *FunctionBodyMaker) Make() error {
+	var bodyMaker functionBodyMaker
 	if f.statement.ForRead() {
-		return f.makeRead()
+		bodyMaker = &readFuncBodyMaker{function: f.function, statement: f.statement}
+	} else {
+		bodyMaker = &writeFuncBodyMaker{function: f.function, statement: f.statement}
 	}
-	return f.makeWrite()
+	return bodyMaker.Make()
 }
 
-func (f *FunctionBodyMaker) makeRead() error {
+type functionBodyMaker interface {
+	Make() error
+}
+
+type readFuncBodyMaker struct {
+	statement *juice.Statement
+	function  *Function
+}
+
+func (f *readFuncBodyMaker) Make() error {
+	if err := f.check(); err != nil {
+		return err
+	}
+	f.build()
+	return nil
+}
+
+func (f *readFuncBodyMaker) check() error {
 	if len(f.function.Results) != 2 {
 		return fmt.Errorf("%s: must have two results", f.function.Name)
 	}
@@ -78,6 +98,10 @@ func (f *FunctionBodyMaker) makeRead() error {
 	if len(f.function.Args) > 2 {
 		return fmt.Errorf("%s: must have at most two arguments", f.function.Name)
 	}
+	return nil
+}
+
+func (f *readFuncBodyMaker) build() {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
@@ -89,10 +113,22 @@ func (f *FunctionBodyMaker) makeRead() error {
 	builder.WriteString(fmt.Sprintf("\n\treturn executor.QueryContext(%s, %s)", f.function.Args[0].Name, query))
 	body := formatCode(builder.String())
 	f.function.Body = &body
+}
+
+type writeFuncBodyMaker struct {
+	statement *juice.Statement
+	function  *Function
+}
+
+func (f *writeFuncBodyMaker) Make() error {
+	if err := f.check(); err != nil {
+		return err
+	}
+	f.build()
 	return nil
 }
 
-func (f *FunctionBodyMaker) makeWrite() error {
+func (f *writeFuncBodyMaker) check() error {
 	if len(f.function.Args) == 0 {
 		return fmt.Errorf("%s: must have at least one argument", f.function.Name)
 	}
@@ -121,6 +157,10 @@ func (f *FunctionBodyMaker) makeWrite() error {
 	if len(f.function.Results) > 2 {
 		return fmt.Errorf("%s: must have at most two results", f.function.Name)
 	}
+	return nil
+}
+
+func (f *writeFuncBodyMaker) build() {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
@@ -137,5 +177,4 @@ func (f *FunctionBodyMaker) makeWrite() error {
 	}
 	body := formatCode(builder.String())
 	f.function.Body = &body
-	return nil
 }

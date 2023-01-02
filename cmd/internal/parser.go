@@ -102,7 +102,7 @@ func inspect(node ast.Node, input, output string) (*Implement, error) {
 
 					returnValues := parseValues(f, method.Type.(*ast.FuncType).Results.List)
 
-					function := Function{
+					function := &Function{
 						Name:    methodName,
 						Args:    argsValue,
 						Results: returnValues,
