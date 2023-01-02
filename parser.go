@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -982,6 +983,9 @@ func NewXMLConfiguration(filename string) (*Configuration, error) {
 
 // NewXMLConfigurationWithFS creates a new Configuration from an XML file.
 func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error) {
+	baseDir := filepath.Dir(filename)
+	fs = fsWrapper{fs, baseDir}
+	filename = filepath.Base(filename)
 	file, err := fs.Open(filename)
 	if err != nil {
 		return nil, err
