@@ -25,6 +25,10 @@ func (g *Generator) Generate() error {
 		if err != nil {
 			return err
 		}
+		if statement.Attribute("gen") == "false" || statement.Attribute("generate") == "false" { // skip
+			method.Body = nil
+			continue
+		}
 		maker := FunctionBodyMaker{statement: statement, function: method}
 		if err := maker.Make(); err != nil {
 			return err
