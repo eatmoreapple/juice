@@ -114,10 +114,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	
-	"github.com/eatmoreapple/juice"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 //go:generate juice --type UserRepository --config config.xml --namespace main.UserRepository --output interface_impl.go
