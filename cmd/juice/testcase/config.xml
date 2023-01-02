@@ -9,16 +9,6 @@
 
 
     <mappers>
-        <mapper namespace="main.UserRepository">
-            <select id="GetUserByID" resultMap="User">
-                select * from user limit 1
-            </select>
-            <insert id="CreateUser">
-                insert into user (name, age) values (#{Name}, #{Age.Age})
-            </insert>
-            <delete id="DeleteUserByID">
-                delete from user where id = #{id}
-            </delete>
-        </mapper>
+        <mapper resource="user_mapper.xml"/>
     </mappers>
 </configuration>
