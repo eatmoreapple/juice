@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS user (
 `
 
 func main() {
-	cfg, err := juice.NewXMLConfiguration("/Users/eatmoreapple/GolandProjects/juice/.example/config.xml")
+	cfg, err := juice.NewXMLConfiguration("config.xml")
 	if err != nil {
 		panic(err)
 	}
