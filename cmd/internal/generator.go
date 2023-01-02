@@ -19,17 +19,16 @@ type Generator struct {
 }
 
 func (g *Generator) Generate() error {
-	for i, method := range g.impl.Methods {
+	for _, method := range g.impl.Methods {
 		key := fmt.Sprintf("%s.%s", g.namespace, method.Name)
 		statement, err := g.cfg.Mappers.GetStatementByID(key)
 		if err != nil {
 			return err
 		}
-		maker := FunctionBodyMaker{statement: statement, function: &method}
+		maker := FunctionBodyMaker{statement: statement, function: method}
 		if err := maker.Make(); err != nil {
 			return err
 		}
-		g.impl.Methods[i] = *maker.function
 	}
 	g.impl.ExtraImports = append(g.impl.ExtraImports, Import{Path: "github.com/eatmoreapple/juice", Name: "juice"})
 	builder := strings.Builder{}
