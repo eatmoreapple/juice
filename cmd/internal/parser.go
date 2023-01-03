@@ -7,7 +7,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/eatmoreapple/juice"
@@ -19,12 +19,10 @@ type Parser struct {
 	cfg       string
 	path      string
 	namespace string
-	args      string
 	output    string
 }
 
 func (p Parser) Parse() (*Generator, error) {
-	p.args = strings.Join(os.Args[:], " ")
 	flag.StringVar(&p.typeName, "type", "", "typeName type name")
 	flag.StringVar(&p.impl, "impl", "", "implementation name")
 	flag.StringVar(&p.cfg, "config", "", "config path")
@@ -40,6 +38,11 @@ func (p Parser) Parse() (*Generator, error) {
 	}
 	if p.impl == "" {
 		p.impl = p.typeName + "Impl"
+	}
+	if p.output != "" {
+		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
+			return nil, errors.New("output path only support file name")
+		}
 	}
 	return p.parse()
 }
@@ -64,7 +67,6 @@ func (p Parser) parse() (*Generator, error) {
 					cfg:       cfg,
 					impl:      impl,
 					namespace: p.namespace,
-					args:      p.args,
 					output:    p.output,
 				}, nil
 			}
