@@ -865,8 +865,8 @@ func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, e
 	return otherwiseNode, nil
 }
 
-func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMap, error) {
-	resultMap := &resultMap{}
+func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapTag, error) {
+	resultMap := &resultMapTag{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
 			resultMap.id = attr.Value
@@ -899,6 +899,12 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 					return nil, err
 				}
 				resultMap.associations = append(resultMap.associations, association)
+			case "collection":
+				collection, err := p.parseCollection(decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				resultMap.collectionGroup = append(resultMap.collectionGroup, collection)
 			}
 		case xml.EndElement:
 			if token.Name.Local == "resultMap" {
@@ -970,6 +976,53 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 		}
 	}
 	return association, nil
+}
+
+func (p XMLParser) parseCollection(decoder *xml.Decoder, token xml.StartElement) (*collection, error) {
+	collection := &collection{}
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "property":
+			collection.property = attr.Value
+		}
+	}
+	if collection.property == "" {
+		return nil, errors.New("collection node requires property attribute")
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "result":
+				result, err := p.parseResult(token)
+				if err != nil {
+					return nil, err
+				}
+				collection.resultGroup = append(collection.resultGroup, result)
+			case "association":
+				association, err := p.parseAssociation(decoder, token)
+				if err != nil {
+					return nil, err
+				}
+				collection.associationGroup = append(collection.associationGroup, association)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "collection" {
+				if err := collection.init(); err != nil {
+					return nil, err
+				}
+				return collection, nil
+			}
+		}
+	}
+	return collection, nil
 }
 
 func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
