@@ -865,8 +865,8 @@ func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, e
 	return otherwiseNode, nil
 }
 
-func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapTag, error) {
-	resultMap := &resultMapTag{}
+func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapNode, error) {
+	resultMap := &resultMapNode{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
 			resultMap.id = attr.Value
@@ -887,6 +887,12 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 		switch token := token.(type) {
 		case xml.StartElement:
 			switch token.Name.Local {
+			case "id":
+				pk, err := p.parseResult(token)
+				if err != nil {
+					return nil, err
+				}
+				resultMap.pk = pk
 			case "result":
 				result, err := p.parseResult(token)
 				if err != nil {

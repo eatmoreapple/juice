@@ -15,7 +15,7 @@ type Mapper struct {
 	statements map[string]*Statement
 	sqlNodes   map[string]*SQLNode
 	attrs      map[string]string
-	resultMaps map[string]*resultMapTag
+	resultMaps map[string]*resultMapNode
 }
 
 // Namespace returns the namespace of the mapper.
@@ -46,9 +46,9 @@ func (m *Mapper) setSqlNode(node *SQLNode) error {
 	return nil
 }
 
-func (m *Mapper) setResultMap(node *resultMapTag) error {
+func (m *Mapper) setResultMap(node *resultMapNode) error {
 	if m.resultMaps == nil {
-		m.resultMaps = make(map[string]*resultMapTag)
+		m.resultMaps = make(map[string]*resultMapNode)
 	}
 	if _, exists := m.resultMaps[node.ID()]; exists {
 		return fmt.Errorf("result map %s already exists", node.ID())
