@@ -271,7 +271,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 							return fmt.Errorf("field %s is not valid", name)
 						}
 						// append the index of field to indexes
-						indexes[column] = append(indexes[column], field.Index[0])
+						indexes[column] = append(indexes[column], field.Index...)
 					}
 				} else {
 					// if we don't have a mapping for this column, set it to unfounded Index
@@ -359,6 +359,12 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 			if cs, ok := indexes[column]; ok {
 				for _, i := range cs[start:] {
 					field = field.Field(i)
+					if field.Kind() == reflect.Ptr && start == 0 {
+						if field.IsNil() {
+							field.Set(reflect.New(field.Type().Elem()))
+						}
+						field = field.Elem()
+					}
 				}
 				dest[index] = field.Addr().Interface()
 			}
@@ -507,7 +513,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 							return fmt.Errorf("field %s is not valid", name)
 						}
 						// append the index of field to indexes
-						indexes[column] = append(indexes[column], field.Index[0])
+						indexes[column] = append(indexes[column], field.Index...)
 					}
 				} else {
 					// if we don't have a mapping for this column, set it to unfounded Index
@@ -596,6 +602,12 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			if cs, ok := indexes[column]; ok {
 				for _, i := range cs[start:] {
 					field = field.Field(i)
+					if field.Kind() == reflect.Ptr && start == 0 {
+						if field.IsNil() {
+							field.Set(reflect.New(field.Type().Elem()))
+						}
+						field = field.Elem()
+					}
 				}
 				dest[index] = field.Addr().Interface()
 			}
