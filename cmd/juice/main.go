@@ -3,17 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/eatmoreapple/juice/cmd/internal"
+	"github.com/eatmoreapple/juice/cmd/juice/cmd"
 )
 
 func main() {
-	parser := internal.Parser{}
-	impl, err := parser.Parse()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if err := impl.Generate(); err != nil {
+	if err := cmd.Do(); err != nil {
 		fmt.Println(err)
 	}
 }
