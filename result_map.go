@@ -217,6 +217,30 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 		return errors.New("slice element must be a struct")
 	}
 
+	// check collection is valid
+	if r.HasCollection() {
+		// does not found id tag for current tag
+		if !r.HasPk() {
+			return errors.New("collection must have a primary key")
+		}
+		for _, coll := range r.collectionGroup {
+			field, ok := el.FieldByName(coll.property)
+			if !ok {
+				return fmt.Errorf("collection property %s not found", coll.property)
+			}
+			if field.Type.Kind() != reflect.Slice {
+				return errors.New("collection field must be a slice")
+			}
+			// get slice element type
+			el := kindIndirect(field.Type.Elem())
+
+			// collection element must be a struct
+			if el.Kind() != reflect.Struct {
+				return errors.New("collection field must be a slice of struct")
+			}
+		}
+	}
+
 	// result slice of this entity
 	values := reflect.MakeSlice(rv.Type(), 0, 0)
 
@@ -359,11 +383,10 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 			if cs, ok := indexes[column]; ok {
 				for _, i := range cs[start:] {
 					field = field.Field(i)
-					if field.Kind() == reflect.Ptr && start == 0 {
-						if field.IsNil() {
-							field.Set(reflect.New(field.Type().Elem()))
-						}
-						field = field.Elem()
+					// does not support pointer
+					// I don't want to support pointer, it will make the code more complex and slower
+					if field.Kind() == reflect.Ptr {
+						return errors.New("struct field must not be a pointer")
 					}
 				}
 				dest[index] = field.Addr().Interface()
@@ -389,7 +412,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 
 		// here we have got all the fields of element, but we still need to set the value of collection
 		var isNew = true
-		if r.HasPk() && r.HasCollection() {
+		if r.HasCollection() {
 
 			// start a loop to find the element in collection
 			// if the primary key of loop element is equal to the primary key of current, we have found it
@@ -433,6 +456,10 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 
 	// check collection is valid
 	if r.HasCollection() {
+		// does not found id tag for current tag
+		if !r.HasPk() {
+			return errors.New("collection must have a primary key")
+		}
 		for _, coll := range r.collectionGroup {
 			field := rv.FieldByName(coll.property)
 
@@ -602,11 +629,10 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			if cs, ok := indexes[column]; ok {
 				for _, i := range cs[start:] {
 					field = field.Field(i)
-					if field.Kind() == reflect.Ptr && start == 0 {
-						if field.IsNil() {
-							field.Set(reflect.New(field.Type().Elem()))
-						}
-						field = field.Elem()
+					// does not support pointer
+					// it will make the code more complex and slower
+					if field.Kind() == reflect.Ptr {
+						return errors.New("struct field must not be a pointer")
 					}
 				}
 				dest[index] = field.Addr().Interface()
@@ -636,7 +662,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 		}
 
 		// try to set collection
-		if r.HasPk() && r.HasCollection() {
+		if r.HasCollection() {
 			currentPk := elValue.FieldByName(r.pk.property).Interface()
 			// if the record is correct?
 			if pk != currentPk {
