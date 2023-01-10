@@ -53,5 +53,13 @@ type rowsBinder struct {
 // Scan implement Binder.Scan
 func (r *rowsBinder) Scan(v any) error {
 	defer func() { _ = r.rows.Close() }()
+	if scanner, ok := v.(RowsScanner); ok {
+		return scanner.ScanRows(r.rows)
+	}
 	return BindWithResultMap(r.rows, v, r.mapper)
+}
+
+// RowsScanner scan sql.Rows to dest.
+type RowsScanner interface {
+	ScanRows(rows *sql.Rows) error
 }
