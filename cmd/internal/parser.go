@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,14 +23,21 @@ type Parser struct {
 	output    string
 }
 
-func (p Parser) Parse() (*Generator, error) {
-	flag.StringVar(&p.typeName, "type", "", "typeName type name")
-	flag.StringVar(&p.impl, "impl", "", "implementation name")
-	flag.StringVar(&p.cfg, "config", "", "config path")
-	flag.StringVar(&p.path, "path", "./", "path")
-	flag.StringVar(&p.namespace, "namespace", "", "namespace")
-	flag.StringVar(&p.output, "output", "", "output path")
-	flag.Parse()
+func (p *Parser) parseCommand() error {
+	cmd := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
+	cmd.StringVar(&p.typeName, "type", "", "typeName type name")
+	cmd.StringVar(&p.impl, "impl", "", "implementation name")
+	cmd.StringVar(&p.cfg, "config", "", "config path")
+	cmd.StringVar(&p.path, "path", "./", "path")
+	cmd.StringVar(&p.namespace, "namespace", "", "namespace")
+	cmd.StringVar(&p.output, "output", "", "output path")
+	return cmd.Parse(os.Args[2:])
+}
+
+func (p *Parser) Parse() (*Generator, error) {
+	if err := p.parseCommand(); err != nil {
+		return nil, err
+	}
 	if p.typeName == "" {
 		return nil, errors.New("typeName type name is required")
 	}
@@ -47,7 +55,7 @@ func (p Parser) Parse() (*Generator, error) {
 	return p.parse()
 }
 
-func (p Parser) parse() (*Generator, error) {
+func (p *Parser) parse() (*Generator, error) {
 	cfg, err := juice.NewXMLConfiguration(p.cfg)
 	if err != nil {
 		return nil, err
