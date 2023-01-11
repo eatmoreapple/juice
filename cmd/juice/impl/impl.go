@@ -1,8 +1,8 @@
 package impl
 
 import (
-	"github.com/eatmoreapple/juice/cmd/juice/iface"
 	"github.com/eatmoreapple/juice/cmd/juice/impl/internal"
+	"github.com/eatmoreapple/juice/cmd/juice/internal/cmd"
 )
 
 type Generate struct{}
@@ -21,5 +21,5 @@ func (i *Generate) Do() error {
 }
 
 func init() {
-	_ = iface.Register(&Generate{})
+	_ = cmd.Register(&Generate{})
 }

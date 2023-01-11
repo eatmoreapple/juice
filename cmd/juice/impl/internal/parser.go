@@ -93,6 +93,9 @@ func inspect(node ast.Node, input, output string) (*Implement, error) {
 	impl.Interface = input
 	f := node.(*ast.File)
 	ast.Inspect(node, func(n ast.Node) bool {
+		if found {
+			return false
+		}
 		switch x := n.(type) {
 		case *ast.TypeSpec:
 			if x.Name.Name == input {
@@ -136,6 +139,7 @@ func inspect(node ast.Node, input, output string) (*Implement, error) {
 					impl.Methods = append(impl.Methods, function)
 				}
 				found = true
+				return false
 			}
 		}
 		return true

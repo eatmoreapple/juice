@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
-	"github.com/eatmoreapple/juice/cmd/juice/iface"
 	_ "github.com/eatmoreapple/juice/cmd/juice/impl"
+	"github.com/eatmoreapple/juice/cmd/juice/internal/cmd"
 )
 
 func main() {
-	if err := iface.Do(); err != nil {
-		fmt.Println(err)
+	if err := cmd.Do(); err != nil {
+		log.Println(err)
 	}
 }

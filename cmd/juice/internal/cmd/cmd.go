@@ -1,4 +1,4 @@
-package iface
+package cmd
 
 import (
 	"errors"
@@ -14,10 +14,10 @@ var cmdLibraries = make(map[string]Command)
 
 func Register(cmd Command) error {
 	if cmd == nil {
-		return errors.New("iface is nil")
+		return errors.New("cmd is nil")
 	}
 	if _, ok := cmdLibraries[cmd.Name()]; ok {
-		return errors.New("iface: duplicate command " + cmd.Name())
+		return errors.New("cmd: duplicate command " + cmd.Name())
 	}
 	cmdLibraries[cmd.Name()] = cmd
 	return nil
@@ -25,11 +25,11 @@ func Register(cmd Command) error {
 
 func Do() error {
 	if len(os.Args) < 2 {
-		return errors.New("iface: command is required")
+		return errors.New("cmd: command is required")
 	}
 	name := os.Args[1]
 	if cmd, ok := cmdLibraries[name]; ok {
 		return cmd.Do()
 	}
-	return errors.New("iface: unknown command " + name)
+	return errors.New("cmd: unknown command " + name)
 }
