@@ -50,8 +50,8 @@ type rowsBinder struct {
 	mapper ResultMap
 }
 
-// Scan implement Binder.Bind
-func (r *rowsBinder) Scan(v any) error {
+// Bind implement Binder.Bind
+func (r *rowsBinder) Bind(v any) error {
 	defer func() { _ = r.rows.Close() }()
 	if scanner, ok := v.(RowsScanner); ok {
 		return scanner.ScanRows(r.rows)

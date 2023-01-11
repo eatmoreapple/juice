@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/eatmoreapple/juice/cmd/juice/cmd"
+	"github.com/eatmoreapple/juice/cmd/juice/iface"
+	_ "github.com/eatmoreapple/juice/cmd/juice/impl"
 )
 
 func main() {
-	if err := cmd.Do(); err != nil {
+	if err := iface.Do(); err != nil {
 		fmt.Println(err)
 	}
 }
