@@ -219,10 +219,6 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 
 	// check collection is valid
 	if r.HasCollection() {
-		// does not found id tag for current tag
-		if !r.HasPk() {
-			return errors.New("collection must have a primary key")
-		}
 		for _, coll := range r.collectionGroup {
 			field, ok := el.FieldByName(coll.property)
 			if !ok {
@@ -456,10 +452,6 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 
 	// check collection is valid
 	if r.HasCollection() {
-		// does not found id tag for current tag
-		if !r.HasPk() {
-			return errors.New("collection must have a primary key")
-		}
 		for _, coll := range r.collectionGroup {
 			field := rv.FieldByName(coll.property)
 
