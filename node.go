@@ -438,6 +438,10 @@ func (o OtherwiseNode) Accept(translator driver.Translator, p Param) (query stri
 	return builder.String(), args, nil
 }
 
+type primaryResult interface {
+	Pk() *result
+}
+
 // resultMapNode implements ResultMapper interface
 type resultMapNode struct {
 	id              string
@@ -490,6 +494,12 @@ func (r *resultMapNode) init() error {
 		}
 		r.mapping[r.pk.column] = []string{r.pk.property}
 	}
+
+	// check if collectionGroup is valid
+	if r.HasCollection() && !r.HasPk() {
+		return fmt.Errorf("result map %s has collection but no primary key", r.ID())
+	}
+
 	// release memory
 	r.results = nil
 	r.associations = nil
@@ -498,6 +508,10 @@ func (r *resultMapNode) init() error {
 
 func (r *resultMapNode) HasPk() bool {
 	return r.pk != nil
+}
+
+func (r *resultMapNode) Pk() *result {
+	return r.pk
 }
 
 func (r *resultMapNode) HasCollection() bool {
@@ -589,9 +603,12 @@ func (a associationGroup) mapping() (map[string][]string, error) {
 
 type collection struct {
 	// property is the name of the property to map to.
+	parent           primaryResult
 	property         string
+	id               *result
 	resultGroup      resultGroup
 	associationGroup associationGroup
+	collectionGroup  collectionGroup
 	mapping          map[string][]string
 }
 
@@ -622,7 +639,23 @@ func (c *collection) init() error {
 			c.mapping[k] = append(c.mapping[k], append([]string{c.property}, v...)...)
 		}
 	}
+
+	if c.HasCollection() && !c.HasPk() {
+		return fmt.Errorf("collection %s has collection but no primary key", c.property)
+	}
 	return nil
+}
+
+func (c *collection) Pk() *result {
+	return c.id
+}
+
+func (c *collection) HasPk() bool {
+	return c.Pk() != nil
+}
+
+func (c *collection) HasCollection() bool {
+	return len(c.collectionGroup) > 0
 }
 
 type collectionGroup []*collection
