@@ -1018,12 +1018,6 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 					return nil, err
 				}
 				coll.associationGroup = append(coll.associationGroup, association)
-			case "collection":
-				newColl, err := p.parseCollection(coll, decoder, token)
-				if err != nil {
-					return nil, err
-				}
-				coll.collectionGroup = append(coll.collectionGroup, newColl)
 			}
 		case xml.EndElement:
 			coll.parent = parent

@@ -459,20 +459,14 @@ func (r *resultMapNode) ID() string {
 
 // init initializes resultMapNode
 func (r *resultMapNode) init() error {
-	r.mapping = make(map[string][]string)
-
 	// add results to mapping
 	m, err := r.results.mapping()
 	if err != nil {
 		return err
 	}
 
-	// check if there is any duplicate column
-	for k, v := range m {
-		if _, ok := r.mapping[k]; ok {
-			return fmt.Errorf("field mapping %s is unbiguous", k)
-		}
-		r.mapping[k] = append(r.mapping[k], v...)
+	if err = r.updateMapping(m); err != nil {
+		return err
 	}
 
 	// add associations to mapping
@@ -481,18 +475,14 @@ func (r *resultMapNode) init() error {
 		return err
 	}
 
-	// check if there is any duplicate column
-	for k, v := range m {
-		if _, ok := r.mapping[k]; ok {
-			return fmt.Errorf("field mapping %s is unbiguous", k)
-		}
-		r.mapping[k] = v
+	if err = r.updateMapping(m); err != nil {
+		return err
 	}
 	if r.HasPk() {
-		if _, ok := r.mapping[r.pk.column]; ok {
-			return fmt.Errorf("field mapping %s is unbiguous", r.pk.column)
+		m = map[string][]string{r.pk.column: {r.pk.property}}
+		if err = r.updateMapping(m); err != nil {
+			return err
 		}
-		r.mapping[r.pk.column] = []string{r.pk.property}
 	}
 
 	// check if collectionGroup is valid
@@ -503,6 +493,19 @@ func (r *resultMapNode) init() error {
 	// release memory
 	r.results = nil
 	r.associations = nil
+	return nil
+}
+
+func (r *resultMapNode) updateMapping(mp map[string][]string) error {
+	if r.mapping == nil {
+		r.mapping = make(map[string][]string)
+	}
+	for k, v := range mp {
+		if _, ok := r.mapping[k]; ok {
+			return fmt.Errorf("field mapping %s is unbiguous", k)
+		}
+		r.mapping[k] = v
+	}
 	return nil
 }
 
@@ -608,7 +611,6 @@ type collection struct {
 	id               *result
 	resultGroup      resultGroup
 	associationGroup associationGroup
-	collectionGroup  collectionGroup
 	mapping          map[string][]string
 }
 
@@ -640,9 +642,6 @@ func (c *collection) init() error {
 		}
 	}
 
-	if c.HasCollection() && !c.HasPk() {
-		return fmt.Errorf("collection %s has collection but no primary key", c.property)
-	}
 	return nil
 }
 
@@ -652,10 +651,6 @@ func (c *collection) Pk() *result {
 
 func (c *collection) HasPk() bool {
 	return c.Pk() != nil
-}
-
-func (c *collection) HasCollection() bool {
-	return len(c.collectionGroup) > 0
 }
 
 type collectionGroup []*collection
