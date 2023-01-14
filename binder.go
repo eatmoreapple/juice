@@ -52,9 +52,11 @@ type rowsBinder struct {
 
 // Bind implement Binder.Bind
 func (r *rowsBinder) Bind(v any) error {
-	defer func() { _ = r.rows.Close() }()
+	// NOTE: rows won't be closed when the function returns.
+	// It's the caller's responsibility to close rows.
 	if scanner, ok := v.(RowsScanner); ok {
 		return scanner.ScanRows(r.rows)
 	}
+	defer func() { _ = r.rows.Close() }()
 	return BindWithResultMap(r.rows, v, r.mapper)
 }
