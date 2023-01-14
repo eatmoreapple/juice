@@ -44,9 +44,6 @@ func (p *Parser) Parse() (*Generator, error) {
 	if p.namespace == "" {
 		return nil, errors.New("namespace is required")
 	}
-	if p.impl == "" {
-		p.impl = p.typeName + "Impl"
-	}
 	if p.output != "" {
 		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
 			return nil, errors.New("output path only support file name")
@@ -64,6 +61,16 @@ func (p *Parser) parse() (*Generator, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// get implementation name from config
+	if p.impl == "" {
+		implSuffix := cfg.Settings.Get("implSuffix")
+		if implSuffix == "" {
+			implSuffix = "Impl"
+		}
+		p.impl = p.typeName + implSuffix.String()
+	}
+
 	for _, pkg := range pkgs {
 		for _, f := range pkg.Files {
 			impl, err := inspect(f, p.typeName, p.impl)

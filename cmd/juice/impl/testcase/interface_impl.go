@@ -36,6 +36,7 @@ func (i InterfaceImpl) DeleteUserByID(ctx context.Context, id int64) (sql.Result
 	return executor.ExecContext(ctx, id)
 }
 
+// NewInterface returns a new Interface.
 func NewInterface() Interface {
 	return &InterfaceImpl{}
 }

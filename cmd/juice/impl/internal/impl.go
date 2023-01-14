@@ -56,7 +56,9 @@ func (i Implement) String() string {
 		}
 	}
 	builder.WriteString("\n\n")
-	builder.WriteString(i.constructor().String())
+	constructor := i.constructor()
+	builder.WriteString(fmt.Sprintf("// %s returns a new %s.\n", constructor.Name, i.Interface))
+	builder.WriteString(constructor.String())
 	return formatCode(builder.String())
 }
 
