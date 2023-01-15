@@ -11,7 +11,7 @@ type ResultMap interface {
 	ResultTo(rv reflect.Value, row *sql.Rows) error
 }
 
-// RowResultMap is a ResultMap that maps a row to a non-slice type.
+// RowResultMap is a ResultMap that maps a rowDestination to a non-slice type.
 type RowResultMap struct{}
 
 // ResultTo implements ResultMapper interface.
@@ -44,31 +44,19 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 		return err
 	}
 
-	if re.Kind() == reflect.Struct {
+	var cd ColumnDestination = &rowDestination{}
 
-		parser := tagParser{tag: "column", columns: columns, value: rv}
-
-		dest, err := parser.destPoint()
-		if err != nil {
-			return err
-		}
-
-		for _, dp := range dest {
-			if _, ok := dp.(*sql.RawBytes); ok {
-				return errors.New("sql: RawBytes isn't allowed on SQLRowScanner.One")
-			}
-		}
-		err = rows.Scan(dest...)
-	} else {
-		if len(columns) > 1 {
-			return errors.New("sql: too many columns in result")
-		}
-		err = rows.Scan(rv.Addr().Interface())
+	dest, err := cd.Destination(rv, columns)
+	if err != nil {
+		return err
 	}
-	return err
+	if err = rows.Scan(dest...); err != nil {
+		return err
+	}
+	return rows.Err()
 }
 
-// RowsResultMap is a ResultMap that maps a row to a slice type.
+// RowsResultMap is a ResultMap that maps a rowDestination to a slice type.
 type RowsResultMap struct{}
 
 // ResultTo implements ResultMapper interface.
@@ -100,82 +88,38 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	}
 
 	// if it's a struct, scan rows to struct
-	if el.Kind() == reflect.Struct {
+	// now, we start scan rows
+	for rows.Next() {
 
-		var checked bool
+		// make a new element of slice
+		rv := reflect.New(el)
 
-		var parser *tagParser
+		// get the Value of element
+		el := rv.Elem()
 
-		// now, we start scan rows
-		for rows.Next() {
+		// get the destination of element
+		var cd ColumnDestination = &rowDestination{}
 
-			// make a new element of slice
-			rv := reflect.New(el)
+		dest, err := cd.Destination(el, columns)
 
-			// get the Value of element
-			el := rv.Elem()
-
-			if parser == nil {
-				parser = &tagParser{tag: "column", columns: columns, value: el}
-			}
-
-			dest, err := parser.destPoint()
-
-			// check if dest has sql.RawBytes
-			if !checked {
-				for _, dp := range dest {
-					if _, ok := dp.(*sql.RawBytes); ok {
-						return errors.New("sql: RawBytes isn't allowed on Row.Scan")
-					}
-				}
-				checked = true
-			}
-
-			// scan rows to dest
-			if err = rows.Scan(dest...); err != nil {
-				return err
-			}
-
-			// has error, return it
-			if err = rows.Err(); err != nil {
-				return err
-			}
-
-			// append the element to result
-			if isPtr {
-				result = reflect.Append(result, rv)
-			} else {
-				result = reflect.Append(result, el)
-			}
+		if err != nil {
+			return err
 		}
-	} else {
-
-		if len(columns) > 1 {
-			return errors.New("sql: too many columns in result")
+		// scan rows to dest
+		if err = rows.Scan(dest...); err != nil {
+			return err
 		}
 
-		// if it's not a struct, scan rows to pointer of element type
-		for rows.Next() {
+		// has error, return it
+		if err = rows.Err(); err != nil {
+			return err
+		}
 
-			rv := reflect.New(el)
-
-			el := reflect.Indirect(rv)
-
-			// scan rows to pointer of element type
-			if err := rows.Scan(rv.Interface()); err != nil {
-				return err
-			}
-
-			if err := rows.Err(); err != nil {
-				return err
-			}
-
-			// append the element to result
-			if isPtr {
-				result = reflect.Append(result, rv)
-			} else {
-				result = reflect.Append(result, el)
-			}
+		// append the element to result
+		if isPtr {
+			result = reflect.Append(result, rv)
+		} else {
+			result = reflect.Append(result, el)
 		}
 	}
 
@@ -401,7 +345,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 			checked = true
 		}
 
-		// scan the row with dest
+		// scan the rowDestination with dest
 		if err := rows.Scan(dest...); err != nil {
 			return err
 		}
@@ -491,7 +435,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 
 		// not first time, but has more than one rows
 		if checked && !r.HasCollection() {
-			return errors.New("result has more than one row but no collection")
+			return errors.New("result has more than one rowDestination but no collection")
 		}
 
 		var elValue = rv
@@ -643,7 +587,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			checked = true
 		}
 
-		// scan the row with dest
+		// scan the rowDestination with dest
 		if err := rows.Scan(dest...); err != nil {
 			return err
 		}
@@ -658,7 +602,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			currentPk := elValue.FieldByName(r.pk.property).Interface()
 			// if the record is correct?
 			if pk != currentPk {
-				return errors.New("result has more than one row but no collection")
+				return errors.New("result has more than one rowDestination but no collection")
 			}
 			// set collection
 			for _, collection := range r.collectionGroup {
@@ -709,4 +653,87 @@ func (c collectionItemMapping) setCollection(rv reflect.Value) {
 		}
 		field.Set(reflect.Append(field, x))
 	}
+}
+
+// ColumnDestination is a column destination which can be used to scan a row.
+type ColumnDestination interface {
+	// Destination returns the destination for the given reflect value and column.
+	Destination(rv reflect.Value, column []string) ([]interface{}, error)
+}
+
+type rowDestination struct {
+	indexes []int
+	checked bool
+}
+
+// Destination returns the destination for the given reflect value and column.
+func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+	dest, err := s.destination(rv, columns)
+	if err != nil {
+		return nil, err
+	}
+	if !s.checked {
+		s.checked = true
+		if err = checkDestination(dest); err != nil {
+			return nil, err
+		}
+	}
+	return dest, nil
+}
+
+func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+	if rv.Kind() == reflect.Struct {
+		return s.destinationForStruct(rv, columns)
+	}
+	if len(columns) > 1 {
+		return nil, errors.New("sql: too many columns in result")
+	}
+	return []interface{}{rv.Addr().Interface()}, nil
+}
+
+func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string) ([]interface{}, error) {
+	if len(s.indexes) == 0 {
+		s.setIndexes(rv, columns)
+	}
+	dest := make([]interface{}, len(columns))
+	for i, index := range s.indexes {
+		if index == -1 {
+			dest[i] = new(any)
+		} else {
+			dest[i] = rv.Field(index).Addr().Interface()
+		}
+	}
+	return dest, nil
+}
+
+func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
+	tp := rv.Type()
+	s.indexes = make([]int, len(columns))
+
+	// index is the index of the field in the struct
+	for i := range s.indexes {
+		s.indexes[i] = -1
+	}
+	for i := 0; i < tp.NumField(); i++ {
+		field := tp.Field(i)
+		tag := field.Tag.Get("column")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		for index, column := range columns {
+			if tag == column {
+				s.indexes[index] = i
+				break
+			}
+		}
+	}
+}
+
+func checkDestination(dest []interface{}) error {
+	for _, dp := range dest {
+		if _, ok := dp.(*sql.RawBytes); ok {
+			return errors.New("sql: RawBytes isn't allowed on scan")
+		}
+	}
+	return nil
 }
