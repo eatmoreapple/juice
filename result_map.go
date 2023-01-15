@@ -673,10 +673,10 @@ func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]inte
 		return nil, err
 	}
 	if !s.checked {
-		s.checked = true
 		if err = checkDestination(dest); err != nil {
 			return nil, err
 		}
+		s.checked = true
 	}
 	return dest, nil
 }
