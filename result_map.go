@@ -189,12 +189,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 		return err
 	}
 
-	// checked is a flag to check if dest has sql.RawBytes and only check once
-	var checked bool
-
-	var indexes = make(map[string][]int)
-
-	var unfoundedIndex = make(map[string]int)
+	var cd = &resultMapColumnDestination{resultMap: r}
 
 	// now, we start scan rows
 	for rows.Next() {
@@ -202,125 +197,21 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 		// make a new element of slice
 		elValue := reflect.New(el).Elem()
 
-		tp := elValue.Type()
+		dest, err := cd.Destination(elValue, columns)
 
-		// dest is a slice of pointers to fields of element
-		var dest = make([]interface{}, len(columns))
-
-		// initialize dest with default pointer insures that all fields can be scanned
-		for i := range dest {
-			dest[i] = new(interface{})
-		}
-
-		// start do some magic
-		if !checked {
-			// try to find the field of element by column name
-			for index, column := range columns {
-				// if we have a mapping for this column, use it
-				if cs, ok := r.mapping[column]; ok {
-					var field reflect.StructField
-					indexes[column] = make([]int, 0, len(cs))
-					// try to find the field of element by column name
-					for i, name := range cs {
-						var ok bool
-						// if it is first time to find this field, we need to find it
-						if i == 0 {
-							field, ok = tp.FieldByName(name)
-						} else {
-							// if it is not first time to find this field, we need to find it from the last field
-							field, ok = field.Type.FieldByName(name)
-						}
-						// if we can't find the field, return error
-						if !ok {
-							return fmt.Errorf("field %s is not valid", name)
-						}
-						// append the index of field to indexes
-						indexes[column] = append(indexes[column], field.Index...)
-					}
-				} else {
-					// if we don't have a mapping for this column, set it to unfounded Index
-					unfoundedIndex[column] = index
-				}
-			}
-
-			// try to find those fields which are not found in mapping
-			if r.HasCollection() {
-				for _, index := range unfoundedIndex {
-					column := columns[index]
-					// find form collection
-					for _, coll := range r.collectionGroup {
-						mapping := coll.mapping
-						// if we have a mapping for this column, use it
-						if names, ok := mapping[column]; ok {
-							// try to find the destination field index of element by column name
-							indexes[column] = make([]int, 0, len(names))
-
-							var field reflect.StructField
-							for i, name := range names {
-								var ok bool
-								if i == 0 {
-									field, ok = tp.FieldByName(name)
-								} else {
-									if field.Type.Kind() == reflect.Slice {
-										el := field.Type.Elem()
-										if el.Kind() == reflect.Ptr {
-											el = el.Elem()
-										}
-										field, ok = el.FieldByName(name)
-									}
-								}
-								if !ok {
-									return fmt.Errorf("field %s is not valid", name)
-								}
-								indexes[column] = append(indexes[column], field.Index[0])
-							}
-						}
-					}
-				}
-			}
-		}
-
-		var collectionMapping collectionItemMapping
-
-		for column, _ := range unfoundedIndex {
-			for _, collection := range r.collectionGroup {
-				mapping := collection.mapping
-				if _, ok := mapping[column]; ok {
-					if collectionMapping == nil {
-						collectionMapping = make(map[string]*collectionItem)
-					}
-					_, ok := collectionMapping[collection.property]
-					if !ok {
-						// slice must be a slice, we have checked it before
-						slice := elValue.FieldByName(collection.property).Type()
-						// slice element must be a struct, we have checked it before
-						elType := slice.Elem()
-						// if it's a pointer, get the element type of pointer
-						tyIsPtr := elType.Kind() == reflect.Ptr
-						if tyIsPtr {
-							elType = elType.Elem()
-						}
-						collectionMapping[collection.property] = &collectionItem{
-							rv:      reflect.New(elType).Elem(),
-							isPtr:   tyIsPtr,
-							columns: make(map[string]struct{}),
-						}
-					}
-					collectionMapping[collection.property].columns[column] = struct{}{}
-					break
-				}
-			}
+		if err != nil {
+			return err
 		}
 
 		// reset index from collection
 		for index, column := range columns {
 			var field = elValue
 			var start int
-			if item, ok := collectionMapping.getCollectionIndexItem(column); ok {
+			if item, ok := cd.collectionMapping.getCollectionIndexItem(column); ok {
 				field = item.rv
 				start = 1
 			}
-			if cs, ok := indexes[column]; ok {
+			if cs, ok := cd.indexes[column]; ok {
 				for _, i := range cs[start:] {
 					field = field.Field(i)
 					// does not support pointer
@@ -334,16 +225,6 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 		}
 
 		// from now on, we have got all the fields of element
-
-		// check if the dest has sql.RawBytes
-		if !checked {
-			for _, dp := range dest {
-				if _, ok := dp.(*sql.RawBytes); ok {
-					return errors.New("sql: RawBytes isn't allowed on Row.Scan")
-				}
-			}
-			checked = true
-		}
 
 		// scan the rowDestination with dest
 		if err := rows.Scan(dest...); err != nil {
@@ -359,6 +240,11 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 			for i := 0; i < values.Len(); i++ {
 				loopValue := values.Index(i)
 
+				// if it's a pointer, get the element
+				if loopValue.Kind() == reflect.Ptr {
+					loopValue = loopValue.Elem()
+				}
+
 				// get primary key from the loop element
 				loopPk := loopValue.FieldByName(r.pk.property).Interface()
 
@@ -368,7 +254,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 				if currentPk == loopPk {
 					isNew = false
 					// set the value of collection
-					collectionMapping.setCollection(loopValue)
+					cd.collectionMapping.setCollection(loopValue)
 					break
 				}
 			}
@@ -376,7 +262,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 
 		// if the element is new, append it to collection
 		if isNew {
-			collectionMapping.setCollection(elValue)
+			cd.collectionMapping.setCollection(elValue)
 			if isPtr {
 				elValue = elValue.Addr()
 			}
@@ -422,13 +308,11 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 	// checked is a flag to check if the dest has sql.RawBytes
 	var checked bool
 
-	var indexes = make(map[string][]int)
-
-	var unFoundedIndex = make(map[string]int)
-
 	tp := rv.Type()
 
 	var pk interface{}
+
+	var cd = &resultMapColumnDestination{resultMap: r}
 
 	// now, we start scan rows
 	for rows.Next() {
@@ -445,146 +329,10 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			elValue = reflect.New(tp).Elem()
 		}
 
-		// dest is a slice of pointers to fields of element
-		var dest = make([]interface{}, len(columns))
+		dest, err := cd.Destination(elValue, columns)
 
-		// initialize dest with default pointer insures that all fields can be scanned
-		for i := range dest {
-			dest[i] = new(interface{})
-		}
-
-		// start to initialize
-		if !checked {
-			// try to find the field of element by column name
-			for index, column := range columns {
-				// if we have a mapping for this column, use it
-				if cs, ok := r.mapping[column]; ok {
-					var field reflect.StructField
-					indexes[column] = make([]int, 0, len(cs))
-					// try to find the field of element by column name
-					for i, name := range cs {
-						var ok bool
-						// if it is first time to find this field, we need to find it
-						if i == 0 {
-							field, ok = tp.FieldByName(name)
-						} else {
-							// if it is not first time to find this field, we need to find it from the last field
-							field, ok = field.Type.FieldByName(name)
-						}
-						// if we can't find the field, return error
-						if !ok {
-							return fmt.Errorf("field %s is not valid", name)
-						}
-						// append the index of field to indexes
-						indexes[column] = append(indexes[column], field.Index...)
-					}
-				} else {
-					// if we don't have a mapping for this column, set it to unfounded Index
-					unFoundedIndex[column] = index
-				}
-			}
-
-			// try to find those fields which are not found in mapping
-			if r.HasCollection() {
-				for _, index := range unFoundedIndex {
-					// find form collection
-					column := columns[index]
-					for _, collection := range r.collectionGroup {
-						mapping := collection.mapping
-						// if we have a mapping for this column, use it
-						if names, ok := mapping[column]; ok {
-							// try to find the destination field index of element by column name
-							indexes[column] = make([]int, 0, len(names))
-							var field reflect.StructField
-							for i, name := range names {
-								var ok bool
-								if i == 0 {
-									field, ok = tp.FieldByName(name)
-								} else {
-									if field.Type.Kind() == reflect.Slice {
-										el := field.Type.Elem()
-										if el.Kind() == reflect.Ptr {
-											el = el.Elem()
-										}
-										field, ok = el.FieldByName(name)
-									}
-								}
-								if !ok {
-									return fmt.Errorf("field %s is not valid", name)
-								}
-								indexes[column] = append(indexes[column], field.Index[0])
-							}
-						}
-					}
-				}
-			}
-		}
-
-		var collectionMapping collectionItemMapping
-
-		for column, _ := range unFoundedIndex {
-			for _, collection := range r.collectionGroup {
-				mapping := collection.mapping
-				if _, ok := mapping[column]; ok {
-					if collectionMapping == nil {
-						collectionMapping = make(collectionItemMapping, 0)
-					}
-					_, ok := collectionMapping[collection.property]
-					if !ok {
-						// slice must be a slice, we have checked it before
-						slice := elValue.FieldByName(collection.property).Type()
-						// slice element must be a struct, we have checked it before
-						elType := slice.Elem()
-						// if it's a pointer, get the element type of pointer
-						tyIsPtr := elType.Kind() == reflect.Ptr
-						if tyIsPtr {
-							elType = elType.Elem()
-						}
-						value := reflect.New(elType).Elem()
-						collectionMapping[collection.property] = &collectionItem{
-							rv:      value,
-							columns: make(map[string]struct{}),
-							isPtr:   tyIsPtr,
-						}
-					}
-					collectionMapping[collection.property].columns[column] = struct{}{}
-					break
-				}
-			}
-		}
-
-		// reset index from collection
-		for index, column := range columns {
-			var field = elValue
-			var start int
-			// try to find it form the collection
-			if item, ok := collectionMapping.getCollectionIndexItem(column); ok {
-				field = item.rv
-				start = 1
-			}
-			if cs, ok := indexes[column]; ok {
-				for _, i := range cs[start:] {
-					field = field.Field(i)
-					// does not support pointer
-					// it will make the code more complex and slower
-					if field.Kind() == reflect.Ptr {
-						return errors.New("struct field must not be a pointer")
-					}
-				}
-				dest[index] = field.Addr().Interface()
-			}
-		}
-
-		// from now on, we have got all the fields of element
-
-		// check if the dest has sql.RawBytes
-		if !checked {
-			for _, dp := range dest {
-				if _, ok := dp.(*sql.RawBytes); ok {
-					return errors.New("sql: RawBytes isn't allowed on Row.Scan")
-				}
-			}
-			checked = true
+		if err != nil {
+			return err
 		}
 
 		// scan the rowDestination with dest
@@ -607,7 +355,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			// set collection
 			for _, collection := range r.collectionGroup {
 				value := rv.FieldByName(collection.property)
-				item := collectionMapping[collection.property]
+				item := cd.collectionMapping[collection.property]
 				field := item.rv
 				if item.isPtr {
 					field = field.Addr()
@@ -673,10 +421,10 @@ func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]inte
 		return nil, err
 	}
 	if !s.checked {
-		s.checked = true
 		if err = checkDestination(dest); err != nil {
 			return nil, err
 		}
+		s.checked = true
 	}
 	return dest, nil
 }
@@ -685,8 +433,8 @@ func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]inte
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)
 	}
-	if len(columns) > 1 {
-		return nil, errors.New("sql: too many columns in result")
+	if len(columns) != 1 {
+		return nil, errors.New("only one column is allowed for non-struct")
 	}
 	return []interface{}{rv.Addr().Interface()}, nil
 }
@@ -727,6 +475,168 @@ func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 			}
 		}
 	}
+}
+
+// TODO fixme
+type resultMapColumnDestination struct {
+	resultMap         *resultMapNode
+	indexes           map[string][]int
+	unFoundedIndex    map[string]int
+	collectionMapping collectionItemMapping
+	checked           bool
+}
+
+// Destination returns the destination for the given reflect value and column.
+func (s *resultMapColumnDestination) Destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+	dest, err := s.destination(rv, columns)
+	if err != nil {
+		return nil, err
+	}
+	if !s.checked {
+		if err = checkDestination(dest); err != nil {
+			return nil, err
+		}
+		s.checked = true
+	}
+	return dest, nil
+}
+
+func (s *resultMapColumnDestination) destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+	dest := make([]interface{}, len(columns))
+	if len(s.indexes) == 0 {
+		if err := s.setIndexes(rv, columns); err != nil {
+			return nil, err
+		}
+	}
+	for i := range dest {
+		dest[i] = new(any)
+	}
+	for index, column := range columns {
+		var field = rv
+		var start int
+		// try to find it form the collection
+		if item, ok := s.collectionMapping.getCollectionIndexItem(column); ok {
+			field = item.rv
+			start = 1
+		}
+		if cs, ok := s.indexes[column]; ok {
+			for _, i := range cs[start:] {
+				field = field.Field(i)
+				// does not support pointer
+				// it will make the code more complex and slower
+				if field.Kind() == reflect.Ptr {
+					return nil, errors.New("struct field must not be a pointer")
+				}
+			}
+			dest[index] = field.Addr().Interface()
+		}
+	}
+	return dest, nil
+}
+
+func (s *resultMapColumnDestination) setIndexes(rv reflect.Value, columns []string) error {
+	s.indexes = make(map[string][]int)
+
+	s.unFoundedIndex = make(map[string]int)
+
+	tp := rv.Type()
+
+	for index, column := range columns {
+		// if we have a mapping for this column, use it
+		if cs, ok := s.resultMap.mapping[column]; ok {
+			var field reflect.StructField
+			s.indexes[column] = make([]int, 0, len(cs))
+			// try to find the field of element by column name
+			for i, name := range cs {
+				var ok bool
+				// if it is first time to find this field, we need to find it
+				if i == 0 {
+					field, ok = tp.FieldByName(name)
+				} else {
+					// if it is not first time to find this field, we need to find it from the last field
+					field, ok = field.Type.FieldByName(name)
+				}
+				// if we can't find the field, return error
+				if !ok {
+					return fmt.Errorf("field %s is not valid", name)
+				}
+				// append the index of field to indexes
+				s.indexes[column] = append(s.indexes[column], field.Index...)
+			}
+		} else {
+			// if we don't have a mapping for this column, set it to unfounded Index
+			s.unFoundedIndex[column] = index
+		}
+	}
+
+	// try to find those fields which are not found in mapping
+	if s.resultMap.HasCollection() {
+		for _, index := range s.unFoundedIndex {
+			// find form collection
+			column := columns[index]
+			for _, collection := range s.resultMap.collectionGroup {
+				mapping := collection.mapping
+				// if we have a mapping for this column, use it
+				if names, ok := mapping[column]; ok {
+					// try to find the destination field index of element by column name
+					s.indexes[column] = make([]int, 0, len(names))
+					var field reflect.StructField
+					for i, name := range names {
+						var ok bool
+						if i == 0 {
+							field, ok = tp.FieldByName(name)
+						} else {
+							if field.Type.Kind() == reflect.Slice {
+								el := field.Type.Elem()
+								if el.Kind() == reflect.Ptr {
+									el = el.Elem()
+								}
+								field, ok = el.FieldByName(name)
+							}
+						}
+						if !ok {
+							return fmt.Errorf("field %s is not valid", name)
+						}
+						s.indexes[column] = append(s.indexes[column], field.Index[0])
+					}
+				}
+			}
+		}
+	}
+
+	var elValue = rv
+
+	for column, _ := range s.unFoundedIndex {
+		for _, collection := range s.resultMap.collectionGroup {
+			mapping := collection.mapping
+			if _, ok := mapping[column]; ok {
+				if s.collectionMapping == nil {
+					s.collectionMapping = make(collectionItemMapping, 0)
+				}
+				_, ok := s.collectionMapping[collection.property]
+				if !ok {
+					// slice must be a slice, we have checked it before
+					slice := elValue.FieldByName(collection.property).Type()
+					// slice element must be a struct, we have checked it before
+					elType := slice.Elem()
+					// if it's a pointer, get the element type of pointer
+					tyIsPtr := elType.Kind() == reflect.Ptr
+					if tyIsPtr {
+						elType = elType.Elem()
+					}
+					value := reflect.New(elType).Elem()
+					s.collectionMapping[collection.property] = &collectionItem{
+						rv:      value,
+						columns: make(map[string]struct{}),
+						isPtr:   tyIsPtr,
+					}
+				}
+				s.collectionMapping[collection.property].columns[column] = struct{}{}
+				break
+			}
+		}
+	}
+	return nil
 }
 
 func checkDestination(dest []interface{}) error {
