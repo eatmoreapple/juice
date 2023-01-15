@@ -685,8 +685,8 @@ func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]inte
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)
 	}
-	if len(columns) > 1 {
-		return nil, errors.New("sql: too many columns in result")
+	if len(columns) != 1 {
+		return nil, errors.New("only one column is allowed for non-struct")
 	}
 	return []interface{}{rv.Addr().Interface()}, nil
 }
