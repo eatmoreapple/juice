@@ -1084,7 +1084,7 @@ func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) 
 		}
 	}
 	if ve.column == "" {
-		return nil, errors.New("valueItem node requires column attribute")
+		return nil, errors.New("value node requires column attribute")
 	}
 	if ve.value == "" {
 		ve.value = fmt.Sprintf("#{%s}", ve.column)
