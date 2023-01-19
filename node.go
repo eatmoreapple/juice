@@ -230,12 +230,12 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 		return "", nil, fmt.Errorf("collection %s not found", f.Collection)
 	}
 
-	// if value can not be iterated
+	// if valueItem can not be iterated
 	if !value.CanInterface() {
 		return "", nil, fmt.Errorf("collection %s can not be iterated", f.Collection)
 	}
 
-	// if value is not a slice
+	// if valueItem is not a slice
 	for value.Kind() == reflect.Interface {
 		value = value.Elem()
 	}
@@ -436,6 +436,50 @@ func (o OtherwiseNode) Accept(translator driver.Translator, p Param) (query stri
 		}
 	}
 	return builder.String(), args, nil
+}
+
+// valueItem is a element of ValuesNode.
+type valueItem struct {
+	column string
+	value  string
+}
+
+// ValuesNode is a node of values.
+// only support for insert.
+type ValuesNode []*valueItem
+
+// Accept accepts parameters and returns query and arguments.
+func (v ValuesNode) Accept(translater driver.Translator, param Param) (query string, args []interface{}, err error) {
+	if len(v) == 0 {
+		return "", nil, nil
+	}
+	builder := getBuilder()
+	defer putBuilder(builder)
+	builder.WriteString("(")
+	builder.WriteString(v.columns())
+	builder.WriteString(") VALUES (")
+	builder.WriteString(v.values())
+	builder.WriteString(")")
+	node := TextNode(builder.String())
+	return node.Accept(translater, param)
+}
+
+// columns returns columns of values.
+func (v ValuesNode) columns() string {
+	columns := make([]string, 0, len(v))
+	for _, item := range v {
+		columns = append(columns, item.column)
+	}
+	return strings.Join(columns, ", ")
+}
+
+// values returns values of values.
+func (v ValuesNode) values() string {
+	values := make([]string, 0, len(v))
+	for _, item := range v {
+		values = append(values, item.value)
+	}
+	return strings.Join(values, ", ")
 }
 
 type primaryResult interface {

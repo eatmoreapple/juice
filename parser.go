@@ -347,6 +347,18 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
+			switch token.Name.Local {
+			case "values":
+				if stmt.action != Insert {
+					return fmt.Errorf("values node only support insert statement")
+				}
+				node, err := p.parseValuesNode(decoder)
+				if err != nil {
+					return err
+				}
+				stmt.Nodes = append(stmt.Nodes, node)
+				continue
+			}
 			node, err := p.parseTags(stmt.Mapper(), decoder, token)
 			if err != nil {
 				return err
@@ -1030,6 +1042,71 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 		}
 	}
 	return coll, nil
+}
+
+func (p XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
+	var node = make(ValuesNode, 0)
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "value":
+				value, err := p.parseValueNode(token, decoder)
+				if err != nil {
+					return nil, err
+				}
+				node = append(node, value)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "values" {
+				return node, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) (*valueItem, error) {
+	var ve valueItem
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "value":
+			ve.value = attr.Value
+		case "column":
+			ve.column = attr.Value
+		}
+	}
+	if ve.column == "" {
+		return nil, errors.New("valueItem node requires column attribute")
+	}
+	if ve.value == "" {
+		ve.value = fmt.Sprintf("#{%s}", ve.column)
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.EndElement:
+			if token.Name.Local == "value" {
+				return &ve, nil
+			}
+		}
+	}
+
+	return nil, errors.New("value node requires value attribute to close")
 }
 
 func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
