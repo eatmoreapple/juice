@@ -2,6 +2,7 @@ package juice
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -11,3 +12,13 @@ var (
 	// ErrResultMapNotSet is an error that is returned when the result map is not set.
 	ErrResultMapNotSet = errors.New("resultMap not set")
 )
+
+// nodeUnclosedError is an error that is returned when the node is not closed.
+type nodeUnclosedError struct {
+	nodeName string
+	_        struct{}
+}
+
+func (e *nodeUnclosedError) Error() string {
+	return fmt.Sprintf("node %s is not closed", e.nodeName)
+}
