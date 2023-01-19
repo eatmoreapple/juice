@@ -357,13 +357,22 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 					return err
 				}
 				stmt.Nodes = append(stmt.Nodes, node)
-				continue
+			case "alias":
+				if stmt.action != Select {
+					return fmt.Errorf("alias node only support select statement")
+				}
+				node, err := p.parseAliasNode(decoder)
+				if err != nil {
+					return err
+				}
+				stmt.Nodes = append(stmt.Nodes, node)
+			default:
+				node, err := p.parseTags(stmt.Mapper(), decoder, token)
+				if err != nil {
+					return err
+				}
+				stmt.Nodes = append(stmt.Nodes, node)
 			}
-			node, err := p.parseTags(stmt.Mapper(), decoder, token)
-			if err != nil {
-				return err
-			}
-			stmt.Nodes = append(stmt.Nodes, node)
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
@@ -1122,6 +1131,68 @@ func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) 
 	}
 
 	return nil, errors.New("value node requires value attribute to close")
+}
+
+// parseAliasNode parses the alias node
+func (p XMLParser) parseAliasNode(decoder *xml.Decoder) (Node, error) {
+	var node = make(SelectFieldAliasNode, 0)
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			switch token.Name.Local {
+			case "field":
+				item, err := p.parseFieldAlias(token, decoder)
+				if err != nil {
+					return nil, err
+				}
+				node = append(node, item)
+			}
+		case xml.EndElement:
+			if token.Name.Local == "alias" {
+				return node, nil
+			}
+		}
+	}
+	return nil, &nodeUnclosedError{nodeName: "alias"}
+}
+
+// parseFieldAlias parses the field alias node
+func (p XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder) (*selectFieldAliasItem, error) {
+	var item selectFieldAliasItem
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "name":
+			item.column = attr.Value
+		case "alias":
+			item.alias = attr.Value
+		}
+	}
+	if item.column == "" {
+		return nil, errors.New("field node requires name attribute")
+	}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch token := token.(type) {
+		case xml.EndElement:
+			if token.Name.Local == "field" {
+				return &item, nil
+			}
+		}
+	}
+	return nil, &nodeUnclosedError{nodeName: "field"}
 }
 
 func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
