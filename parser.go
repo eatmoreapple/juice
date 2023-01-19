@@ -102,7 +102,7 @@ func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElemen
 			}
 		}
 	}
-	return &envs, nil
+	return nil, &nodeUnclosedError{nodeName: "environments"}
 }
 
 func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement) (*Environment, error) {
@@ -162,7 +162,7 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 			}
 		}
 	}
-	return env, nil
+	return nil, &nodeUnclosedError{nodeName: "environment"}
 }
 
 func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
@@ -194,7 +194,7 @@ func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
 			}
 		}
 	}
-	return nil
+	return &nodeUnclosedError{nodeName: "mappers"}
 }
 
 func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*Mapper, error) {
@@ -431,7 +431,7 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 			}
 		}
 	}
-	return includeNode, nil
+	return nil, &nodeUnclosedError{nodeName: "include"}
 }
 
 func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
@@ -463,7 +463,7 @@ func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) 
 			}
 		}
 	}
-	return nil, nil
+	return nil, &nodeUnclosedError{nodeName: "set"}
 }
 
 func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
@@ -510,7 +510,7 @@ func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.Start
 			}
 		}
 	}
-	return ifNode, nil
+	return nil, &nodeUnclosedError{nodeName: "if"}
 }
 
 func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
@@ -542,7 +542,7 @@ func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error
 			}
 		}
 	}
-	return whereNode, nil
+	return nil, &nodeUnclosedError{nodeName: "where"}
 }
 
 func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
@@ -580,7 +580,7 @@ func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 			}
 		}
 	}
-	return trimNode, nil
+	return nil, &nodeUnclosedError{nodeName: "trim"}
 }
 
 func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
@@ -634,7 +634,7 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 			}
 		}
 	}
-	return foreachNode, nil
+	return nil, &nodeUnclosedError{nodeName: "foreach"}
 }
 
 func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
@@ -673,7 +673,7 @@ func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, erro
 			}
 		}
 	}
-	return chooseNode, nil
+	return nil, &nodeUnclosedError{nodeName: "choose"}
 }
 
 func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (string, error) {
@@ -695,7 +695,7 @@ func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (s
 			}
 		}
 	}
-	return charData, nil
+	return "", &nodeUnclosedError{nodeName: endElementName}
 }
 
 func (p XMLParser) parseIntCharData(decoder *xml.Decoder, endElementName string) (int, error) {
@@ -795,7 +795,7 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 			}
 		}
 	}
-	return nil
+	return &nodeUnclosedError{nodeName: "sql"}
 }
 
 func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
@@ -842,7 +842,7 @@ func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 			}
 		}
 	}
-	return whenNode, nil
+	return nil, &nodeUnclosedError{nodeName: "when"}
 }
 
 func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
@@ -874,7 +874,7 @@ func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, e
 			}
 		}
 	}
-	return otherwiseNode, nil
+	return nil, &nodeUnclosedError{nodeName: "otherwise"}
 }
 
 func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapNode, error) {
@@ -900,13 +900,13 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "id":
-				pk, err := p.parseResult(token)
+				pk, err := p.parseResult(token, decoder)
 				if err != nil {
 					return nil, err
 				}
 				resultMap.pk = pk
 			case "result":
-				result, err := p.parseResult(token)
+				result, err := p.parseResult(token, decoder)
 				if err != nil {
 					return nil, err
 				}
@@ -930,10 +930,10 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 			}
 		}
 	}
-	return resultMap, nil
+	return nil, &nodeUnclosedError{nodeName: "resultMap"}
 }
 
-func (p XMLParser) parseResult(token xml.StartElement) (*result, error) {
+func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder) (*result, error) {
 	result := &result{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -949,7 +949,22 @@ func (p XMLParser) parseResult(token xml.StartElement) (*result, error) {
 	if result.property == "" {
 		return nil, errors.New("result node requires property attribute")
 	}
-	return result, nil
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch tp := token.(type) {
+		case xml.EndElement:
+			if tp.Name.Local == "result" {
+				return result, nil
+			}
+		}
+	}
+	return nil, &nodeUnclosedError{nodeName: "result"}
 }
 
 func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement) (*association, error) {
@@ -975,7 +990,7 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "result":
-				result, err := p.parseResult(token)
+				result, err := p.parseResult(token, decoder)
 				if err != nil {
 					return nil, err
 				}
@@ -993,7 +1008,7 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 			}
 		}
 	}
-	return association, nil
+	return nil, &nodeUnclosedError{nodeName: "association"}
 }
 
 func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, token xml.StartElement) (*collection, error) {
@@ -1019,7 +1034,7 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "result":
-				result, err := p.parseResult(token)
+				result, err := p.parseResult(token, decoder)
 				if err != nil {
 					return nil, err
 				}
@@ -1041,7 +1056,7 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 			}
 		}
 	}
-	return coll, nil
+	return nil, &nodeUnclosedError{nodeName: "collection"}
 }
 
 func (p XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
@@ -1070,7 +1085,7 @@ func (p XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
 			}
 		}
 	}
-	return nil, nil
+	return nil, &nodeUnclosedError{nodeName: "values"}
 }
 
 func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) (*valueItem, error) {
