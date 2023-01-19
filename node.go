@@ -482,6 +482,31 @@ func (v ValuesNode) values() string {
 	return strings.Join(values, ", ")
 }
 
+// selectFieldAliasItem is a element of SelectFieldAliasNode.
+type selectFieldAliasItem struct {
+	column string
+	alias  string
+}
+
+// SelectFieldAliasNode is a node of select field alias.
+type SelectFieldAliasNode []*selectFieldAliasItem
+
+// Accept accepts parameters and returns query and arguments.
+func (s SelectFieldAliasNode) Accept(_ driver.Translator, _ Param) (query string, args []interface{}, err error) {
+	if len(s) == 0 {
+		return "", nil, nil
+	}
+	fields := make([]string, 0, len(s))
+	for _, item := range s {
+		field := item.column
+		if item.alias != "" && item.alias != item.column {
+			field = field + " AS " + item.alias
+		}
+		fields = append(fields, field)
+	}
+	return strings.Join(fields, ", "), nil, nil
+}
+
 type primaryResult interface {
 	Pk() *result
 }
