@@ -28,6 +28,7 @@ func (g *Generator) Generate() error {
 			method.Body = nil
 			continue
 		}
+		method.Namespace = g.namespace
 		maker := FunctionBodyMaker{statement: statement, function: method}
 		if err := maker.Make(); err != nil {
 			return err
