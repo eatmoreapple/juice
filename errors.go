@@ -22,3 +22,12 @@ type nodeUnclosedError struct {
 func (e *nodeUnclosedError) Error() string {
 	return fmt.Sprintf("node %s is not closed", e.nodeName)
 }
+
+type nodeAttributeRequiredError struct {
+	nodeName string
+	attrName string
+}
+
+func (e *nodeAttributeRequiredError) Error() string {
+	return fmt.Sprintf("node %s requires attribute %s", e.nodeName, e.attrName)
+}

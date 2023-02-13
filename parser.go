@@ -71,7 +71,7 @@ func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElemen
 		}
 	}
 	if envs.Default == "" {
-		return nil, errors.New("default environment is required")
+		return nil, errors.New("default environment is not specified")
 	}
 	for {
 		token, err := decoder.Token()
@@ -212,7 +212,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 	}
 
 	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
-		return nil, errors.New("mapper requires namespace attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "mapper", attrName: "namespace"}
 	}
 
 	mapper.statements = make(map[string]*Statement)
@@ -420,7 +420,7 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 		}
 	}
 	if ref == "" {
-		return nil, errors.New("include ref is required")
+		return nil, &nodeAttributeRequiredError{nodeName: "include", attrName: "refid"}
 	}
 
 	includeNode := &IncludeNode{RefId: ref, mapper: mapper}
@@ -485,7 +485,7 @@ func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.Start
 		}
 	}
 	if test == "" {
-		return nil, errors.New("if node requires test attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "if", attrName: "test"}
 	}
 
 	// parse condition expression
@@ -614,7 +614,7 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 		foreachNode.Collection = defaultParamKey
 	}
 	if foreachNode.Item == "" {
-		return nil, errors.New("foreach node requires item attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "foreach", attrName: "item"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -775,7 +775,7 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 		}
 	}
 	if sqlNode.id == "" {
-		return errors.New("sql node requires id attribute")
+		return &nodeAttributeRequiredError{nodeName: "sql", attrName: "id"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -817,7 +817,7 @@ func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 		}
 	}
 	if test == "" {
-		return nil, errors.New("when node require test attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "when", attrName: "test"}
 	}
 
 	// parse condition expression
@@ -895,7 +895,7 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 		}
 	}
 	if resultMap.id == "" {
-		return nil, errors.New("resultMap node requires id attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "resultMap", attrName: "id"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -953,10 +953,10 @@ func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, end
 		}
 	}
 	if result.column == "" {
-		return nil, errors.New("result node requires column attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: endTag, attrName: "column"}
 	}
 	if result.property == "" {
-		return nil, errors.New("result node requires property attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: endTag, attrName: "property"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -985,7 +985,7 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 		}
 	}
 	if association.property == "" {
-		return nil, errors.New("association node requires property attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "association", attrName: "property"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -1029,7 +1029,7 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 		}
 	}
 	if coll.property == "" {
-		return nil, errors.New("collection node requires property attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "collection", attrName: "property"}
 	}
 	for {
 		token, err := decoder.Token()
@@ -1108,7 +1108,7 @@ func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) 
 		}
 	}
 	if ve.column == "" {
-		return nil, errors.New("value node requires column attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "value", attrName: "column"}
 	}
 	if ve.value == "" {
 		ve.value = fmt.Sprintf("#{%s}", ve.column)
@@ -1175,7 +1175,7 @@ func (p XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder)
 		}
 	}
 	if item.column == "" {
-		return nil, errors.New("field node requires name attribute")
+		return nil, &nodeAttributeRequiredError{nodeName: "field", attrName: "name"}
 	}
 	for {
 		token, err := decoder.Token()
