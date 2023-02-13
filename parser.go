@@ -909,13 +909,13 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "id":
-				pk, err := p.parseResult(token, decoder)
+				pk, err := p.parseResult(token, decoder, "id")
 				if err != nil {
 					return nil, err
 				}
 				resultMap.pk = pk
 			case "result":
-				result, err := p.parseResult(token, decoder)
+				result, err := p.parseResult(token, decoder, "result")
 				if err != nil {
 					return nil, err
 				}
@@ -942,7 +942,7 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 	return nil, &nodeUnclosedError{nodeName: "resultMap"}
 }
 
-func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder) (*result, error) {
+func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, endTag string) (*result, error) {
 	result := &result{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -968,12 +968,12 @@ func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder) (*r
 		}
 		switch tp := token.(type) {
 		case xml.EndElement:
-			if tp.Name.Local == "result" {
+			if tp.Name.Local == endTag {
 				return result, nil
 			}
 		}
 	}
-	return nil, &nodeUnclosedError{nodeName: "result"}
+	return nil, &nodeUnclosedError{nodeName: endTag}
 }
 
 func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement) (*association, error) {
@@ -999,7 +999,7 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "result":
-				result, err := p.parseResult(token, decoder)
+				result, err := p.parseResult(token, decoder, "result")
 				if err != nil {
 					return nil, err
 				}
@@ -1043,7 +1043,7 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "result":
-				result, err := p.parseResult(token, decoder)
+				result, err := p.parseResult(token, decoder, "result")
 				if err != nil {
 					return nil, err
 				}
