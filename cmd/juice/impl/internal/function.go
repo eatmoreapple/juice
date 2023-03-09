@@ -108,7 +108,9 @@ func (f *readFuncBodyMaker) build() {
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
 	//key := fmt.Sprintf(`"%s.%s"`, f.function.Namespace, f.function.Name)
-	builder.WriteString(fmt.Sprintf("\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface)", f.function.Results[0].TypeName()))
+	builder.WriteString(fmt.Sprintf("\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
+		f.function.Results[0].TypeName(),
+		f.function.Name))
 	var query = "nil"
 	if len(f.function.Args) == 2 {
 		query = f.function.Args[1].Name
@@ -168,7 +170,7 @@ func (f *writeFuncBodyMaker) build() {
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
 	//key := fmt.Sprintf(`"%s.%s"`, f.function.Namespace, f.function.Name)
-	builder.WriteString(fmt.Sprintf("\n\texecutor := manager.Object(iface)"))
+	builder.WriteString(fmt.Sprintf("\n\texecutor := manager.Object(iface.%s)", f.function.Name))
 	var query = "nil"
 	if len(f.function.Args) == 2 {
 		query = f.function.Args[1].Name
