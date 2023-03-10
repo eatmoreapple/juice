@@ -5,13 +5,13 @@ import (
 	"github.com/eatmoreapple/juice/cmd/juice/internal/cmd"
 )
 
-type Generate struct{}
+type ImplementGenerate struct{}
 
-func (i *Generate) Name() string {
+func (i *ImplementGenerate) Name() string {
 	return "impl"
 }
 
-func (i *Generate) Do() error {
+func (i *ImplementGenerate) Do() error {
 	parser := internal.Parser{}
 	impl, err := parser.Parse()
 	if err != nil {
@@ -21,5 +21,5 @@ func (i *Generate) Do() error {
 }
 
 func init() {
-	_ = cmd.Register(&Generate{})
+	_ = cmd.Register(&ImplementGenerate{})
 }
