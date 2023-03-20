@@ -34,20 +34,58 @@ func (p *Parser) parseCommand() error {
 	return cmd.Parse(os.Args[2:])
 }
 
+func (p *Parser) init() error {
+	if p.typeName == "" {
+		return errors.New("typeName type name is required")
+	}
+	if p.namespace == "" {
+		return errors.New("namespace is required")
+	}
+	if p.namespace == "" {
+		return errors.New("namespace is required")
+	}
+	if p.output != "" {
+		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
+			return errors.New("output path only support file name")
+		}
+	}
+	if err := p.parseCfg(); err != nil {
+		return err
+	}
+	return nil
+}
+
+var ErrConfigNotFound = errors.New("config.xml or config/config.xml not found")
+
+// parseCfg parse config.xml or config/config.xml
+func (p *Parser) parseCfg() error {
+	if p.cfg == "" {
+		ok, err := osStatExists("config.xml")
+		if err != nil {
+			return err
+		}
+		if ok {
+			p.cfg = "config.xml"
+			return nil
+		}
+		ok, err = osStatExists("config/config.xml")
+		if err != nil {
+			return err
+		}
+		if ok {
+			p.cfg = "config/config.xml"
+			return nil
+		}
+	}
+	return ErrConfigNotFound
+}
+
 func (p *Parser) Parse() (*Generator, error) {
 	if err := p.parseCommand(); err != nil {
 		return nil, err
 	}
-	if p.typeName == "" {
-		return nil, errors.New("typeName type name is required")
-	}
-	if p.namespace == "" {
-		return nil, errors.New("namespace is required")
-	}
-	if p.output != "" {
-		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
-			return nil, errors.New("output path only support file name")
-		}
+	if err := p.init(); err != nil {
+		return nil, err
 	}
 	return p.parse()
 }
@@ -212,4 +250,15 @@ func parseImport(value *Value, file *ast.File, alias string) {
 			break
 		}
 	}
+}
+
+func osStatExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

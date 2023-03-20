@@ -6,7 +6,7 @@ import (
 	"os/user"
 )
 
-//go:generate juice impl --type Interface --config config.xml --namespace main.UserRepository --output interface_impl.go
+//go:generate juice impl --type Interface --namespace main.UserRepository --output interface_impl.go
 type Interface interface {
 	// GetUserByID 根据用户id查找用户
 	GetUserByID(ctx context.Context, id int64) ([]*user.User, error)
