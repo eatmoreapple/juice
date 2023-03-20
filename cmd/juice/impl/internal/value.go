@@ -27,44 +27,34 @@ type Value struct {
 func (v Value) TypeName() string {
 	var name string
 	if v.Import.Name != "" {
-		if v.IsSlice {
-			if v.IsPointer {
-				name = fmt.Sprintf("[]*%s.%s", v.Import.Name, v.Type)
-			} else {
-				name = fmt.Sprintf("[]%s.%s", v.Import.Name, v.Type)
-			}
-			return name
-		} else if v.IsMap {
-			if v.IsPointer {
-				name = fmt.Sprintf("map[string]*%s.%s", v.Import.Name, v.Type)
-			} else {
-				name = fmt.Sprintf("map[string]%s.%s", v.Import.Name, v.Type)
-			}
-			return name
-		} else {
+		switch {
+		case v.IsSlice && v.IsPointer:
+			return fmt.Sprintf("[]*%s.%s", v.Import.Name, v.Type)
+		case v.IsSlice && !v.IsPointer:
+			return fmt.Sprintf("[]%s.%s", v.Import.Name, v.Type)
+		case v.IsMap && v.IsPointer:
+			return fmt.Sprintf("map[string]*%s.%s", v.Import.Name, v.Type)
+		case v.IsMap && !v.IsPointer:
+			return fmt.Sprintf("map[string]%s.%s", v.Import.Name, v.Type)
+		default:
 			name = v.Import.Name + "." + v.Type
 		}
 	} else {
-		if v.IsSlice {
-			if v.IsPointer {
-				name = fmt.Sprintf("[]*%s", v.Type)
-			} else {
-				name = fmt.Sprintf("[]%s", v.Type)
-			}
-			return name
-		} else if v.IsMap {
-			if v.IsPointer {
-				name = fmt.Sprintf("map[string]*%s", v.Type)
-			} else {
-				name = fmt.Sprintf("map[string]%s", v.Type)
-			}
-			return name
-		} else {
+		switch {
+		case v.IsSlice && v.IsPointer:
+			return fmt.Sprintf("[]*%s", v.Type)
+		case v.IsSlice && !v.IsPointer:
+			return fmt.Sprintf("[]%s", v.Type)
+		case v.IsMap && v.IsPointer:
+			return fmt.Sprintf("map[string]*%s", v.Type)
+		case v.IsMap && !v.IsPointer:
+			return fmt.Sprintf("map[string]%s", v.Type)
+		default:
 			name = v.Type
 		}
 	}
 	if v.IsPointer {
-		return "*" + name
+		name = "*" + name
 	}
 	return name
 }
@@ -94,11 +84,16 @@ func (v Values) Imports() Imports {
 }
 
 func (v Values) String() string {
-	vs := make([]string, 0, len(v))
-	for _, value := range v {
-		vs = append(vs, value.String())
+	var sb strings.Builder
+	sb.WriteString("(")
+	for i, value := range v {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(value.String())
 	}
-	return fmt.Sprintf("(%s)", strings.Join(vs, ", "))
+	sb.WriteString(")")
+	return sb.String()
 }
 
 type Import struct {
