@@ -41,9 +41,6 @@ func (p *Parser) init() error {
 	if p.namespace == "" {
 		return errors.New("namespace is required")
 	}
-	if p.namespace == "" {
-		return errors.New("namespace is required")
-	}
 	if p.output != "" {
 		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
 			return errors.New("output path only support file name")
@@ -59,23 +56,19 @@ var ErrConfigNotFound = errors.New("config.xml or config/config.xml not found")
 
 // parseCfg parse config.xml or config/config.xml
 func (p *Parser) parseCfg() error {
-	if p.cfg == "" {
-		ok, err := osStatExists("config.xml")
-		if err != nil {
-			return err
-		}
-		if ok {
-			p.cfg = "config.xml"
-			return nil
-		}
-		ok, err = osStatExists("config/config.xml")
-		if err != nil {
-			return err
-		}
-		if ok {
-			p.cfg = "config/config.xml"
-			return nil
-		}
+	if p.cfg != "" {
+		return ErrConfigNotFound
+	}
+	if ok, err := fileExists("config.xml"); err != nil {
+		return err
+	} else if ok {
+		p.cfg = "config.xml"
+		return nil
+	} else if ok, err := fileExists("config/config.xml"); err != nil {
+		return err
+	} else if ok {
+		p.cfg = "config/config.xml"
+		return nil
 	}
 	return ErrConfigNotFound
 }
@@ -128,74 +121,72 @@ func (p *Parser) parse() (*Generator, error) {
 	return nil, fmt.Errorf("type %s not found", p.typeName)
 }
 
-func inspect(node ast.Node, input, output string) (*Implement, error) {
-	var (
-		impl  Implement
-		err   error
-		found bool
-	)
-	impl.Name = output
-	impl.Interface = input
-	f := node.(*ast.File)
+func inspect(node *ast.File, input, output string) (*Implement, error) {
+	impl := &Implement{
+		Name:      output,
+		Interface: input,
+	}
+	var err error
 	ast.Inspect(node, func(n ast.Node) bool {
-		if found {
+		if impl.Package != "" {
 			return false
 		}
 		switch x := n.(type) {
 		case *ast.TypeSpec:
-			if x.Name.Name == input {
-				typ, ok := x.Type.(*ast.InterfaceType)
-				if !ok {
-					err = fmt.Errorf("type %s is not an interface", input)
-					return true
-				}
-				impl.Package = f.Name.Name
-				for _, method := range typ.Methods.List {
-					if len(method.Names) == 0 {
-						continue
-					}
-					methodName := method.Names[0].Name
-
-					argsValue := parseValues(f, method.Type.(*ast.FuncType).Params.List)
-
-					returnValues := parseValues(f, method.Type.(*ast.FuncType).Results.List)
-
-					function := &Function{
-						Name:    methodName,
-						Args:    argsValue,
-						Results: returnValues,
-						Receiver: &Value{
-							Type: output,
-							Name: strings.ToLower(output[:1]),
-						},
-						Type: input,
-					}
-
-					if method.Doc != nil {
-						var builder strings.Builder
-						for _, doc := range method.Doc.List {
-							builder.WriteString(doc.Text)
-							builder.WriteString("\n")
-						}
-						text := builder.String()
-						function.Doc = &text
-					}
-
-					impl.Methods = append(impl.Methods, function)
-				}
-				found = true
+			if x.Name.Name != input {
+				return true
+			}
+			typ, ok := x.Type.(*ast.InterfaceType)
+			if !ok {
+				err = fmt.Errorf("type %s is not an interface", input)
 				return false
 			}
+			impl.Package = node.Name.Name
+			for _, method := range typ.Methods.List {
+				if len(method.Names) == 0 {
+					continue
+				}
+				methodName := method.Names[0].Name
+				ft, ok := method.Type.(*ast.FuncType)
+				if !ok {
+					err = fmt.Errorf("method %s is not a function type", methodName)
+					return false
+				}
+				argsValue := parseValues(node, ft.Params.List)
+				returnValues := parseValues(node, ft.Results.List)
+
+				function := &Function{
+					Name:    methodName,
+					Args:    argsValue,
+					Results: returnValues,
+					Receiver: &Value{
+						Type: output,
+						Name: strings.ToLower(output[:1]),
+					},
+					Type: input,
+				}
+				if method.Doc != nil {
+					var builder strings.Builder
+					for _, doc := range method.Doc.List {
+						builder.WriteString(doc.Text)
+						builder.WriteString("\n")
+					}
+					text := builder.String()
+					function.Doc = &text
+				}
+				impl.Methods = append(impl.Methods, function)
+			}
+			return false
 		}
 		return true
 	})
 	if err != nil {
 		return nil, err
 	}
-	if !found {
+	if impl.Package == "" {
 		return nil, nil
 	}
-	return &impl, nil
+	return impl, nil
 }
 
 func parseValues(file *ast.File, fields []*ast.Field) Values {
@@ -217,7 +208,9 @@ func parseValue(value *Value, file *ast.File, field *ast.Field) {
 		value.Type = t.Name
 	case *ast.SelectorExpr:
 		value.Type = t.Sel.Name
-		parseImport(value, file, t.X.(*ast.Ident).Name)
+		if ident, ok := t.X.(*ast.Ident); ok {
+			parseImport(value, file, ident.Name)
+		}
 	case *ast.ArrayType:
 		value.IsSlice = true
 		parseValue(value, file, &ast.Field{Type: t.Elt})
@@ -226,7 +219,7 @@ func parseValue(value *Value, file *ast.File, field *ast.Field) {
 		parseValue(value, file, &ast.Field{Type: t.X})
 	case *ast.MapType:
 		value.IsMap = true
-		if t.Key.(*ast.Ident).Name != "string" {
+		if ident, ok := t.Key.(*ast.Ident); ok && ident.Name != "string" {
 			panic("map key must be string")
 		}
 		parseValue(value, file, &ast.Field{Type: t.Value})
@@ -252,7 +245,7 @@ func parseImport(value *Value, file *ast.File, alias string) {
 	}
 }
 
-func osStatExists(path string) (bool, error) {
+func fileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
