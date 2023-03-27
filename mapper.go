@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // Mapper defines a set of statements.
@@ -85,6 +86,7 @@ func (m *Mapper) Configuration() *Configuration {
 type Mappers struct {
 	statements map[string]*Statement
 	cfg        *Configuration
+	goMod      string // the go module name, only used for the runtime function name
 }
 
 // GetStatementByID returns a statement by id.
@@ -114,6 +116,10 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 		switch rv.Kind() {
 		case reflect.Func:
 			id = runtimeFuncName(rv)
+			// if the id is not in the go module, add the go module name as the prefix
+			if len(m.goMod) > 0 && !strings.HasPrefix(id, m.goMod) {
+				id = m.goMod + "." + id
+			}
 		case reflect.Struct:
 			id = rv.Type().Name()
 		default:

@@ -46,7 +46,7 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				p.configuration.Environments = *envs
 			case "mappers":
 				var mappers = Mappers{cfg: &p.configuration}
-				if err := p.parseMappers(&mappers, decoder); err != nil {
+				if err := p.parseMappers(&mappers, token, decoder); err != nil {
 					return nil, err
 				}
 				p.configuration.Mappers = mappers
@@ -165,7 +165,13 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 	return nil, &nodeUnclosedError{nodeName: "environment"}
 }
 
-func (p XMLParser) parseMappers(mappers *Mappers, decoder *xml.Decoder) error {
+func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decoder *xml.Decoder) error {
+	for _, attr := range start.Attr {
+		if attr.Name.Local == "gomod" {
+			mappers.goMod = attr.Value
+			break
+		}
+	}
 	for {
 		token, err := decoder.Token()
 		if err != nil {
