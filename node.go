@@ -167,9 +167,9 @@ var _ Node = (*TrimNode)(nil)
 type TrimNode struct {
 	Nodes           []Node
 	Prefix          string
-	PrefixOverrides string
+	PrefixOverrides []string
 	Suffix          string
-	SuffixOverrides string
+	SuffixOverrides []string
 }
 
 // Accept accepts parameters and returns query and arguments.
@@ -191,11 +191,21 @@ func (t TrimNode) Accept(translator driver.Translator, p Param) (query string, a
 		args = append(args, a...)
 	}
 	query = builder.String()
-	if t.PrefixOverrides != "" {
-		query = strings.TrimPrefix(query, t.PrefixOverrides)
+	if len(t.PrefixOverrides) > 0 {
+		for _, prefix := range t.PrefixOverrides {
+			if strings.HasPrefix(query, prefix) {
+				query = strings.TrimPrefix(query, prefix)
+				break
+			}
+		}
 	}
-	if t.SuffixOverrides != "" {
-		query = strings.TrimSuffix(query, t.SuffixOverrides)
+	if len(t.SuffixOverrides) > 0 {
+		for _, suffix := range t.SuffixOverrides {
+			if strings.HasSuffix(query, suffix) {
+				query = strings.TrimSuffix(query, suffix)
+				break
+			}
+		}
 	}
 	if t.Suffix != "" {
 		query += t.Suffix

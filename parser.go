@@ -567,11 +567,19 @@ func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 		case "prefix":
 			trimNode.Prefix = attr.Value
 		case "prefixOverrides":
-			trimNode.PrefixOverrides = attr.Value
+			prefixOverrides := strings.Split(attr.Value, "|")
+			for i := range prefixOverrides {
+				prefixOverrides[i] = strings.TrimSpace(prefixOverrides[i])
+			}
+			trimNode.PrefixOverrides = prefixOverrides
 		case "suffix":
 			trimNode.Suffix = attr.Value
 		case "suffixOverrides":
-			trimNode.SuffixOverrides = attr.Value
+			suffixOverrides := strings.Split(attr.Value, "|")
+			for i := range suffixOverrides {
+				suffixOverrides[i] = strings.TrimSpace(suffixOverrides[i])
+			}
+			trimNode.SuffixOverrides = suffixOverrides
 		}
 	}
 	for {
