@@ -157,7 +157,7 @@ func TestTrimNode_Accept(t *testing.T) {
 		},
 		Prefix:          "(",
 		Suffix:          ")",
-		SuffixOverrides: ",",
+		SuffixOverrides: []string{","},
 	}
 	params := map[string]reflect.Value{
 		"id":   reflect.ValueOf(1),
