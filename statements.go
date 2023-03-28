@@ -94,7 +94,7 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 			return attribute
 		}
 	})
-	return query, args, nil
+	return
 }
 
 func (s *Statement) String() string {
