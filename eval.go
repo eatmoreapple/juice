@@ -57,10 +57,10 @@ func evalCallExpr(exp *ast.CallExpr, params map[string]reflect.Value) (reflect.V
 		return reflect.Value{}, errors.New("unsupported call expression")
 	}
 	if fn.Type().NumIn() != len(exp.Args) {
-		return reflect.Value{}, errors.New("invalid number of arguments")
+		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", fn.Type().NumIn(), len(exp.Args))
 	}
 	if fn.Type().NumOut() != 1 {
-		return reflect.Value{}, errors.New("invalid number of return values")
+		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 1, got %d", fn.Type().NumOut())
 	}
 	var args []reflect.Value
 	for i, arg := range exp.Args {
@@ -83,7 +83,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (r
 		return reflect.Value{}, err
 	}
 	if x.Kind() != reflect.Struct {
-		return reflect.Value{}, errors.New("unsupported selector expression")
+		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", exp.Sel.Name)
 	}
 	return x.FieldByName(exp.Sel.Name), nil
 }
@@ -177,7 +177,7 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 	return exprFunc(lhs, rhs)
 }
 
-func comment(lhs reflect.Value, rhs reflect.Value) (reflect.Value, error) {
+func comment(_ reflect.Value, _ reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(true), nil
 }
 
