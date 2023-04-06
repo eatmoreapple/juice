@@ -167,8 +167,8 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 
 func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decoder *xml.Decoder) error {
 	for _, attr := range start.Attr {
-		if attr.Name.Local == "gomod" {
-			mappers.goMod = attr.Value
+		if attr.Name.Local == "prefix" {
+			mappers.prefix = attr.Value
 			break
 		}
 	}
