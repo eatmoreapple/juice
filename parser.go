@@ -259,7 +259,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 				}
 				key := stmt.ID()
 				if _, exists := mapper.statements[key]; exists {
-					return nil, fmt.Errorf("duplicate statement id: %s", stmt.ID())
+					return nil, fmt.Errorf("duplicate statement id: %s", key)
 				}
 				mapper.statements[key] = stmt
 			case "sql":
