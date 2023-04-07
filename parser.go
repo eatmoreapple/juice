@@ -167,10 +167,7 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 
 func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decoder *xml.Decoder) error {
 	for _, attr := range start.Attr {
-		if attr.Name.Local == "prefix" {
-			mappers.prefix = attr.Value
-			break
-		}
+		mappers.setAttr(attr.Name.Local, attr.Value)
 	}
 	for {
 		token, err := decoder.Token()
@@ -182,17 +179,18 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
+			// mappers only support mapper child node
 			if token.Name.Local == "mapper" {
 				mapper, err := p.parseMapper(decoder, token)
 				if err != nil {
 					return err
 				}
+				mapper.mappers = mappers
 				for key, stmt := range mapper.statements {
 					if err = mappers.setStatementByID(key, stmt); err != nil {
 						return err
 					}
 				}
-				mapper.mappers = mappers
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mappers" {
