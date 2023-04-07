@@ -54,7 +54,7 @@ func (m *DebugMiddleware) QueryContext(stmt *Statement, next QueryHandler) Query
 		start := time.Now()
 		rows, err := next(ctx, query, args...)
 		spent := time.Since(start)
-		logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", stmt.Key(), query, args, spent)
+		logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", stmt.Name(), query, args, spent)
 		return rows, err
 	}
 }
@@ -70,7 +70,7 @@ func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHan
 		start := time.Now()
 		rows, err := next(ctx, query, args...)
 		spent := time.Since(start)
-		logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", stmt.Key(), query, args, spent)
+		logger.Printf("\x1b[33m[%s]\x1b[0m \x1b[32m %s\x1b[0m \x1b[34m %v\x1b[0m \x1b[31m %v\x1b[0m\n", stmt.Name(), query, args, spent)
 		return rows, err
 	}
 }

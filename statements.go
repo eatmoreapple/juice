@@ -17,6 +17,7 @@ type Statement struct {
 	action Action
 	Nodes  []Node
 	attrs  map[string]string
+	name   string
 }
 
 func (s *Statement) Attribute(key string) string {
@@ -42,9 +43,9 @@ func (s *Statement) Namespace() string {
 	return s.mapper.Namespace()
 }
 
-// Key is a unique key of the whole statement.
-func (s *Statement) Key() string {
-	return s.Namespace() + "." + s.ID()
+// Name is a unique key of the whole statement.
+func (s *Statement) Name() string {
+	return s.name
 }
 
 func (s *Statement) Action() Action {
@@ -98,7 +99,7 @@ func (s *Statement) Accept(translator driver.Translator, p Param) (query string,
 }
 
 func (s *Statement) String() string {
-	return s.Key()
+	return s.Name()
 }
 
 // Mapper is an getter of statements.
