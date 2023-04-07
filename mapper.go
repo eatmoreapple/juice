@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 // Mapper defines a set of statements.
@@ -86,7 +85,7 @@ func (m *Mapper) Configuration() *Configuration {
 type Mappers struct {
 	statements map[string]*Statement
 	cfg        *Configuration
-	prefix     string // the go module name, only used for the runtime function name
+	attrs      map[string]string
 }
 
 // GetStatementByID returns a statement by id.
@@ -116,10 +115,6 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 		switch rv.Kind() {
 		case reflect.Func:
 			id = runtimeFuncName(rv)
-			// if the id is not in the go module, add the go module name as the prefix
-			if len(m.prefix) > 0 && !strings.HasPrefix(id, m.prefix) {
-				id = m.prefix + "." + id
-			}
 		case reflect.Struct:
 			id = rv.Type().Name()
 		default:
@@ -147,6 +142,15 @@ func (m *Mappers) setStatementByID(id string, stmt *Statement) error {
 	}
 	m.statements[id] = stmt
 	return nil
+}
+
+// setAttr sets an attribute.
+// same as setAttribute, but it is used for Mappers.
+func (m *Mappers) setAttr(key, value string) {
+	if m.attrs == nil {
+		m.attrs = make(map[string]string)
+	}
+	m.attrs[key] = value
 }
 
 // StatementIDGetter is an interface for getting statement id.
