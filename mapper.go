@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // Mapper defines a set of statements.
@@ -57,8 +58,29 @@ func (m *Mapper) setResultMap(node *resultMapNode) error {
 	return nil
 }
 
+// Attribute returns the attribute value by key.
 func (m *Mapper) Attribute(key string) string {
 	return m.attrs[key]
+}
+
+// Prefix returns the prefix of the mapper.
+func (m *Mapper) Prefix() string {
+	return m.Attribute("prefix")
+}
+
+// Name is the name of the mapper. which is the unique key of the mapper.
+func (m *Mapper) Name() string {
+	var builder strings.Builder
+	if prefix := m.mappers.Prefix(); prefix != "" {
+		builder.WriteString(prefix)
+		builder.WriteString(".")
+	}
+	if prefix := m.Prefix(); prefix != "" {
+		builder.WriteString(prefix)
+		builder.WriteString(".")
+	}
+	builder.WriteString(m.Namespace())
+	return builder.String()
 }
 
 func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
@@ -141,16 +163,28 @@ func (m *Mappers) setStatementByID(id string, stmt *Statement) error {
 		return fmt.Errorf("statement %s already exists", id)
 	}
 	m.statements[id] = stmt
+	// set the unique name into this statement
+	stmt.name = id
 	return nil
 }
 
-// setAttr sets an attribute.
+// setAttribute sets an attribute.
 // same as setAttribute, but it is used for Mappers.
-func (m *Mappers) setAttr(key, value string) {
+func (m *Mappers) setAttribute(key, value string) {
 	if m.attrs == nil {
 		m.attrs = make(map[string]string)
 	}
 	m.attrs[key] = value
+}
+
+// Attribute returns an attribute from the Mappers attributes.
+func (m *Mappers) Attribute(key string) string {
+	return m.attrs[key]
+}
+
+// Prefix returns the prefix of the Mappers.
+func (m *Mappers) Prefix() string {
+	return m.Attribute("prefix")
 }
 
 // StatementIDGetter is an interface for getting statement id.

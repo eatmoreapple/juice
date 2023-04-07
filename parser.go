@@ -167,7 +167,7 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 
 func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decoder *xml.Decoder) error {
 	for _, attr := range start.Attr {
-		mappers.setAttr(attr.Name.Local, attr.Value)
+		mappers.setAttribute(attr.Name.Local, attr.Value)
 	}
 	for {
 		token, err := decoder.Token()
@@ -186,11 +186,14 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 					return err
 				}
 				mapper.mappers = mappers
-				for key, stmt := range mapper.statements {
+				for _, stmt := range mapper.statements {
+					key := fmt.Sprintf("%s.%s", mapper.Name(), stmt.ID())
 					if err = mappers.setStatementByID(key, stmt); err != nil {
 						return err
 					}
 				}
+				// release memory
+				mapper.statements = nil
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mappers" {
@@ -238,7 +241,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 				if err = p.parseStatement(stmt, decoder, token); err != nil {
 					return nil, err
 				}
-				key := stmt.Key()
+				key := stmt.ID()
 				if _, exists := mapper.statements[key]; exists {
 					return nil, fmt.Errorf("duplicate statement id: %s", stmt.ID())
 				}
