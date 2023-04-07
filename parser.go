@@ -187,7 +187,7 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 				}
 				mapper.mappers = mappers
 				for _, stmt := range mapper.statements {
-					key := fmt.Sprintf("%s.%s", mapper.Name(), stmt.ID())
+					key := fmt.Sprintf("%s.%s", mapper.name(), stmt.ID())
 					if err = mappers.setStatementByID(key, stmt); err != nil {
 						return err
 					}
@@ -210,18 +210,34 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 		mapper.setAttribute(attr.Name.Local, attr.Value)
 	}
 
-	if mapper.resource = mapper.Attribute("resource"); mapper.resource != "" {
-		return p.parseMapperByResource(mapper.resource)
-	}
+	resource := mapper.Attribute("resource")
+	url := mapper.Attribute("url")
+	namespace := mapper.Attribute("namespace")
 
-	if mapper.url = mapper.Attribute("url"); mapper.url != "" {
-		return p.parseMapperByURL(mapper.url)
+	// check conflict
+	// resource, url, namespace only one can be set
+	// namespace is required if resource and url are not set
+	switch {
+	case resource != "" && url != "":
+		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "resource|url"}
+	case resource != "" && namespace != "":
+		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "resource|namespace"}
+	case url != "" && namespace != "":
+		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "url|namespace"}
+	case resource == "" && url == "" && namespace == "":
+		return nil, &nodeAttributeRequiredError{nodeName: "mapper", attrName: "resource|url|namespace"}
 	}
-
-	if mapper.namespace = mapper.Attribute("namespace"); mapper.namespace == "" {
+	if resource != "" {
+		return p.parseMapperByResource(resource)
+	}
+	if url != "" {
+		return p.parseMapperByURL(url)
+	}
+	if namespace == "" {
 		return nil, &nodeAttributeRequiredError{nodeName: "mapper", attrName: "namespace"}
 	}
 
+	mapper.namespace = namespace
 	mapper.statements = make(map[string]*Statement)
 
 	for {
@@ -247,6 +263,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 				}
 				mapper.statements[key] = stmt
 			case "sql":
+				// parse sql node
 				sqlNode := &SQLNode{mapper: mapper}
 				if err = p.parseSQLNode(sqlNode, decoder, token); err != nil {
 					return nil, err
@@ -255,6 +272,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 					return nil, err
 				}
 			case "resultMap":
+				// parse result map node
 				resultMap, err := p.parseResultMap(decoder, token)
 				if err != nil {
 					return nil, err

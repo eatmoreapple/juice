@@ -31,3 +31,12 @@ type nodeAttributeRequiredError struct {
 func (e *nodeAttributeRequiredError) Error() string {
 	return fmt.Sprintf("node %s requires attribute %s", e.nodeName, e.attrName)
 }
+
+type nodeAttributeConflictError struct {
+	nodeName string
+	attrName string
+}
+
+func (e *nodeAttributeConflictError) Error() string {
+	return fmt.Sprintf("node %s has conflicting attribute %s", e.nodeName, e.attrName)
+}

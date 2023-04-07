@@ -9,10 +9,8 @@ import (
 
 // Mapper defines a set of statements.
 type Mapper struct {
-	mappers    *Mappers
 	namespace  string
-	resource   string
-	url        string
+	mappers    *Mappers
 	statements map[string]*Statement
 	sqlNodes   map[string]*SQLNode
 	attrs      map[string]string
@@ -68,8 +66,8 @@ func (m *Mapper) Prefix() string {
 	return m.Attribute("prefix")
 }
 
-// Name is the name of the mapper. which is the unique key of the mapper.
-func (m *Mapper) Name() string {
+// name is the name of the mapper. which is the unique key of the mapper.
+func (m *Mapper) name() string {
 	var builder strings.Builder
 	if prefix := m.mappers.Prefix(); prefix != "" {
 		builder.WriteString(prefix)
