@@ -1,12 +1,14 @@
 package internal
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,11 +16,12 @@ import (
 	"github.com/eatmoreapple/juice"
 )
 
+var errFound = errors.New("file found")
+
 type Parser struct {
 	typeName  string
 	impl      string
 	cfg       string
-	path      string
 	namespace string
 	output    string
 }
@@ -28,7 +31,6 @@ func (p *Parser) parseCommand() error {
 	cmd.StringVar(&p.typeName, "type", "", "typeName type name")
 	cmd.StringVar(&p.impl, "impl", "", "implementation name")
 	cmd.StringVar(&p.cfg, "config", "", "config path")
-	cmd.StringVar(&p.path, "path", "./", "path")
 	cmd.StringVar(&p.namespace, "namespace", "", "namespace")
 	cmd.StringVar(&p.output, "output", "", "output path")
 	return cmd.Parse(os.Args[2:])
@@ -39,7 +41,84 @@ func (p *Parser) init() error {
 		return errors.New("typeName type name is required")
 	}
 	if p.namespace == "" {
-		return errors.New("namespace is required")
+		// namespace auto discover
+		// find package name util find go.mod
+		// 这么写太傻逼了，我要重构
+		path, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		var gomodPath = path
+		for {
+			ok, err := fileExists(filepath.Join(gomodPath, "go.mod"))
+			if err != nil {
+				return err
+			}
+			if ok {
+				break
+			}
+			gomodPath = filepath.Dir(gomodPath)
+		}
+		// read go.mod and get module name
+		f, err := os.Open(filepath.Join(gomodPath, "go.mod"))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = f.Close() }()
+		var module string
+		reader := bufio.NewReader(f)
+		for {
+			line, _, err := reader.ReadLine()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			data := string(line)
+			if strings.HasPrefix(data, "module") {
+				module = strings.TrimSpace(strings.TrimPrefix(data, "module"))
+				break
+			}
+		}
+		if module == "" {
+			return errors.New("can not find module name")
+		}
+		// find package name
+		err = filepath.Walk(gomodPath, func(filePath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if filePath == gomodPath {
+				return nil
+			}
+			if info.IsDir() {
+				if info.Name() == "vendor" || !strings.HasPrefix(path, filePath) || strings.HasPrefix(path, ".") {
+					return filepath.SkipDir
+				}
+			} else {
+				if filepath.Dir(filePath) == path {
+					relativePath, err := filepath.Rel(gomodPath, path)
+					if err != nil {
+						return err
+					}
+					if relativePath == "." {
+						relativePath = ""
+					}
+					if relativePath != "" {
+						relativePath = relativePath + "/"
+					}
+					pkgName := module + "/" + relativePath
+					pkgName = strings.ReplaceAll(pkgName, "/", ".")
+					p.namespace = pkgName + p.typeName
+					return errFound
+				}
+			}
+			return nil
+		})
+		if err != nil && !errors.Is(err, errFound) {
+			return err
+		}
 	}
 	if p.output != "" {
 		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
@@ -88,7 +167,7 @@ func (p *Parser) parse() (*Generator, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkgs, err := parser.ParseDir(token.NewFileSet(), p.path, nil, parser.ParseComments)
+	pkgs, err := parser.ParseDir(token.NewFileSet(), "./", nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
