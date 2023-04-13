@@ -1,12 +1,15 @@
-package testcase
+package testcase2
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os/user"
+	"reflect"
+	"runtime"
 )
 
-//go:generate juice impl --type Interface --namespace main.UserRepository --output interface_impl.go
+//go:generate juice impl --type Interface  --output interface_impl.go
 type Interface interface {
 	// GetUserByID 根据用户id查找用户
 	GetUserByID(ctx context.Context, id int64) ([]*user.User, error)
@@ -17,3 +20,8 @@ type Interface interface {
 }
 
 type User struct{}
+
+func main() {
+	var a Interface = NewInterface()
+	fmt.Println(runtime.FuncForPC(reflect.ValueOf(a.GetUserByID).Pointer()).Name())
+}
