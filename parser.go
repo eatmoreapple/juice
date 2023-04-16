@@ -22,6 +22,11 @@ type ConfigurationParser interface {
 type XMLParser struct {
 	configuration Configuration
 	FS            fs.FS
+	ignoreEnv     bool
+}
+
+func (p XMLParser) IgnoreEnv(i bool) {
+	p.ignoreEnv = i
 }
 
 // Parse implements ConfigurationParser.
@@ -39,6 +44,9 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 		case xml.StartElement:
 			switch token.Name.Local {
 			case "environments":
+				if p.ignoreEnv {
+					continue
+				}
 				envs, err := p.parseEnvironments(decoder, token)
 				if err != nil {
 					return nil, err
@@ -1248,4 +1256,19 @@ func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error
 	}
 	defer func() { _ = file.Close() }()
 	return NewXMLConfigurationWithReader(fs, file)
+}
+
+// newXMLConfigurationParser creates a new Configuration from an XML file which ignores environment parsing.
+// for internal use only.
+func newXMLConfigurationParser(fs fs.FS, filename string) (*Configuration, error) {
+	baseDir := filepath.Dir(filename)
+	fs = fsWrapper{fs, baseDir}
+	filename = filepath.Base(filename)
+	file, err := fs.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	parser := &XMLParser{FS: fs, ignoreEnv: true}
+	return parser.Parse(file)
 }
