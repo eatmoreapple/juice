@@ -9,14 +9,19 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	stdfs "io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	_ "unsafe"
 
 	"github.com/eatmoreapple/juice"
 )
 
 var errFound = errors.New("file found")
+
+//go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
+func newXMLConfigurationParser(fs stdfs.FS, filename string) (*juice.Configuration, error)
 
 type Parser struct {
 	typeName  string
@@ -182,7 +187,7 @@ func (p *Parser) Parse() (*Generator, error) {
 }
 
 func (p *Parser) parse() (*Generator, error) {
-	cfg, err := juice.NewXMLConfiguration(p.cfg)
+	cfg, err := newXMLConfigurationParser(juice.LocalFS{}, p.cfg)
 	if err != nil {
 		return nil, err
 	}
