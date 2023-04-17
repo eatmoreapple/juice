@@ -11,13 +11,25 @@ import (
 	_ "github.com/eatmoreapple/juice/cmd/juice/namespace"
 )
 
+// Command defines a command which can be executed by juice.
 type Command interface {
+	// Name returns the name of the command.
+	// The name is used in the command line.
+	// For example, if the name is "generate", the command is executed by "juice generate".
+	// The name must be unique.
 	Name() string
+
+	// Do execute the command.
 	Do() error
+
+	// Help returns the help message of the command.
+	Help() string
 }
 
+// cmdLibraries is a map of commands which can be executed by juice.
 var cmdLibraries = make(map[string]Command)
 
+// Register registers a command.
 func Register(cmd Command) error {
 	if cmd == nil {
 		return errors.New("cmd is nil")
@@ -29,15 +41,33 @@ func Register(cmd Command) error {
 	return nil
 }
 
+// Do execute the command.
 func Do() error {
 	if len(os.Args) < 2 {
 		return errors.New("juice: command is required")
 	}
 	name := os.Args[1]
-	if cmd, ok := cmdLibraries[name]; ok {
-		return cmd.Do()
+	if name == "--help" {
+		println("juice is a command line tool for generating code.")
+		println("  Usage: juice command [options] [arguments]")
+		println("  Options:")
+		println("    --help")
+		println("      show help")
+		println("  Commands:")
+		for _, cmd := range cmdLibraries {
+			println("    " + cmd.Name())
+		}
+		return nil
 	}
-	return errors.New("juice: unknown command " + name)
+	cmd, ok := cmdLibraries[name]
+	if !ok {
+		return errors.New("juice: unknown command " + name)
+	}
+	if len(os.Args) > 2 && os.Args[2] == "--help" {
+		println(cmd.Help())
+		return nil
+	}
+	return cmd.Do()
 }
 
 func init() {

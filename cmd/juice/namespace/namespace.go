@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"strings"
 
 	"github.com/eatmoreapple/juice/cmd/juice/internal"
 )
@@ -30,4 +31,12 @@ func (n *Generate) Do() error {
 	}
 	println(namespace)
 	return nil
+}
+
+func (n *Generate) Help() string {
+	var builder strings.Builder
+	builder.WriteString("namespace: generate namespace for type\n")
+	builder.WriteString("  Usage:\n")
+	builder.WriteString("    --type string interface type name\n")
+	return builder.String()
 }
