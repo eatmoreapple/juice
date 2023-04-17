@@ -159,9 +159,6 @@ var ErrConfigNotFound = errors.New("config.xml or config/config.xml not found")
 
 // parseCfg parse config.xml or config/config.xml
 func (p *Parser) parseCfg() error {
-	if p.cfg != "" {
-		return ErrConfigNotFound
-	}
 	if ok, err := fileExists("config.xml"); err != nil {
 		return err
 	} else if ok {
