@@ -46,102 +46,11 @@ func (p *Parser) init() error {
 		return errors.New("typeName type name is required")
 	}
 	if p.namespace == "" {
-		// namespace auto discover
-		// find package name util find go.mod
-		// 这么写太傻逼了，我要重构
-		path, err := os.Getwd()
+		var err error
+		cmp := &namespaceAutocomplete{typeName: p.typeName}
+		p.namespace, err = cmp.Autocomplete()
 		if err != nil {
 			return err
-		}
-		// is current package main?
-		fs := token.NewFileSet()
-		pkg, err := parser.ParseDir(fs, path, nil, parser.PackageClauseOnly)
-		if err != nil {
-			return err
-		}
-		var isMain bool
-		if len(pkg) == 1 {
-			for _, v := range pkg {
-				if v.Name == "main" {
-					isMain = true
-					break
-				}
-			}
-		}
-		if isMain {
-			p.namespace = "main." + p.typeName
-		} else {
-			var gomodPath = path
-			for {
-				ok, err := fileExists(filepath.Join(gomodPath, "go.mod"))
-				if err != nil {
-					return err
-				}
-				if ok {
-					break
-				}
-				gomodPath = filepath.Dir(gomodPath)
-			}
-			// read go.mod and get module name
-			f, err := os.Open(filepath.Join(gomodPath, "go.mod"))
-			if err != nil {
-				return err
-			}
-			defer func() { _ = f.Close() }()
-			var module string
-			reader := bufio.NewReader(f)
-			for {
-				line, _, err := reader.ReadLine()
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				if err != nil {
-					return err
-				}
-				data := string(line)
-				if strings.HasPrefix(data, "module") {
-					module = strings.TrimSpace(strings.TrimPrefix(data, "module"))
-					break
-				}
-			}
-			if module == "" {
-				return errors.New("can not find module name")
-			}
-			// find package name
-			err = filepath.Walk(gomodPath, func(filePath string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				if filePath == gomodPath {
-					return nil
-				}
-				if info.IsDir() {
-					if info.Name() == "vendor" || !strings.HasPrefix(path, filePath) || strings.HasPrefix(path, ".") {
-						return filepath.SkipDir
-					}
-				} else {
-					if filepath.Dir(filePath) == path {
-						relativePath, err := filepath.Rel(gomodPath, path)
-						if err != nil {
-							return err
-						}
-						if relativePath == "." {
-							relativePath = ""
-						}
-						if relativePath != "" {
-							relativePath = relativePath + "/"
-						}
-						pkgName := module + "/" + relativePath
-						pkgName = strings.ReplaceAll(pkgName, "/", ".")
-						p.namespace = pkgName + p.typeName
-						return errFound
-					}
-				}
-				return nil
-			})
-			if err != nil && !errors.Is(err, errFound) {
-				return err
-			}
 		}
 	}
 	if p.output != "" {
@@ -354,4 +263,108 @@ func fileExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+type namespaceAutocomplete struct {
+	typeName string
+}
+
+func (n namespaceAutocomplete) Autocomplete() (string, error) {
+	path, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	// is current package main?
+	fs := token.NewFileSet()
+	pkg, err := parser.ParseDir(fs, path, nil, parser.PackageClauseOnly)
+	if err != nil {
+		return "", err
+	}
+	if len(pkg) == 1 {
+		for _, v := range pkg {
+			if v.Name == "main" {
+				return "main." + n.typeName, nil
+			}
+		}
+	}
+	return n.autoComplete(path)
+}
+
+func (n namespaceAutocomplete) autoComplete(path string) (string, error) {
+	var gomodPath = path
+	for {
+		ok, err := fileExists(filepath.Join(gomodPath, "go.mod"))
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			break
+		}
+		gomodPath = filepath.Dir(gomodPath)
+	}
+	// read go.mod and get module name
+	f, err := os.Open(filepath.Join(gomodPath, "go.mod"))
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	var module string
+	reader := bufio.NewReader(f)
+	for {
+		line, _, err := reader.ReadLine()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		data := string(line)
+		if strings.HasPrefix(data, "module") {
+			module = strings.TrimSpace(strings.TrimPrefix(data, "module"))
+			break
+		}
+	}
+	if module == "" {
+		return "", errors.New("can not find module name")
+	}
+	var namespace string
+	// find package name
+	err = filepath.Walk(gomodPath, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if filePath == gomodPath {
+			return nil
+		}
+		if info.IsDir() {
+			if info.Name() == "vendor" || !strings.HasPrefix(path, filePath) || strings.HasPrefix(path, ".") {
+				return filepath.SkipDir
+			}
+		} else {
+			if filepath.Dir(filePath) == path {
+				relativePath, err := filepath.Rel(gomodPath, path)
+				if err != nil {
+					return err
+				}
+				if relativePath == "." {
+					relativePath = ""
+				}
+				if relativePath != "" {
+					relativePath = relativePath + "/"
+				}
+				pkgName := module + "/" + relativePath
+				pkgName = strings.ReplaceAll(pkgName, "/", ".")
+				namespace = pkgName + n.typeName
+				return errFound
+			}
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, errFound) {
+		return "", err
+	}
+	if namespace == "" {
+		return "", errors.New("can not find package name")
+	}
+	return namespace, nil
 }
