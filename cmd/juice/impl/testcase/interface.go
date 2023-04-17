@@ -1,4 +1,4 @@
-package main
+package testcase
 
 import (
 	"context"
