@@ -21,7 +21,7 @@ import (
 var errFound = errors.New("file found")
 
 //go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
-func newXMLConfigurationParser(fs stdfs.FS, filename string) (*juice.Configuration, error)
+func newXMLConfigurationParser(stdfs.FS, string, bool) (*juice.Configuration, error)
 
 type Parser struct {
 	typeName  string
@@ -187,7 +187,7 @@ func (p *Parser) Parse() (*Generator, error) {
 }
 
 func (p *Parser) parse() (*Generator, error) {
-	cfg, err := newXMLConfigurationParser(juice.LocalFS{}, p.cfg)
+	cfg, err := newXMLConfigurationParser(juice.LocalFS{}, p.cfg, true)
 	if err != nil {
 		return nil, err
 	}

@@ -1247,20 +1247,12 @@ func NewXMLConfiguration(filename string) (*Configuration, error) {
 
 // NewXMLConfigurationWithFS creates a new Configuration from an XML file.
 func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error) {
-	baseDir := filepath.Dir(filename)
-	fs = fsWrapper{fs, baseDir}
-	filename = filepath.Base(filename)
-	file, err := fs.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = file.Close() }()
-	return NewXMLConfigurationWithReader(fs, file)
+	return newXMLConfigurationParser(fs, filename, false)
 }
 
 // newXMLConfigurationParser creates a new Configuration from an XML file which ignores environment parsing.
 // for internal use only.
-func newXMLConfigurationParser(fs fs.FS, filename string) (*Configuration, error) {
+func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (*Configuration, error) {
 	baseDir := filepath.Dir(filename)
 	fs = fsWrapper{fs, baseDir}
 	filename = filepath.Base(filename)
@@ -1269,6 +1261,6 @@ func newXMLConfigurationParser(fs fs.FS, filename string) (*Configuration, error
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	parser := &XMLParser{FS: fs, ignoreEnv: true}
+	parser := &XMLParser{FS: fs, ignoreEnv: ignoreEnv}
 	return parser.Parse(file)
 }
