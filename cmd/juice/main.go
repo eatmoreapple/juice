@@ -14,6 +14,7 @@ import (
 type Command interface {
 	Name() string
 	Do() error
+	Help() string
 }
 
 var cmdLibraries = make(map[string]Command)
@@ -34,10 +35,27 @@ func Do() error {
 		return errors.New("juice: command is required")
 	}
 	name := os.Args[1]
-	if cmd, ok := cmdLibraries[name]; ok {
-		return cmd.Do()
+	if name == "--help" {
+		println("juice is a command line tool for generating code.")
+		println("  Usage: juice command [options] [arguments]")
+		println("  Options:")
+		println("    --help")
+		println("      show help")
+		println("  Commands:")
+		for _, cmd := range cmdLibraries {
+			println("    " + cmd.Name())
+		}
+		return nil
 	}
-	return errors.New("juice: unknown command " + name)
+	cmd, ok := cmdLibraries[name]
+	if !ok {
+		return errors.New("juice: unknown command " + name)
+	}
+	if len(os.Args) > 2 && os.Args[2] == "--help" {
+		println(cmd.Help())
+		return nil
+	}
+	return cmd.Do()
 }
 
 func init() {
