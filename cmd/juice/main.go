@@ -11,14 +11,25 @@ import (
 	_ "github.com/eatmoreapple/juice/cmd/juice/namespace"
 )
 
+// Command defines a command which can be executed by juice.
 type Command interface {
+	// Name returns the name of the command.
+	// The name is used in the command line.
+	// For example, if the name is "generate", the command is executed by "juice generate".
+	// The name must be unique.
 	Name() string
+
+	// Do execute the command.
 	Do() error
+
+	// Help returns the help message of the command.
 	Help() string
 }
 
+// cmdLibraries is a map of commands which can be executed by juice.
 var cmdLibraries = make(map[string]Command)
 
+// Register registers a command.
 func Register(cmd Command) error {
 	if cmd == nil {
 		return errors.New("cmd is nil")
@@ -30,6 +41,7 @@ func Register(cmd Command) error {
 	return nil
 }
 
+// Do execute the command.
 func Do() error {
 	if len(os.Args) < 2 {
 		return errors.New("juice: command is required")

@@ -6,6 +6,7 @@ import (
 	"github.com/eatmoreapple/juice/cmd/juice/impl/internal"
 )
 
+// Generate is a command for generating implementation.
 type Generate struct{}
 
 func (i *Generate) Name() string {
