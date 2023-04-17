@@ -6,16 +6,16 @@ import (
 	"os"
 
 	"github.com/eatmoreapple/juice/cmd/juice/internal"
-	"github.com/eatmoreapple/juice/cmd/juice/internal/cmd"
 )
 
-type Namespace struct{}
+// Generate is a command for generating namespace.
+type Generate struct{}
 
-func (n *Namespace) Name() string {
+func (n *Generate) Name() string {
 	return "namespace"
 }
 
-func (n *Namespace) Do() error {
+func (n *Generate) Do() error {
 	var _type string
 	c := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
 	c.StringVar(&_type, "type", "", "typeName type name")
@@ -30,10 +30,4 @@ func (n *Namespace) Do() error {
 	}
 	println(namespace)
 	return nil
-}
-
-func init() {
-	if err := cmd.Register(&Namespace{}); err != nil {
-		panic(err)
-	}
 }
