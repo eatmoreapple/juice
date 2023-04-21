@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/eatmoreapple/juice/cmd/juice/internal"
+	"github.com/eatmoreapple/juice/juicecli/internal"
 )
 
 // Generate is a command for generating namespace.

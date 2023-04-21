@@ -67,7 +67,7 @@ Here are some default condition methods.
 ```bash
 go get github.com/eatmoreapple/juice
 
-go install github.com/eatmoreapple/juice/cmd/juice@latest
+go install github.com/eatmoreapple/juice/juicecli@latest
 ```
 
 #### Example

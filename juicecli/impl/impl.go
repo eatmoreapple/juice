@@ -3,7 +3,7 @@ package impl
 import (
 	"strings"
 
-	"github.com/eatmoreapple/juice/cmd/juice/impl/internal"
+	"github.com/eatmoreapple/juice/juicecli/impl/internal"
 )
 
 // Generate is a command for generating implementation.
