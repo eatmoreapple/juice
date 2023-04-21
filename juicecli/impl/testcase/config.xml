@@ -8,7 +8,7 @@
     </environments>
 
 
-    <mappers>
+    <mappers prefix="github.com.eatmoreapple.juice.juicecli.impl">
         <mapper resource="user_mapper.xml"/>
     </mappers>
 </configuration>
