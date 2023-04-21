@@ -5,10 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/eatmoreapple/juice/cmd/juice/impl"
-	_ "github.com/eatmoreapple/juice/cmd/juice/impl"
-	"github.com/eatmoreapple/juice/cmd/juice/namespace"
-	_ "github.com/eatmoreapple/juice/cmd/juice/namespace"
+	"github.com/eatmoreapple/juice/juicecli/impl"
+	"github.com/eatmoreapple/juice/juicecli/namespace"
 )
 
 // Command defines a command which can be executed by juice.

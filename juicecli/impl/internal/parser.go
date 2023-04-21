@@ -14,7 +14,7 @@ import (
 	_ "unsafe"
 
 	"github.com/eatmoreapple/juice"
-	"github.com/eatmoreapple/juice/cmd/juice/internal"
+	"github.com/eatmoreapple/juice/juicecli/internal"
 )
 
 //go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
