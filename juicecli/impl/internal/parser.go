@@ -20,6 +20,138 @@ import (
 //go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
 func newXMLConfigurationParser(stdfs.FS, string, bool) (*juice.Configuration, error)
 
+// CommandParser defines the interface for parsing command.
+type CommandParser interface {
+	RegisterCommand(cmd *flag.FlagSet)
+	Parse() error
+}
+
+// CommandParserGroup wraps multiple CommandParser.
+type CommandParserGroup struct {
+	CommandParsers []CommandParser
+	cmd            *flag.FlagSet
+}
+
+func (c *CommandParserGroup) RegisterCommand(cmd *flag.FlagSet) {
+	for _, p := range c.CommandParsers {
+		p.RegisterCommand(cmd)
+	}
+	c.cmd = cmd
+}
+
+func (c *CommandParserGroup) Parse() error {
+	if err := c.cmd.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+	for _, p := range c.CommandParsers {
+		if err := p.Parse(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewCommandParserGroup(group []CommandParser) CommandParser {
+	return &CommandParserGroup{CommandParsers: group}
+}
+
+type TypeNameParser struct {
+	point *string
+}
+
+func (t *TypeNameParser) RegisterCommand(cmd *flag.FlagSet) {
+	cmd.StringVar(t.point, "type", "", "typeName type name")
+}
+
+func (t *TypeNameParser) Parse() error {
+	if *t.point == "" {
+		return errors.New("typeName type name is required")
+	}
+	return nil
+}
+
+type ImplNameParser struct {
+	point *string
+}
+
+func (t *ImplNameParser) RegisterCommand(cmd *flag.FlagSet) {
+	cmd.StringVar(t.point, "impl", "", "implementation name")
+}
+
+func (t *ImplNameParser) Parse() error {
+	return nil
+}
+
+// defaultConfigFiles is the default config file name
+// while config is not set, we will check if config.xml or config/config.xml exists
+var defaultConfigFiles = [...]string{"config.xml", "config/config.xml"}
+
+type ConfigPathParser struct {
+	point *string
+}
+
+func (t *ConfigPathParser) RegisterCommand(cmd *flag.FlagSet) {
+	cmd.StringVar(t.point, "config", "", "config path, default: config.xml or config/config.xml")
+}
+
+func (t *ConfigPathParser) Parse() error {
+	if *t.point != "" {
+		// if config is set, it is not our responsibility to check if it exists
+		// configparser will check it
+		return nil
+	}
+	// if config is not set, we will check if config.xml or config/config.xml exists
+	for _, f := range defaultConfigFiles {
+		ok, err := fileExists(f)
+		if err != nil {
+			return err
+		}
+		if ok {
+			*t.point = f
+			return nil
+		}
+	}
+	return errors.New("config.xml or config/config.xml not found")
+}
+
+type NamespaceParser struct {
+	point    *string
+	typeName *string
+}
+
+func (t *NamespaceParser) RegisterCommand(cmd *flag.FlagSet) {
+	cmd.StringVar(t.point, "namespace", "", "namespace, default: auto generate")
+}
+
+func (t *NamespaceParser) Parse() error {
+	if *t.point == "" {
+		var err error
+		cmp := &internal.NameSpaceAutoComplete{TypeName: *t.typeName}
+		*t.point, err = cmp.Autocomplete()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type OutputPathParser struct {
+	point *string
+}
+
+func (t *OutputPathParser) RegisterCommand(cmd *flag.FlagSet) {
+	cmd.StringVar(t.point, "output", "", "output path")
+}
+
+func (t *OutputPathParser) Parse() error {
+	if *t.point != "" {
+		if *t.point != filepath.Base(strings.TrimPrefix(*t.point, "./")) {
+			return errors.New("output path only support file name")
+		}
+	}
+	return nil
+}
+
 type Parser struct {
 	typeName  string
 	impl      string
@@ -30,60 +162,22 @@ type Parser struct {
 
 func (p *Parser) parseCommand() error {
 	cmd := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
-	cmd.StringVar(&p.typeName, "type", "", "typeName type name")
-	cmd.StringVar(&p.impl, "impl", "", "implementation name")
-	cmd.StringVar(&p.cfg, "config", "", "config path")
-	cmd.StringVar(&p.namespace, "namespace", "", "namespace")
-	cmd.StringVar(&p.output, "output", "", "output path")
-	return cmd.Parse(os.Args[2:])
-}
-
-func (p *Parser) init() error {
-	if p.typeName == "" {
-		return errors.New("typeName type name is required")
+	var parsers = []CommandParser{
+		// TypeNameParser must be the first one
+		// because it will set the default value for other parsers
+		&TypeNameParser{point: &p.typeName},
+		&ImplNameParser{point: &p.impl},
+		&ConfigPathParser{point: &p.cfg},
+		&NamespaceParser{point: &p.namespace, typeName: &p.typeName},
+		&OutputPathParser{point: &p.output},
 	}
-	if p.namespace == "" {
-		var err error
-		cmp := &internal.NameSpaceAutoComplete{TypeName: p.typeName}
-		p.namespace, err = cmp.Autocomplete()
-		if err != nil {
-			return err
-		}
-	}
-	if p.output != "" {
-		if p.output != filepath.Base(strings.TrimPrefix(p.output, "./")) {
-			return errors.New("output path only support file name")
-		}
-	}
-	if err := p.parseCfg(); err != nil {
-		return err
-	}
-	return nil
-}
-
-var ErrConfigNotFound = errors.New("config.xml or config/config.xml not found")
-
-// parseCfg parse config.xml or config/config.xml
-func (p *Parser) parseCfg() error {
-	if ok, err := fileExists("config.xml"); err != nil {
-		return err
-	} else if ok {
-		p.cfg = "config.xml"
-		return nil
-	} else if ok, err := fileExists("config/config.xml"); err != nil {
-		return err
-	} else if ok {
-		p.cfg = "config/config.xml"
-		return nil
-	}
-	return ErrConfigNotFound
+	ps := NewCommandParserGroup(parsers)
+	ps.RegisterCommand(cmd)
+	return ps.Parse()
 }
 
 func (p *Parser) Parse() (*Generator, error) {
 	if err := p.parseCommand(); err != nil {
-		return nil, err
-	}
-	if err := p.init(); err != nil {
 		return nil, err
 	}
 	return p.parse()
