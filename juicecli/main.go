@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/eatmoreapple/juice/juicecli/impl"
-	"github.com/eatmoreapple/juice/juicecli/namespace"
+	"github.com/eatmoreapple/juice/juicecli/tell"
 )
 
 // Command defines a command which can be executed by juice.
@@ -45,7 +45,8 @@ func Do() error {
 		return errors.New("juice: command is required")
 	}
 	name := os.Args[1]
-	if name == "--help" {
+	switch name {
+	case "--help":
 		println("juice is a command line tool for generating code.")
 		println("  Usage: juice command [options] [arguments]")
 		println("  Options:")
@@ -72,7 +73,7 @@ func init() {
 	if err := Register(&impl.Generate{}); err != nil {
 		log.Fatal(err)
 	}
-	if err := Register(&namespace.Generate{}); err != nil {
+	if err := Register(&tell.Generate{}); err != nil {
 		log.Fatal(err)
 	}
 }

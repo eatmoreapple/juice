@@ -1,4 +1,4 @@
-package namespace
+package tell
 
 import (
 	"errors"
@@ -13,14 +13,16 @@ import (
 type Generate struct{}
 
 func (n *Generate) Name() string {
-	return "namespace"
+	return "tell"
 }
 
 func (n *Generate) Do() error {
 	var _type string
 	c := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
 	c.StringVar(&_type, "type", "", "typeName type name")
-	_ = c.Parse(os.Args[2:])
+	if err := c.Parse(os.Args[2:]); err != nil {
+		return err
+	}
 	if _type == "" {
 		return errors.New("namespace: type is required")
 	}
