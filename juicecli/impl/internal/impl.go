@@ -2,25 +2,26 @@ package internal
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 )
 
 type Implement struct {
-	// Package is a package of implement.
-	Package string
 	// Name is a name of implement.
 	Name string
 	// Interface is an interface of implement.
 	Interface string
-	// Methods is a methods of implement.
-	Methods Functions
+	// methods is a methods of implement.
+	methods Functions
 	// ExtraImports is extra imports of implement.
 	ExtraImports Imports
+	//
+	file *ast.File
 }
 
-func (i Implement) Imports() Imports {
+func (i *Implement) Imports() Imports {
 	ps := make(map[string]Import)
-	for _, method := range i.Methods {
+	for _, method := range i.methods {
 		for _, imp := range method.Args.Imports() {
 			ps[imp.Path] = imp
 		}
@@ -41,17 +42,21 @@ func (i Implement) Imports() Imports {
 	return result
 }
 
-func (i Implement) String() string {
+func (i *Implement) Package() string {
+	return i.file.Name.Name
+}
+
+func (i *Implement) String() string {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("package %s", i.Package))
+	builder.WriteString(fmt.Sprintf("package %s", i.Package()))
 	builder.WriteString("\n\n")
 	builder.WriteString(i.Imports().String())
 	builder.WriteString("\n\n")
 	builder.WriteString(fmt.Sprintf("type %s struct {}", i.Name))
 	builder.WriteString("\n\n")
-	for index, method := range i.Methods {
+	for index, method := range i.methods {
 		builder.WriteString(method.String())
-		if index < len(i.Methods)-1 {
+		if index < len(i.methods)-1 {
 			builder.WriteString("\n\n")
 		}
 	}
@@ -62,7 +67,7 @@ func (i Implement) String() string {
 	return formatCode(builder.String())
 }
 
-func (i Implement) constructor() Function {
+func (i *Implement) constructor() Function {
 	var body = fmt.Sprintf("\n\treturn &%s{}", i.Name)
 	return Function{
 		Name: fmt.Sprintf("New%s", i.Interface),
@@ -71,4 +76,52 @@ func (i Implement) constructor() Function {
 		},
 		Body: &body,
 	}
+}
+
+func (i *Implement) Init(iface *ast.InterfaceType) error {
+	for _, method := range iface.Methods.List {
+		if len(method.Names) == 0 {
+			continue
+		}
+		methodName := method.Names[0].Name
+		ft, ok := method.Type.(*ast.FuncType)
+		if !ok {
+			return fmt.Errorf("method %s is not a function type", methodName)
+		}
+
+		argsValue := parseValues(i.file, ft.Params.List)
+		returnValues := parseValues(i.file, ft.Results.List)
+
+		function := &Function{
+			Name:    methodName,
+			Args:    argsValue,
+			Results: returnValues,
+			Receiver: &Value{
+				Type: i.Name,
+				Name: strings.ToLower(i.Name[:1]),
+			},
+			Type: i.Interface,
+		}
+
+		if method.Doc != nil {
+			var builder strings.Builder
+			for _, doc := range method.Doc.List {
+				builder.WriteString(doc.Text)
+				builder.WriteString("\n")
+			}
+			text := builder.String()
+			function.Doc = &text
+		}
+		i.methods = append(i.methods, function)
+	}
+	return nil
+}
+
+func newImplement(file *ast.File, input, output string) *Implement {
+	impl := &Implement{
+		Name:      output,
+		Interface: input,
+		file:      file,
+	}
+	return impl
 }
