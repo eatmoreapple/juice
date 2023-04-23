@@ -96,6 +96,9 @@ func (v Values) String() string {
 	return sb.String()
 }
 
+// juiceImport defines a import of juice.
+var juiceImport = Import{Path: "github.com/eatmoreapple/juice", Name: "juice"}
+
 type Import struct {
 	Path string
 	Name string

@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	stdfs "io/fs"
 	"os"
 	"path/filepath"
@@ -14,6 +12,7 @@ import (
 	_ "unsafe"
 
 	"github.com/eatmoreapple/juice"
+	"github.com/eatmoreapple/juice/juicecli/internal/module"
 	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
 
@@ -188,12 +187,8 @@ func (p *Parser) parse() (*Generator, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkgs, err := parser.ParseDir(token.NewFileSet(), "./", nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
 
-	// get implementation name from config
+	// set default impl name
 	if p.impl == "" {
 		implSuffix := cfg.Settings.Get("implSuffix")
 		if implSuffix == "" {
@@ -202,91 +197,25 @@ func (p *Parser) parse() (*Generator, error) {
 		p.impl = p.typeName + implSuffix.String()
 	}
 
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			impl, err := inspect(f, p.typeName, p.impl)
-			if err != nil {
-				return nil, err
-			}
-			if impl != nil {
-				return &Generator{
-					cfg:       cfg,
-					impl:      impl,
-					namespace: p.namespace,
-					output:    p.output,
-				}, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("type %s not found", p.typeName)
-}
-
-func inspect(node *ast.File, input, output string) (*Implement, error) {
-	impl := &Implement{
-		Name:      output,
-		Interface: input,
-	}
-	var err error
-	ast.Inspect(node, func(n ast.Node) bool {
-		if impl.Package != "" {
-			return false
-		}
-		switch x := n.(type) {
-		case *ast.TypeSpec:
-			if x.Name.Name != input {
-				return true
-			}
-			typ, ok := x.Type.(*ast.InterfaceType)
-			if !ok {
-				err = fmt.Errorf("type %s is not an interface", input)
-				return false
-			}
-			impl.Package = node.Name.Name
-			for _, method := range typ.Methods.List {
-				if len(method.Names) == 0 {
-					continue
-				}
-				methodName := method.Names[0].Name
-				ft, ok := method.Type.(*ast.FuncType)
-				if !ok {
-					err = fmt.Errorf("method %s is not a function type", methodName)
-					return false
-				}
-				argsValue := parseValues(node, ft.Params.List)
-				returnValues := parseValues(node, ft.Results.List)
-
-				function := &Function{
-					Name:    methodName,
-					Args:    argsValue,
-					Results: returnValues,
-					Receiver: &Value{
-						Type: output,
-						Name: strings.ToLower(output[:1]),
-					},
-					Type: input,
-				}
-				if method.Doc != nil {
-					var builder strings.Builder
-					for _, doc := range method.Doc.List {
-						builder.WriteString(doc.Text)
-						builder.WriteString("\n")
-					}
-					text := builder.String()
-					function.Doc = &text
-				}
-				impl.Methods = append(impl.Methods, function)
-			}
-			return false
-		}
-		return true
-	})
+	// find type node
+	node, file, err := module.FindTypeNode("./", p.typeName)
 	if err != nil {
 		return nil, err
 	}
-	if impl.Package == "" {
-		return nil, nil
+	iface, ok := node.(*ast.InterfaceType)
+	if !ok {
+		return nil, fmt.Errorf("%s is not an interface", p.typeName)
 	}
-	return impl, nil
+	impl := newImplement(file, p.typeName, p.impl)
+	if err = impl.Init(iface); err != nil {
+		return nil, err
+	}
+	return &Generator{
+		cfg:       cfg,
+		impl:      impl,
+		namespace: p.namespace,
+		output:    p.output,
+	}, nil
 }
 
 func parseValues(file *ast.File, fields []*ast.Field) Values {
