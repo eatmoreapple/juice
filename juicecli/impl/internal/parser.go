@@ -14,7 +14,7 @@ import (
 	_ "unsafe"
 
 	"github.com/eatmoreapple/juice"
-	"github.com/eatmoreapple/juice/juicecli/internal"
+	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
 
 //go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
@@ -126,7 +126,7 @@ func (t *NamespaceParser) RegisterCommand(cmd *flag.FlagSet) {
 func (t *NamespaceParser) Parse() error {
 	if *t.point == "" {
 		var err error
-		cmp := &internal.NameSpaceAutoComplete{TypeName: *t.typeName}
+		cmp := &namespace.AutoComplete{TypeName: *t.typeName}
 		*t.point, err = cmp.Autocomplete()
 		if err != nil {
 			return err
