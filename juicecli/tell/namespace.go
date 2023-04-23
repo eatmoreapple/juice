@@ -6,27 +6,39 @@ import (
 	"os"
 	"strings"
 
+	"github.com/eatmoreapple/juice/juicecli/internal/module"
 	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
 
 // Generate is a command for generating namespace.
-type Generate struct{}
+type Generate struct {
+	typeName string
+	check    bool
+}
 
 func (n *Generate) Name() string {
 	return "tell"
 }
 
 func (n *Generate) Do() error {
-	var _type string
 	c := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
-	c.StringVar(&_type, "type", "", "typeName type name")
+	c.StringVar(&n.typeName, "type", "", "typeName type name")
+	c.BoolVar(&n.check, "check", true, "check if type is exists")
+
 	if err := c.Parse(os.Args[2:]); err != nil {
 		return err
 	}
-	if _type == "" {
+
+	if n.typeName == "" {
 		return errors.New("namespace: type is required")
 	}
-	cmp := &namespace.AutoComplete{TypeName: _type}
+	if n.check {
+		if _, _, err := module.FindTypeNode(".", n.typeName); err != nil {
+			return err
+		}
+	}
+
+	cmp := &namespace.AutoComplete{TypeName: n.typeName}
 	data, err := cmp.Autocomplete()
 	if err != nil {
 		return err
