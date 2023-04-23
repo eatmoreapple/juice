@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/eatmoreapple/juice/juicecli/internal"
+	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
 
 // Generate is a command for generating namespace.
@@ -26,12 +26,12 @@ func (n *Generate) Do() error {
 	if _type == "" {
 		return errors.New("namespace: type is required")
 	}
-	cmp := &internal.NameSpaceAutoComplete{TypeName: _type}
-	namespace, err := cmp.Autocomplete()
+	cmp := &namespace.AutoComplete{TypeName: _type}
+	data, err := cmp.Autocomplete()
 	if err != nil {
 		return err
 	}
-	println(namespace)
+	println(data)
 	return nil
 }
 
