@@ -1236,11 +1236,6 @@ func (p XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder)
 	return nil, &nodeUnclosedError{nodeName: "field"}
 }
 
-func NewXMLConfigurationWithReader(fs fs.FS, reader io.Reader) (*Configuration, error) {
-	parser := &XMLParser{FS: fs}
-	return parser.Parse(reader)
-}
-
 func NewXMLConfiguration(filename string) (*Configuration, error) {
 	return NewXMLConfigurationWithFS(LocalFS{}, filename)
 }
