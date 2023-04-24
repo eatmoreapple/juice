@@ -15,11 +15,12 @@ func (i *Generate) Name() string {
 
 func (i *Generate) Do() error {
 	parser := internal.Parser{}
-	impl, err := parser.Parse()
+	generator, err := parser.Parse()
 	if err != nil {
 		return err
 	}
-	return impl.Generate()
+	defer func() { _ = generator.Close() }()
+	return generator.Generate()
 }
 
 func (i *Generate) Help() string {

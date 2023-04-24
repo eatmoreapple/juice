@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
+	"io"
 	stdfs "io/fs"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ type CommandParserGroup struct {
 	cmd            *flag.FlagSet
 }
 
+// RegisterCommand registers all CommandParser.
 func (c *CommandParserGroup) RegisterCommand(cmd *flag.FlagSet) {
 	for _, p := range c.CommandParsers {
 		p.RegisterCommand(cmd)
@@ -38,6 +40,7 @@ func (c *CommandParserGroup) RegisterCommand(cmd *flag.FlagSet) {
 	c.cmd = cmd
 }
 
+// Parse parses all CommandParser.
 func (c *CommandParserGroup) Parse() error {
 	if err := c.cmd.Parse(os.Args[2:]); err != nil {
 		return err
@@ -50,6 +53,7 @@ func (c *CommandParserGroup) Parse() error {
 	return nil
 }
 
+// NewCommandParserGroup creates a new CommandParserGroup which wraps multiple CommandParser.
 func NewCommandParserGroup(group []CommandParser) CommandParser {
 	return &CommandParserGroup{CommandParsers: group}
 }
@@ -210,11 +214,20 @@ func (p *Parser) parse() (*Generator, error) {
 	if err = impl.Init(iface); err != nil {
 		return nil, err
 	}
+	var output io.Writer
+	if p.output != "" {
+		output, err = os.Create(p.output)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		output = os.Stdout
+	}
 	return &Generator{
 		cfg:       cfg,
 		impl:      impl,
 		namespace: p.namespace,
-		output:    p.output,
+		writer:    output,
 	}, nil
 }
 
