@@ -22,8 +22,6 @@ type Function struct {
 	Type string
 	// Doc method document
 	Doc *string
-
-	Namespace string
 }
 
 func (f Function) String() string {
