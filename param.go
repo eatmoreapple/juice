@@ -89,8 +89,8 @@ const (
 )
 
 // ParamConvert converts any type to Param
-// defaultParamName will be used if the type is not a struct or a map
-func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
+// alias will be used if the type is not a struct or a map
+func ParamConvert(v interface{}, alias string) (Param, error) {
 	if v == nil {
 		return make(Param), nil
 	}
@@ -111,10 +111,10 @@ func ParamConvert(v interface{}, defaultParamName string) (Param, error) {
 		// if the value is not a struct or a map, try to one the value from the default key
 		param := make(Param)
 		// if the default key is empty, use the defaultParamKey instead
-		if defaultParamName == "" {
-			defaultParamName = defaultParamKey
+		if alias == "" {
+			alias = defaultParamKey
 		}
-		param[defaultParamName] = value
+		param[alias] = value
 		return param, nil
 	}
 }
