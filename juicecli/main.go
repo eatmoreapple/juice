@@ -69,12 +69,16 @@ func Do() error {
 	return cmd.Do()
 }
 
+var commands = []Command{
+	&impl.Generate{},
+	&tell.Generate{},
+}
+
 func init() {
-	if err := Register(&impl.Generate{}); err != nil {
-		log.Fatal(err)
-	}
-	if err := Register(&tell.Generate{}); err != nil {
-		log.Fatal(err)
+	for _, cmd := range commands {
+		if err := Register(cmd); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
