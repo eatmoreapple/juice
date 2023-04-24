@@ -44,15 +44,11 @@ func strJoin(v interface{}, sep string) string {
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
 		if rv.Type().Elem().Kind() == reflect.String {
-			builder := getBuilder()
-			defer putBuilder(builder)
+			list := make([]string, 0, rv.Len())
 			for i := 0; i < rv.Len(); i++ {
-				if i > 0 {
-					builder.WriteString(sep)
-				}
-				builder.WriteString(rv.Index(i).String())
+				list = append(list, rv.Index(i).String())
 			}
-			return builder.String()
+			return strings.Join(list, sep)
 		}
 	}
 	panic("join: invalid argument type")
@@ -87,10 +83,10 @@ func slice(v interface{}, start, count int) []interface{} {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
-		result := rv.Slice(start, start+count)
-		var ret []interface{}
-		for i := 0; i < result.Len(); i++ {
-			ret = append(ret, result.Index(i).Interface())
+		rt := rv.Slice(start, start+count)
+		var ret = make([]interface{}, 0, rt.Len())
+		for i := 0; i < rt.Len(); i++ {
+			ret = append(ret, rt.Index(i).Interface())
 		}
 		return ret
 	}
