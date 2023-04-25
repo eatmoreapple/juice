@@ -180,6 +180,8 @@ func MustRegisterEvalFunc(name string, v interface{}) {
 var builtins = map[string]reflect.Value{}
 
 func init() {
+	builtins["true"] = reflect.ValueOf(true)
+	builtins["false"] = reflect.ValueOf(false)
 	MustRegisterEvalFunc("len", length)
 	MustRegisterEvalFunc("substr", strSub)
 	MustRegisterEvalFunc("join", strJoin)

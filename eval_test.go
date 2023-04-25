@@ -422,3 +422,102 @@ func TestSliceExpr(t *testing.T) {
 		return
 	}
 }
+
+func TestAnd(t *testing.T) {
+	result, err := Eval(`1 + 1 < 0 && 1 + 1 == 2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`(1 + 1 < 0) & (1 + 1 == 2)`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval("true & false", nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestOr(t *testing.T) {
+	result, err := Eval(`1 + 1 < 0 || 1 + 1 == 2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval("true | false", nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestAndOr(t *testing.T) {
+	result, err := Eval(`1 + 1 < 0 || 1 + 1 == 2 && 1 + 1 == 3`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestAndOr2(t *testing.T) {
+	result, err := Eval(`1 + 1 < 0 && 1 + 1 == 2 || 1 + 1 == 3`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestNot(t *testing.T) {
+	result, err := Eval(`!(1 + 1 == 2)`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestNot2(t *testing.T) {
+	result, err := Eval(`!true`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
