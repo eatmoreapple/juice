@@ -43,8 +43,77 @@ func eval(exp ast.Expr, params map[string]reflect.Value) (reflect.Value, error) 
 		return evalSelectorExpr(exp, params)
 	case *ast.CallExpr:
 		return evalCallExpr(exp, params)
+	case *ast.UnaryExpr:
+		return evalUnaryExpr(exp, params)
+	case *ast.IndexExpr:
+		return evalIndexExpr(exp, params)
+	case *ast.StarExpr:
+		return eval(exp.X, params)
+	case *ast.SliceExpr:
+		return evalSliceExpr(exp, params)
 	default:
 		return reflect.Value{}, errors.New("unsupported expression")
+	}
+}
+
+func evalSliceExpr(exp *ast.SliceExpr, params map[string]reflect.Value) (reflect.Value, error) {
+	value, err := eval(exp.X, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	var low, high int
+
+	// like [1:] expr
+	// if exp.Low is nil, it means the slice starts from 0
+	if exp.Low != nil {
+		low, err = strconv.Atoi(exp.Low.(*ast.BasicLit).Value)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+	// like [:1] expr
+	if exp.High != nil {
+		high, err = strconv.Atoi(exp.High.(*ast.BasicLit).Value)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	} else {
+		// otherwise, it means the slice ends at the end of the slice
+		high = value.Len()
+	}
+	// return the slice
+	return value.Slice(low, high), nil
+}
+
+func evalUnaryExpr(exp *ast.UnaryExpr, params map[string]reflect.Value) (reflect.Value, error) {
+	value, err := eval(exp.X, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	switch exp.Op {
+	case token.SUB:
+		return reflect.ValueOf(-value.Int()), nil
+	default:
+		return reflect.Value{}, errors.New("unsupported unary expression")
+	}
+}
+
+func evalIndexExpr(exp *ast.IndexExpr, params map[string]reflect.Value) (reflect.Value, error) {
+	value, err := eval(exp.X, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	index, err := eval(exp.Index, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	switch value.Kind() {
+	case reflect.Array, reflect.Slice, reflect.String:
+		return value.Index(int(index.Int())), nil
+	case reflect.Map:
+		return value.MapIndex(index), nil
+	default:
+		return reflect.Value{}, errors.New("unsupported index expression")
 	}
 }
 

@@ -279,3 +279,146 @@ func TestComment(t *testing.T) {
 		return
 	}
 }
+
+func TestUnaryExpr(t *testing.T) {
+	result, err := Eval(`-2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != -2 {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestUnaryExpr2(t *testing.T) {
+	result, err := Eval(`-2 * 3`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != -6 {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestIndexExprSlice(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	}
+	result, err := Eval(`a[0]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "eat" {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`a[0] + a[1]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "eatmore" {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestIndexExprMap(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf(map[string]string{
+			"eat": "more",
+		}),
+	}
+	result, err := Eval(`a["eat"]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "more" {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestStarExpr(t *testing.T) {
+	result, err := Eval(`*2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 2 {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`2 *2`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Int() != 4 {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestSliceExpr(t *testing.T) {
+	param := Param{
+		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	}
+	result, err := Eval(`a[:]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Len() != 3 {
+		t.Errorf("eval error: %d", result.Len())
+		return
+	}
+	if result.Index(0).Interface() != "eat" {
+		t.Error("eval error")
+		return
+	}
+	if result.Index(1).Interface() != "more" {
+		t.Error("eval error")
+		return
+	}
+	if result.Index(2).Interface() != "apple" {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`a[1:]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Len() != 2 {
+		t.Errorf("eval error: %d", result.Len())
+		return
+	}
+	if result.Index(0).Interface() != "more" {
+		t.Error("eval error")
+		return
+	}
+	if result.Index(1).Interface() != "apple" {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval(`a[1:2]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Len() != 1 {
+		t.Errorf("eval error: %d", result.Len())
+		return
+	}
+	if result.Index(0).Interface() != "more" {
+		t.Error("eval error")
+		return
+	}
+}
