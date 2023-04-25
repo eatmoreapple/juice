@@ -69,8 +69,12 @@ func evalCallExpr(exp *ast.CallExpr, params map[string]reflect.Value) (reflect.V
 			return reflect.Value{}, err
 		}
 		// type conversion for function arguments
-		if fn.Type().In(i).Kind() != value.Kind() {
-			value = value.Convert(fn.Type().In(i))
+		in := fn.Type().In(i)
+		if in.Kind() != value.Kind() {
+			if !value.CanConvert(in) {
+				return reflect.Value{}, fmt.Errorf("cannot convert %s to %s", value.Type().Name(), in.Name())
+			}
+			value = value.Convert(in)
 		}
 		args = append(args, value)
 	}
