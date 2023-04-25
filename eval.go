@@ -93,6 +93,16 @@ func evalUnaryExpr(exp *ast.UnaryExpr, params map[string]reflect.Value) (reflect
 	switch exp.Op {
 	case token.SUB:
 		return reflect.ValueOf(-value.Int()), nil
+	case token.ADD:
+		return reflect.ValueOf(+value.Int()), nil
+	case token.NOT:
+		return reflect.ValueOf(!value.Bool()), nil
+	case token.XOR:
+		return reflect.ValueOf(^value.Int()), nil
+	case token.AND:
+		return reflect.ValueOf(^value.Int()), nil
+	case token.MUL:
+		return reflect.ValueOf(value.Pointer()), nil
 	default:
 		return reflect.Value{}, errors.New("unsupported unary expression")
 	}
@@ -244,6 +254,12 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (refle
 		exprFunc = rparen
 	case token.COMMENT:
 		exprFunc = comment
+	case token.NOT:
+		exprFunc = not
+	case token.AND:
+		exprFunc = and
+	case token.OR:
+		exprFunc = or
 	default:
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
@@ -254,6 +270,7 @@ func comment(_ reflect.Value, _ reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(true), nil
 }
 
+// evalFunc evaluates a function call expression.
 func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.Value) reflect.Value {
 	var args []reflect.Value
 	if exp.Y != nil {
@@ -266,6 +283,7 @@ func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.V
 	return fn.Call(args)[0]
 }
 
+// eql returns true if the left and right values are equal.
 func eql(right, left reflect.Value) (reflect.Value, error) {
 	if right.Kind() == left.Kind() {
 		return reflect.ValueOf(right.Interface() == left.Interface()), nil
@@ -290,6 +308,7 @@ func eql(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported eql expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// neq returns the result of a != b.
 func neq(right, left reflect.Value) (reflect.Value, error) {
 	if right.Kind() == left.Kind() {
 		return reflect.ValueOf(right.Interface() != left.Interface()), nil
@@ -314,6 +333,7 @@ func neq(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported neq expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// lss returns true if right < left.
 func lss(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -340,6 +360,7 @@ func lss(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported lss expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// leq returns true if right <= left.
 func leq(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -366,6 +387,7 @@ func leq(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported leq expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// gtr returns true if right > left
 func gtr(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -392,6 +414,7 @@ func gtr(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported gtr expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// geq returns true if right >= left.
 func geq(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -418,6 +441,7 @@ func geq(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported geq expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// land returns the logical and of the two values.
 func land(right, left reflect.Value) (reflect.Value, error) {
 	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
 		return reflect.ValueOf(right.Bool() && left.Bool()), nil
@@ -425,6 +449,7 @@ func land(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported land expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// lor returns the logical or of the two values.
 func lor(right, left reflect.Value) (reflect.Value, error) {
 	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
 		return reflect.ValueOf(right.Bool() || left.Bool()), nil
@@ -432,6 +457,7 @@ func lor(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported lor expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// add returns the sum of the two values.
 func add(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -458,6 +484,7 @@ func add(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported add expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// sub returns the difference between right and left.
 func sub(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -479,6 +506,7 @@ func sub(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported sub expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// mul returns the product of right and left.
 func mul(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -500,6 +528,7 @@ func mul(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported mul expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// quo returns the quotient of right and left.
 func quo(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -521,6 +550,7 @@ func quo(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported quo expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// rem returns the remainder of a division operation.
 func rem(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -537,10 +567,44 @@ func rem(right, left reflect.Value) (reflect.Value, error) {
 	return reflect.ValueOf(false), fmt.Errorf("unsupported rem expression: %v, %v", right.Kind(), left.Kind())
 }
 
+// land returns true if both right and left are true.
 func lparen(_, left reflect.Value) (reflect.Value, error) {
 	return left, nil
 }
 
+// land returns true if both right and left are true.
 func rparen(right, _ reflect.Value) (reflect.Value, error) {
 	return right, nil
+}
+
+// not returns true if right is false.
+func not(_, left reflect.Value) (reflect.Value, error) {
+	if left.Kind() == reflect.Bool {
+		return reflect.ValueOf(!left.Bool()), nil
+	}
+	return reflect.ValueOf(false), fmt.Errorf("unsupported not expression: %v", left.Kind())
+}
+
+// and returns true if both right and left are true.
+// what's the difference between and land?
+// land will evaluate left if right is false.
+// but not and.
+// for example:
+//
+//			1 + 1 == 2 && 1 + 1 == 3    // false
+//		 	1 + 1 == 2 & 1 + 1 == 3     // it will return an error, cause 2 & 1 are not bool value.
+//	     	(1 + 1 == 2) & (1 + 1 == 3) // this is ok.
+func and(right, left reflect.Value) (reflect.Value, error) {
+	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
+		return reflect.ValueOf(right.Bool() && left.Bool()), nil
+	}
+	return reflect.ValueOf(false), fmt.Errorf("unsupported and expression: %v, %v", right.Kind(), left.Kind())
+}
+
+// or returns true if either right or left is true.
+func or(right, left reflect.Value) (reflect.Value, error) {
+	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
+		return reflect.ValueOf(right.Bool() || left.Bool()), nil
+	}
+	return reflect.ValueOf(false), fmt.Errorf("unsupported or expression: %v, %v", right.Kind(), left.Kind())
 }
