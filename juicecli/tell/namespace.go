@@ -3,9 +3,11 @@ package tell
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 
+	"github.com/eatmoreapple/juice/juicecli/internal/colorformat"
 	"github.com/eatmoreapple/juice/juicecli/internal/module"
 	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
@@ -49,8 +51,15 @@ func (n *Generate) Do() error {
 
 func (n *Generate) Help() string {
 	var builder strings.Builder
-	builder.WriteString("namespace: generate namespace for type\n")
-	builder.WriteString("  Usage:\n")
-	builder.WriteString("    --type string interface type name\n")
+	builder.WriteString("return namespace of given type.\n\n")
+	builder.WriteString("Usage:\n")
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--type"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      implementation type name.\n\n"))
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--check"), colorformat.Magenta("bool")))
+	builder.WriteString(colorformat.Green("      check if type is exists, default is true."))
 	return builder.String()
+}
+
+func (n *Generate) Description() string {
+	return "generate namespace for type"
 }
