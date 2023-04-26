@@ -1,9 +1,11 @@
 package impl
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/eatmoreapple/juice/juicecli/impl/internal"
+	"github.com/eatmoreapple/juice/juicecli/internal/colorformat"
 )
 
 // Generate is a command for generating implementation.
@@ -25,18 +27,22 @@ func (i *Generate) Do() error {
 
 func (i *Generate) Help() string {
 	var builder strings.Builder
-	builder.WriteString("impl is a command for generating implementation.\n")
-	builder.WriteString("  Usage: juice impl [options] [arguments] \n")
-	builder.WriteString("  Options:\n")
-	builder.WriteString("    --type string\n")
-	builder.WriteString("      typeName type name\n")
-	builder.WriteString("    --output string\n")
-	builder.WriteString("      output file name, default is stdout\n")
-	builder.WriteString("    --config string\n")
-	builder.WriteString("      config file path, default is ./config.xml OR ./config/config.xml\n")
-	builder.WriteString("    --namespace string\n")
-	builder.WriteString("      namespace, default is auto generate\n")
-	builder.WriteString("    -impl string\n")
-	builder.WriteString("      implementation name, default is auto generate")
+	builder.WriteString("command for generating implementation.\n\n")
+	builder.WriteString("Usage: juicecli impl [options] [arguments] \n\n")
+	builder.WriteString("Options:\n")
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--type"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      implementation type name.\n\n"))
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--output"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      output file name, default is stdout.\n\n"))
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--config"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      config file path, default is \"config.xml\" OR \"config/config.xml\".\n\n"))
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--namespace"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      namespace, default is auto generate.\n\n"))
+	builder.WriteString(fmt.Sprintf("    %s %s\n", colorformat.Red("--impl"), colorformat.Magenta("string")))
+	builder.WriteString(colorformat.Green("      implementation name, default is auto generate."))
 	return builder.String()
+}
+
+func (i *Generate) Description() string {
+	return "impl is a command for generating implementation."
 }
