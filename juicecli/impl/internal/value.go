@@ -16,8 +16,6 @@ type Value struct {
 	Import Import
 	// IsPointer is a flag of pointer.
 	IsPointer bool
-	// IsStruct is a flag of struct.
-	IsStruct bool
 	// IsMap is a flag of map.
 	IsMap bool
 	// IsSlice is a flag of slice.
@@ -57,6 +55,17 @@ func (v Value) TypeName() string {
 		name = "*" + name
 	}
 	return name
+}
+
+func (v Value) IsBuiltIn() bool {
+	switch v.TypeName() {
+	case "string", "int", "int8", "int16", "int32", "int64", "uint", "uint8",
+		"uint16", "uint32", "uint64", "float32", "float64", "bool", "byte",
+		"rune", "uintptr", "complex64", "complex128", "error":
+		return true
+	default:
+		return false
+	}
 }
 
 func (v Value) String() string {
@@ -104,7 +113,7 @@ func (v Values) AsQuery() string {
 		return "nil"
 	case 2:
 		arg := v[1]
-		if arg.IsStruct || arg.IsMap {
+		if !arg.IsBuiltIn() || arg.IsMap {
 			query = arg.Name
 		} else {
 			query = fmt.Sprintf("juice.H{\"%s\": %s}", arg.Name, arg.Name)
