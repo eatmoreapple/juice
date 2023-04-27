@@ -188,7 +188,7 @@ func formatParams(params ast.ValueGroup) string {
 		var builder strings.Builder
 		builder.WriteString("juice.H{")
 		for index, param := range params[1:] {
-			builder.WriteString(fmt.Sprintf("%q: %s", param.Name(), param.TypeName()))
+			builder.WriteString(fmt.Sprintf("%q: %s", param.Name(), param.Name()))
 			if index < len(params)-2 {
 				builder.WriteString(", ")
 			}

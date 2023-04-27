@@ -29,7 +29,7 @@ func (i InterfaceImpl) DeleteUserByID(ctx context.Context, id int64, name string
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
 	executor := manager.Object(iface.DeleteUserByID)
-	return executor.ExecContext(ctx, juice.H{"id": int64, "name": string})
+	return executor.ExecContext(ctx, juice.H{"id": id, "name": name})
 }
 
 // NewInterface returns a new Interface.
