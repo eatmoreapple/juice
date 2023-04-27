@@ -179,17 +179,17 @@ func (p *Parser) parseCommand() error {
 	return ps.Parse()
 }
 
-func (p *Parser) Parse() (*Generator, error) {
+func (p *Parser) Parse() error {
 	if err := p.parseCommand(); err != nil {
-		return nil, err
+		return err
 	}
 	return p.parse()
 }
 
-func (p *Parser) parse() (*Generator, error) {
+func (p *Parser) parse() error {
 	cfg, err := newXMLConfigurationParser(juice.LocalFS{}, p.cfg, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// set default impl name
@@ -204,87 +204,29 @@ func (p *Parser) parse() (*Generator, error) {
 	// find type node
 	node, file, err := module.FindTypeNode("./", p.typeName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	iface, ok := node.(*ast.InterfaceType)
 	if !ok {
-		return nil, fmt.Errorf("%s is not an interface", p.typeName)
+		return fmt.Errorf("%s is not an interface", p.typeName)
 	}
-	impl := newImplement(file, p.typeName, p.impl)
-	if err = impl.Init(iface); err != nil {
-		return nil, err
-	}
+
+	impl := newImplement(file, iface, p.typeName, p.impl)
+
+	generator := newGenerator(p.namespace, cfg, impl)
+
 	var output io.Writer
 	if p.output != "" {
 		output, err = os.Create(p.output)
 		if err != nil {
-			return nil, err
+			return err
 		}
+		defer func() { _ = output.(io.Closer).Close() }()
 	} else {
 		output = os.Stdout
 	}
-	return &Generator{
-		cfg:       cfg,
-		impl:      impl,
-		namespace: p.namespace,
-		writer:    output,
-	}, nil
-}
-
-func parseValues(file *ast.File, fields []*ast.Field) Values {
-	var values Values
-	for _, field := range fields {
-		value := Value{}
-		parseValue(&value, file, field)
-		if len(field.Names) > 0 {
-			value.Name = field.Names[0].Name
-		}
-		values = append(values, value)
-	}
-	return values
-}
-
-func parseValue(value *Value, file *ast.File, field *ast.Field) {
-	switch t := field.Type.(type) {
-	case *ast.Ident:
-		value.Type = t.Name
-	case *ast.SelectorExpr:
-		value.Type = t.Sel.Name
-		if ident, ok := t.X.(*ast.Ident); ok {
-			parseImport(value, file, ident.Name)
-		}
-	case *ast.ArrayType:
-		value.IsSlice = true
-		parseValue(value, file, &ast.Field{Type: t.Elt})
-	case *ast.StarExpr:
-		value.IsPointer = true
-		parseValue(value, file, &ast.Field{Type: t.X})
-	case *ast.MapType:
-		value.IsMap = true
-		if ident, ok := t.Key.(*ast.Ident); ok && ident.Name != "string" {
-			panic("map key must be string")
-		}
-		parseValue(value, file, &ast.Field{Type: t.Value})
-	case *ast.InterfaceType:
-		value.Type = "interface{}"
-	}
-}
-
-func parseImport(value *Value, file *ast.File, alias string) {
-	for _, spec := range file.Imports {
-		pkgName := strings.Trim(spec.Path.Value, `"`)
-		if spec.Name != nil && spec.Name.Name == alias {
-			value.Import.Path = pkgName
-			value.Import.Name = alias
-			break
-		}
-		pkg := strings.Split(pkgName, "/")
-		if pkg[len(pkg)-1] == alias {
-			value.Import.Path = pkgName
-			value.Import.Name = alias
-			break
-		}
-	}
+	_, err = generator.WriteTo(output)
+	return err
 }
 
 func fileExists(path string) (bool, error) {
