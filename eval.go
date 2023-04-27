@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"math/cmplx"
 	"reflect"
 	"strconv"
 )
@@ -285,18 +286,22 @@ func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.V
 
 // eql returns true if the left and right values are equal.
 func eql(right, left reflect.Value) (reflect.Value, error) {
-	if right.Kind() == left.Kind() {
-		return reflect.ValueOf(right.Interface() == left.Interface()), nil
-	}
 	switch right.Kind() {
+	case left.Kind():
+		value := reflect.DeepEqual(right.Interface(), left.Interface())
+		return reflect.ValueOf(value), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() == left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) == left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() == uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() == left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -304,46 +309,39 @@ func eql(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.Float32, reflect.Float64:
 			return reflect.ValueOf(right.Float() == left.Float()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(right.Complex() == left.Complex()), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported eql expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // neq returns the result of a != b.
 func neq(right, left reflect.Value) (reflect.Value, error) {
-	if right.Kind() == left.Kind() {
-		return reflect.ValueOf(right.Interface() != left.Interface()), nil
+	value, err := eql(right, left)
+	if err != nil {
+		return reflect.Value{}, err
 	}
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return reflect.ValueOf(right.Int() != left.Int()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return reflect.ValueOf(right.Uint() != left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() != left.Float()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported neq expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(!value.Bool()), nil
 }
 
 // lss returns true if right < left.
 func lss(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() < left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) < left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() < uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() < left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -356,21 +354,30 @@ func lss(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.String:
 			return reflect.ValueOf(right.String() < left.String()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(cmplx.Abs(right.Complex()) < cmplx.Abs(left.Complex())), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported lss expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // leq returns true if right <= left.
 func leq(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() <= left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) <= left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() <= uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() <= left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -383,62 +390,31 @@ func leq(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.String:
 			return reflect.ValueOf(right.String() <= left.String()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(cmplx.Abs(right.Complex()) <= cmplx.Abs(left.Complex())), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported leq expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // gtr returns true if right > left
 func gtr(right, left reflect.Value) (reflect.Value, error) {
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return reflect.ValueOf(right.Int() > left.Int()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return reflect.ValueOf(right.Uint() > left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() > left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() > left.String()), nil
-		}
+	value, err := leq(right, left)
+	if err != nil {
+		return reflect.Value{}, err
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported gtr expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(!value.Bool()), nil
 }
 
 // geq returns true if right >= left.
 func geq(right, left reflect.Value) (reflect.Value, error) {
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return reflect.ValueOf(right.Int() >= left.Int()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return reflect.ValueOf(right.Uint() >= left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() >= left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() >= left.String()), nil
-		}
+	value, err := lss(right, left)
+	if err != nil {
+		return reflect.Value{}, err
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported geq expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(!value.Bool()), nil
 }
 
 // land returns the logical and of the two values.
@@ -461,13 +437,17 @@ func lor(right, left reflect.Value) (reflect.Value, error) {
 func add(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() + left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) + left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() + uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() + left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -480,21 +460,30 @@ func add(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.String:
 			return reflect.ValueOf(right.String() + left.String()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(right.Complex() + left.Complex()), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported add expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // sub returns the difference between right and left.
 func sub(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() - left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) - left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() - uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() - left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -502,21 +491,30 @@ func sub(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.Float32, reflect.Float64:
 			return reflect.ValueOf(right.Float() - left.Float()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(right.Complex() - left.Complex()), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported sub expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // mul returns the product of right and left.
 func mul(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() * left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) * left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() * uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() * left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -524,21 +522,30 @@ func mul(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.Float32, reflect.Float64:
 			return reflect.ValueOf(right.Float() * left.Float()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(right.Complex() * left.Complex()), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported mul expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // quo returns the quotient of right and left.
 func quo(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() / left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) / left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() / uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() / left.Uint()), nil
 		}
 	case reflect.Float32, reflect.Float64:
@@ -546,25 +553,35 @@ func quo(right, left reflect.Value) (reflect.Value, error) {
 		case reflect.Float32, reflect.Float64:
 			return reflect.ValueOf(right.Float() / left.Float()), nil
 		}
+	case reflect.Complex64, reflect.Complex128:
+		switch left.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return reflect.ValueOf(right.Complex() / left.Complex()), nil
+		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported quo expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+
 }
 
 // rem returns the remainder of a division operation.
 func rem(right, left reflect.Value) (reflect.Value, error) {
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch left.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
 			return reflect.ValueOf(right.Int() % left.Int()), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
+			return reflect.ValueOf(uint64(right.Int()) % left.Uint()), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch left.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
+			return reflect.ValueOf(right.Uint() % uint64(left.Int())), nil
+		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
 			return reflect.ValueOf(right.Uint() % left.Uint()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported rem expression: %v, %v", right.Kind(), left.Kind())
+	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // land returns true if both right and left are true.
