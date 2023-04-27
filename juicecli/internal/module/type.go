@@ -33,6 +33,8 @@ func FindTypeNode(path, typeName string) (node ast.Node, file *ast.File, err err
 			})
 		}
 	}
-	err = fmt.Errorf("type %s not found", typeName)
+	if node == nil {
+		err = fmt.Errorf("type %s not found", typeName)
+	}
 	return
 }

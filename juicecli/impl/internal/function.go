@@ -95,9 +95,6 @@ func (f *readFuncBodyMaker) check() error {
 	if f.function.Args[0].TypeName() != "context.Context" {
 		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name)
 	}
-	if len(f.function.Args) > 2 {
-		return fmt.Errorf("%s: must have at most two arguments", f.function.Name)
-	}
 	return nil
 }
 
@@ -105,14 +102,10 @@ func (f *readFuncBodyMaker) build() {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
-	//key := fmt.Sprintf(`"%s.%s"`, f.function.Namespace, f.function.name)
 	builder.WriteString(fmt.Sprintf("\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
 		f.function.Results[0].TypeName(),
 		f.function.Name))
-	var query = "nil"
-	if len(f.function.Args) == 2 {
-		query = f.function.Args[1].Name
-	}
+	query := f.function.Args.AsQuery()
 	builder.WriteString(fmt.Sprintf("\n\treturn executor.QueryContext(%s, %s)", f.function.Args[0].Name, query))
 	body := formatCode(builder.String())
 	f.function.Body = &body
@@ -137,9 +130,6 @@ func (f *writeFuncBodyMaker) check() error {
 	}
 	if f.function.Args[0].TypeName() != "context.Context" {
 		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name)
-	}
-	if len(f.function.Args) > 2 {
-		return fmt.Errorf("%s: must have at most two arguments", f.function.Name)
 	}
 	if len(f.function.Results) == 0 {
 		return fmt.Errorf("%s: must have one result", f.function.Name)
@@ -169,10 +159,7 @@ func (f *writeFuncBodyMaker) build() {
 	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
 	//key := fmt.Sprintf(`"%s.%s"`, f.function.Namespace, f.function.name)
 	builder.WriteString(fmt.Sprintf("\n\texecutor := manager.Object(iface.%s)", f.function.Name))
-	var query = "nil"
-	if len(f.function.Args) == 2 {
-		query = f.function.Args[1].Name
-	}
+	query := f.function.Args.AsQuery()
 	if len(f.function.Results) == 1 {
 		builder.WriteString(fmt.Sprintf("\n\t_, err := executor.ExecContext(%s, %s)", f.function.Args[0].Name, query))
 		builder.WriteString("\n\treturn err")
