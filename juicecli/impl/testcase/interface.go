@@ -12,7 +12,7 @@ type Interface interface {
 	// CreateUser 创建用户
 	CreateUser(ctx context.Context, u map[string]*User) error
 	// DeleteUserByID 根据id删除用户
-	DeleteUserByID(ctx context.Context, id int64) (sql.Result, error)
+	DeleteUserByID(ctx context.Context, id int64, name string) (sql.Result, error)
 }
 
 type User struct{}

@@ -96,6 +96,34 @@ func (v Values) String() string {
 	return sb.String()
 }
 
+// AsQuery returns as function call query.
+func (v Values) AsQuery() string {
+	var query string
+	switch len(v) {
+	case 0, 1:
+		return "nil"
+	case 2:
+		arg := v[1]
+		if arg.IsStruct || arg.IsMap {
+			query = arg.Name
+		} else {
+			query = fmt.Sprintf("juice.H{\"%s\": %s}", arg.Name, arg.Name)
+		}
+	default:
+		var builder strings.Builder
+		builder.WriteString("juice.H{")
+		for i, arg := range v[1:] {
+			if i > 0 {
+				builder.WriteString(", ")
+			}
+			builder.WriteString(fmt.Sprintf("\"%s\": %s", arg.Name, arg.Name))
+		}
+		builder.WriteString("}")
+		query = builder.String()
+	}
+	return query
+}
+
 // juiceImport defines a import of juice.
 var juiceImport = Import{Path: "github.com/eatmoreapple/juice", Name: "juice"}
 

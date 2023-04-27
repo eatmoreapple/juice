@@ -15,7 +15,7 @@ func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) ([]*User, erro
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
 	executor := juice.NewGenericManager[[]*User](manager).Object(iface.GetUserByID)
-	return executor.QueryContext(ctx, id)
+	return executor.QueryContext(ctx, juice.H{"id": id})
 }
 
 // CreateUser 创建用户
@@ -28,11 +28,11 @@ func (i InterfaceImpl) CreateUser(ctx context.Context, u map[string]*User) error
 }
 
 // DeleteUserByID 根据id删除用户
-func (i InterfaceImpl) DeleteUserByID(ctx context.Context, id int64) (sql.Result, error) {
+func (i InterfaceImpl) DeleteUserByID(ctx context.Context, id int64, name string) (sql.Result, error) {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
 	executor := manager.Object(iface.DeleteUserByID)
-	return executor.ExecContext(ctx, id)
+	return executor.ExecContext(ctx, juice.H{"id": id, "name": name})
 }
 
 // NewInterface returns a new Interface.
