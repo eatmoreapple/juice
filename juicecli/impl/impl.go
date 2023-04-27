@@ -17,12 +17,7 @@ func (i *Generate) Name() string {
 
 func (i *Generate) Do() error {
 	parser := internal.Parser{}
-	generator, err := parser.Parse()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = generator.Close() }()
-	return generator.Generate()
+	return parser.Parse()
 }
 
 func (i *Generate) Help() string {

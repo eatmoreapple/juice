@@ -1,15 +1,14 @@
 package internal
 
 import (
-	"fmt"
 	"go/format"
+	"log"
 )
 
 func formatCode(code string) string {
 	result, err := format.Source([]byte(code))
 	if err != nil {
-		fmt.Println(code)
-		panic(err)
+		log.Fatal(err)
 	}
 	return string(result)
 }

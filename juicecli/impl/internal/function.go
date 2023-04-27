@@ -5,54 +5,63 @@ import (
 	"strings"
 
 	"github.com/eatmoreapple/juice"
+	"github.com/eatmoreapple/juice/juicecli/internal/ast"
 )
 
 type Function struct {
-	// Name is a name of function.
-	Name string
-	// Args is an arguments of function.
-	Args Values
-	// Results is a results of function.
-	Results Values
-	// Receiver is a receiver of function.
-	Receiver *Value
-	// Body is a body of function.
-	Body *string
-	// Type is a type of function.
-	Type string
-	// Doc method document
-	Doc *string
+	method   *ast.Function
+	receiver string
+	body     string
+	typename string
 }
 
-func (f Function) String() string {
+func (f *Function) String() string {
 	var builder strings.Builder
-	if f.Doc != nil {
-		builder.WriteString(*f.Doc)
-	}
-	builder.WriteString("func ")
-	if f.Receiver != nil {
-		builder.WriteString(fmt.Sprintf("(%s) ", f.Receiver))
-	}
-	builder.WriteString(f.Name)
-	builder.WriteString(fmt.Sprintf("%s", f.Args))
-	if len(f.Results) > 0 {
-		builder.WriteString(fmt.Sprintf(" %s", f.Results))
-	}
+	builder.WriteString(fmt.Sprintf("func (%s %s) %s", f.receiverAlias(), f.receiver, f.method.Signature()))
 	builder.WriteString(" {")
-	if f.Body != nil {
-		builder.WriteString(*f.Body)
+	if f.body == "" {
+		builder.WriteString("panic(\"not implemented\")")
 	} else {
-		builder.WriteString("\n\tpanic(\"not implemented\")")
+		builder.WriteString(f.body)
 	}
-	builder.WriteString("\n}")
-	return formatCode(builder.String())
+	builder.WriteString("\n")
+	builder.WriteString("}")
+	return builder.String()
 }
 
-type Functions []*Function
+func (f *Function) receiverAlias() string {
+	return strings.ToLower(f.receiver[:1])
+}
+
+func (f *Function) Params() ast.ValueGroup {
+	return f.method.Params()
+}
+
+func (f *Function) Results() ast.ValueGroup {
+	return f.method.Results()
+}
+
+func (f *Function) Name() string {
+	return f.method.Name()
+}
+
+type FunctionGroup []*Function
+
+func (f FunctionGroup) String() string {
+	var builder strings.Builder
+	for index, function := range f {
+		builder.WriteString(function.String())
+		if index < len(f)-1 {
+			builder.WriteString("\n\n")
+		}
+	}
+	return builder.String()
+}
 
 type FunctionBodyMaker struct {
 	statement *juice.Statement
 	function  *Function
+	typename  string
 }
 
 func (f *FunctionBodyMaker) Make() error {
@@ -83,32 +92,32 @@ func (f *readFuncBodyMaker) Make() error {
 }
 
 func (f *readFuncBodyMaker) check() error {
-	if len(f.function.Results) != 2 {
-		return fmt.Errorf("%s: must have two results", f.function.Name)
+	if len(f.function.method.Results()) != 2 {
+		return fmt.Errorf("%s: must have two results", f.function.method.Name())
 	}
-	if f.function.Results[1].Type != "error" {
-		return fmt.Errorf("%s: second result must be error", f.function.Name)
+	if f.function.Results()[1].TypeName() != "error" {
+		return fmt.Errorf("%s: second result must be error", f.function.method.Names)
 	}
-	if len(f.function.Args) == 0 {
-		return fmt.Errorf("%s: must have at least one argument", f.function.Name)
+	if len(f.function.Params()) == 0 {
+		return fmt.Errorf("%s: must have at least one argument", f.function.Name())
 	}
-	if f.function.Args[0].TypeName() != "context.Context" {
-		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name)
+	if f.function.Params()[0].TypeName() != "context.Context" {
+		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name())
 	}
 	return nil
 }
 
 func (f *readFuncBodyMaker) build() {
-	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
-	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
-	builder.WriteString(fmt.Sprintf("\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
-		f.function.Results[0].TypeName(),
-		f.function.Name))
-	query := f.function.Args.AsQuery()
-	builder.WriteString(fmt.Sprintf("\n\treturn executor.QueryContext(%s, %s)", f.function.Args[0].Name, query))
+	var builder = new(strings.Builder)
+	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(0))
+	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
+	fmt.Fprintf(builder,
+		"\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
+		f.function.Results()[0].TypeName(), f.function.Name())
+	query := formatParams(f.function.Params())
+	fmt.Fprintf(builder, "\n\treturn executor.QueryContext(%s, %s)", f.function.Params().NameAt(0), query)
 	body := formatCode(builder.String())
-	f.function.Body = &body
+	f.function.body = body
 }
 
 type writeFuncBodyMaker struct {
@@ -125,47 +134,66 @@ func (f *writeFuncBodyMaker) Make() error {
 }
 
 func (f *writeFuncBodyMaker) check() error {
-	if len(f.function.Args) == 0 {
-		return fmt.Errorf("%s: must have at least one argument", f.function.Name)
+	if len(f.function.Params()) == 0 {
+		return fmt.Errorf("%s: must have at least one argument", f.function.Name())
 	}
-	if f.function.Args[0].TypeName() != "context.Context" {
-		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name)
+	if f.function.Params()[0].TypeName() != "context.Context" {
+		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name())
 	}
-	if len(f.function.Results) == 0 {
-		return fmt.Errorf("%s: must have one result", f.function.Name)
+	if len(f.function.Results()) == 0 {
+		return fmt.Errorf("%s: must have one result", f.function.Name())
 	}
-	if len(f.function.Results) == 1 {
-		if f.function.Results[0].Type != "error" {
-			return fmt.Errorf("%s: result must be error", f.function.Name)
+	if len(f.function.Results()) == 1 {
+		if f.function.Results()[0].TypeName() != "error" {
+			return fmt.Errorf("%s: result must be error", f.function.Name())
 		}
 	}
-	if len(f.function.Results) == 2 {
-		if f.function.Results[0].TypeName() != "sql.Result" {
-			return fmt.Errorf("%s: first result must be sql.Result", f.function.Name)
+	if len(f.function.Results()) == 2 {
+		if f.function.Results()[0].TypeName() != "sql.Result" {
+			return fmt.Errorf("%s: first result must be sql.Result", f.function.Name())
 		}
-		if f.function.Results[1].Type != "error" {
-			return fmt.Errorf("%s: second result must be error", f.function.Name)
+		if f.function.Results()[1].TypeName() != "error" {
+			return fmt.Errorf("%s: second result must be error", f.function.Name())
 		}
 	}
-	if len(f.function.Results) > 2 {
-		return fmt.Errorf("%s: must have at most two results", f.function.Name)
+	if len(f.function.Results()) > 2 {
+		return fmt.Errorf("%s: must have at most two results", f.function.Name())
 	}
 	return nil
 }
 
 func (f *writeFuncBodyMaker) build() {
-	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("\n\tmanager := juice.ManagerFromContext(%s)", f.function.Args[0].Name))
-	builder.WriteString(fmt.Sprintf("\n\tvar iface %s = %s", f.function.Type, f.function.Receiver.Name))
-	//key := fmt.Sprintf(`"%s.%s"`, f.function.Namespace, f.function.name)
-	builder.WriteString(fmt.Sprintf("\n\texecutor := manager.Object(iface.%s)", f.function.Name))
-	query := f.function.Args.AsQuery()
-	if len(f.function.Results) == 1 {
-		builder.WriteString(fmt.Sprintf("\n\t_, err := executor.ExecContext(%s, %s)", f.function.Args[0].Name, query))
-		builder.WriteString("\n\treturn err")
+	var builder = new(strings.Builder)
+	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(0))
+	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
+	fmt.Fprintf(builder, "\n\texecutor := manager.Object(iface.%s)", f.function.Name())
+	query := formatParams(f.function.Params())
+	if len(f.function.Results()) == 1 {
+		fmt.Fprintf(builder, "\n\t_, err := executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
+		fmt.Fprintf(builder, "\n\treturn err")
 	} else {
-		builder.WriteString(fmt.Sprintf("\n\treturn executor.ExecContext(%s, %s)", f.function.Args[0].Name, query))
+		fmt.Fprintf(builder, "\n\treturn executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
 	}
 	body := formatCode(builder.String())
-	f.function.Body = &body
+	f.function.body = body
+}
+
+func formatParams(params ast.ValueGroup) string {
+	switch len(params) {
+	case 0, 1:
+		return "nil"
+	case 2:
+		return params[1].Name()
+	default:
+		var builder strings.Builder
+		builder.WriteString("juice.H{")
+		for index, param := range params[1:] {
+			builder.WriteString(fmt.Sprintf("%q: %s", param.Name(), param.TypeName()))
+			if index < len(params)-2 {
+				builder.WriteString(", ")
+			}
+		}
+		builder.WriteString("}")
+		return builder.String()
+	}
 }
