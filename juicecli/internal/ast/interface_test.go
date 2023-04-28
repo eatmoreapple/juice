@@ -19,7 +19,7 @@ import (
 
 type Interface interface {
 	// GetUserByID 根据用户id查找用户
-	GetUserByID(context.Context, *token.FileSet,  p.Mode) (int64, error)
+	GetUserByID(context.Context, *token.FileSet, p.Mode) (int64, error)
 }
 
 type User struct{}

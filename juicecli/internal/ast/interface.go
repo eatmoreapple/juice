@@ -7,8 +7,16 @@ import (
 	"strings"
 )
 
+const (
+	ParamPrefix  = "arg"
+	ResultPrefix = "result"
+)
+
 // Value is a value of interface, which wraps ast.Field.
-type Value struct{ *ast.Field }
+type Value struct {
+	*ast.Field
+	name string
+}
 
 // TypeName returns the type name of value.
 // If the value is a pointer, the type name will be prefixed with "*".
@@ -42,21 +50,17 @@ func (v *Value) TypeName() string {
 }
 
 // String returns the string representation of value.
-func (v *Value) String(index int) string {
-	if v.Names != nil && len(v.Names) > 0 {
-		return v.Names[0].Name + " " + v.TypeName()
+func (v *Value) String(prefix string, index int) string {
+	if name := v.Name(); name != "" {
+		return name + " " + v.TypeName()
 	} else {
-		return fmt.Sprintf("arg%d %s", index, v.TypeName())
+		return fmt.Sprintf("%s%d %s", prefix, index, v.TypeName())
 	}
 }
 
 // Name returns the name of the value.
 func (v *Value) Name() string {
-	if v.Names != nil && len(v.Names) > 0 {
-		return v.Names[0].Name
-	} else {
-		return ""
-	}
+	return v.name
 }
 
 // ImportPackageName returns the package name of the import.
@@ -126,13 +130,13 @@ func (vs ValueGroup) Imports(pkgImports []*ast.ImportSpec) ImportGroup {
 	return result
 }
 
-func (vs ValueGroup) String() string {
+func (vs ValueGroup) String(prefix string) string {
 	var builder strings.Builder
 	if len(vs) == 0 {
 		return ""
 	}
 	for i, v := range vs {
-		builder.WriteString(v.String(i))
+		builder.WriteString(v.String(prefix, i))
 		if i < len(vs)-1 {
 			builder.WriteString(", ")
 		}
@@ -140,12 +144,27 @@ func (vs ValueGroup) String() string {
 	return builder.String()
 }
 
-func (vs ValueGroup) NameAt(index int) string {
+func (vs ValueGroup) NameAt(prefix string, index int) string {
 	name := vs[index].Name()
 	if name == "" {
-		return fmt.Sprintf("arg%d", index)
+		return fmt.Sprintf("%s%d", prefix, index)
 	}
 	return name
+}
+
+// valueGroupFrom returns a ValueGroup from fields.
+func valueGroupFrom(fields []*ast.Field) ValueGroup {
+	var result = make(ValueGroup, 0, len(fields))
+	for _, param := range fields {
+		if len(param.Names) == 0 {
+			result = append(result, &Value{Field: param})
+			continue
+		}
+		for _, name := range param.Names {
+			result = append(result, &Value{Field: param, name: name.Name})
+		}
+	}
+	return result
 }
 
 type Interface struct{ *ast.InterfaceType }
@@ -196,9 +215,9 @@ func (f *Function) Signature() string {
 	var builder strings.Builder
 	builder.WriteString(f.Name())
 	builder.WriteString("(")
-	builder.WriteString(f.Params().String())
+	builder.WriteString(f.Params().String(ParamPrefix))
 	builder.WriteString(") ")
-	if result := f.Results().String(); result != "" {
+	if result := f.Results().String(ResultPrefix); result != "" {
 		builder.WriteString("(")
 		builder.WriteString(result)
 		builder.WriteString(")")
@@ -212,11 +231,7 @@ func (f *Function) Params() ValueGroup {
 	if !ok {
 		return nil
 	}
-	var result = make(ValueGroup, 0, len(method.Params.List))
-	for _, param := range method.Params.List {
-		result = append(result, &Value{Field: param})
-	}
-	return result
+	return valueGroupFrom(method.Params.List)
 }
 
 // Results returns all results of function.
@@ -225,11 +240,7 @@ func (f *Function) Results() ValueGroup {
 	if !ok {
 		return nil
 	}
-	var result = make(ValueGroup, 0, len(method.Results.List))
-	for _, param := range method.Results.List {
-		result = append(result, &Value{Field: param})
-	}
-	return result
+	return valueGroupFrom(method.Results.List)
 }
 
 // Imports returns all imports of function.

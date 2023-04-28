@@ -109,13 +109,13 @@ func (f *readFuncBodyMaker) check() error {
 
 func (f *readFuncBodyMaker) build() {
 	var builder = new(strings.Builder)
-	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(0))
+	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
 	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
 	fmt.Fprintf(builder,
 		"\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
 		f.function.Results()[0].TypeName(), f.function.Name())
 	query := formatParams(f.function.Params())
-	fmt.Fprintf(builder, "\n\treturn executor.QueryContext(%s, %s)", f.function.Params().NameAt(0), query)
+	fmt.Fprintf(builder, "\n\treturn executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
 	body := formatCode(builder.String())
 	f.function.body = body
 }
@@ -164,7 +164,7 @@ func (f *writeFuncBodyMaker) check() error {
 
 func (f *writeFuncBodyMaker) build() {
 	var builder = new(strings.Builder)
-	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(0))
+	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
 	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
 	fmt.Fprintf(builder, "\n\texecutor := manager.Object(iface.%s)", f.function.Name())
 	query := formatParams(f.function.Params())
