@@ -33,12 +33,21 @@ type Engine struct {
 
 // Object implements the Manager interface
 func (e *Engine) Object(v interface{}) Executor {
-	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
+	exe, err := e.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
 	}
+	exe.session = e.DB()
+	return exe
+}
+
+func (e *Engine) executor(v interface{}) (*executor, error) {
+	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
+	if err != nil {
+		return nil, err
+	}
 	stat.engine = e
-	return &executor{engine: e, statement: stat, session: e.DB()}
+	return &executor{engine: e, statement: stat}, nil
 }
 
 // Tx returns a TxManager
@@ -49,7 +58,7 @@ func (e *Engine) Tx() TxManager {
 // ContextTx returns a TxManager with the given context
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
 	tx, err := e.DB().BeginTx(ctx, opt)
-	return &txManager{manager: e, tx: tx, err: err}
+	return &txManager{engine: e, tx: tx, err: err}
 }
 
 // GetConfiguration returns the configuration of the engine

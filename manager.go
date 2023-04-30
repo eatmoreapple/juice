@@ -63,9 +63,9 @@ type TxManager interface {
 
 // txManager is a transaction statement
 type txManager struct {
-	manager Manager
-	tx      *sql.Tx
-	err     error
+	engine *Engine
+	tx     *sql.Tx
+	err    error
 }
 
 // Object implements the Manager interface
@@ -73,7 +73,12 @@ func (t *txManager) Object(v any) Executor {
 	if t.err != nil {
 		return inValidExecutor(t.err)
 	}
-	return t.manager.Object(v)
+	exe, err := t.engine.executor(v)
+	if err != nil {
+		return inValidExecutor(err)
+	}
+	exe.session = t.tx
+	return exe
 }
 
 // Commit commits the transaction
