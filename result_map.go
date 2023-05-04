@@ -310,7 +310,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 
 	tp := rv.Type()
 
-	var pk interface{}
+	var pk any
 
 	var cd = &resultMapColumnDestination{resultMap: r}
 
@@ -408,7 +408,7 @@ func (c collectionItemMapping) setCollection(rv reflect.Value) {
 // ColumnDestination is a column destination which can be used to scan a row.
 type ColumnDestination interface {
 	// Destination returns the destination for the given reflect value and column.
-	Destination(rv reflect.Value, column []string) ([]interface{}, error)
+	Destination(rv reflect.Value, column []string) ([]any, error)
 }
 
 type rowDestination struct {
@@ -417,7 +417,7 @@ type rowDestination struct {
 }
 
 // Destination returns the destination for the given reflect value and column.
-func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]any, error) {
 	dest, err := s.destination(rv, columns)
 	if err != nil {
 		return nil, err
@@ -431,21 +431,21 @@ func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]inte
 	return dest, nil
 }
 
-func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]any, error) {
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)
 	}
 	if len(columns) != 1 {
 		return nil, errors.New("only one column is allowed for non-struct")
 	}
-	return []interface{}{rv.Addr().Interface()}, nil
+	return []any{rv.Addr().Interface()}, nil
 }
 
-func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string) ([]interface{}, error) {
+func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string) ([]any, error) {
 	if len(s.indexes) == 0 {
 		s.setIndexes(rv, columns)
 	}
-	dest := make([]interface{}, len(columns))
+	dest := make([]any, len(columns))
 	for i, index := range s.indexes {
 		if index == -1 {
 			dest[i] = new(any)
@@ -489,7 +489,7 @@ type resultMapColumnDestination struct {
 }
 
 // Destination returns the destination for the given reflect value and column.
-func (s *resultMapColumnDestination) Destination(rv reflect.Value, columns []string) ([]interface{}, error) {
+func (s *resultMapColumnDestination) Destination(rv reflect.Value, columns []string) ([]any, error) {
 	dest, err := s.destination(rv, columns)
 	if err != nil {
 		return nil, err
@@ -503,8 +503,8 @@ func (s *resultMapColumnDestination) Destination(rv reflect.Value, columns []str
 	return dest, nil
 }
 
-func (s *resultMapColumnDestination) destination(rv reflect.Value, columns []string) ([]interface{}, error) {
-	dest := make([]interface{}, len(columns))
+func (s *resultMapColumnDestination) destination(rv reflect.Value, columns []string) ([]any, error) {
+	dest := make([]any, len(columns))
 	if len(s.indexes) == 0 {
 		if err := s.setIndexes(rv, columns); err != nil {
 			return nil, err
@@ -641,7 +641,7 @@ func (s *resultMapColumnDestination) setIndexes(rv reflect.Value, columns []stri
 	return nil
 }
 
-func checkDestination(dest []interface{}) error {
+func checkDestination(dest []any) error {
 	for _, dp := range dest {
 		if _, ok := dp.(*sql.RawBytes); ok {
 			return errors.New("sql: RawBytes isn't allowed on scan")

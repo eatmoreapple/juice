@@ -8,7 +8,7 @@ import (
 )
 
 // return the length of the string or array
-func length(v interface{}) int {
+func length(v any) int {
 	switch v.(type) {
 	case nil:
 		return 0
@@ -28,7 +28,7 @@ func length(v interface{}) int {
 // The first parameter is the string to be processed.
 // The second parameter is the start position of the substring.
 // The third parameter is the length of the substring.
-func strSub(v interface{}, start, count int) string {
+func strSub(v any, start, count int) string {
 	if str, ok := v.(string); ok {
 		return str[start : start+count]
 	}
@@ -39,7 +39,7 @@ func strSub(v interface{}, start, count int) string {
 // The first parameter is the array to be processed.
 // The second parameter is the separator.
 // Returns a string.
-func strJoin(v interface{}, sep string) string {
+func strJoin(v any, sep string) string {
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
@@ -55,7 +55,7 @@ func strJoin(v interface{}, sep string) string {
 }
 
 // contains returns true if the value is in the array or string.
-func contains(s interface{}, v interface{}) bool {
+func contains(s any, v any) bool {
 	switch s.(type) {
 	case string:
 		value, ok := v.(string)
@@ -79,12 +79,12 @@ func contains(s interface{}, v interface{}) bool {
 }
 
 // slice returns a slice of the array or string.
-func slice(v interface{}, start, count int) []interface{} {
+func slice(v any, start, count int) []any {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
 		rt := rv.Slice(start, start+count)
-		var ret = make([]interface{}, 0, rt.Len())
+		var ret = make([]any, 0, rt.Len())
 		for i := 0; i < rt.Len(); i++ {
 			ret = append(ret, rt.Index(i).Interface())
 		}
@@ -155,7 +155,7 @@ func splitAfter(text, sep string) []string {
 // RegisterEvalFunc registers a function for eval.
 // The function must be a function with one return value.
 // And Allowed to overwrite the built-in function.
-func RegisterEvalFunc(name string, v interface{}) error {
+func RegisterEvalFunc(name string, v any) error {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Func {
 		return errors.New("RegisterEvalFunc: v must be a function type")
@@ -169,7 +169,7 @@ func RegisterEvalFunc(name string, v interface{}) error {
 
 // MustRegisterEvalFunc registers a function for eval.
 // If an error occurs, it will panic.
-func MustRegisterEvalFunc(name string, v interface{}) {
+func MustRegisterEvalFunc(name string, v any) {
 	err := RegisterEvalFunc(name, v)
 	if err != nil {
 		panic(err)

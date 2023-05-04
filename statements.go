@@ -52,7 +52,7 @@ func (s *Statement) Action() Action {
 	return s.action
 }
 
-func (s *Statement) Accept(translator driver.Translator, p Param) (query string, args []interface{}, err error) {
+func (s *Statement) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range s.Nodes {

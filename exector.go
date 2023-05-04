@@ -9,10 +9,10 @@ import (
 
 // Executor is an executor of SQL.
 type Executor interface {
-	Query(param interface{}) (*sql.Rows, error)
-	QueryContext(ctx context.Context, param interface{}) (*sql.Rows, error)
-	Exec(param interface{}) (sql.Result, error)
-	ExecContext(ctx context.Context, param interface{}) (sql.Result, error)
+	Query(param any) (*sql.Rows, error)
+	QueryContext(ctx context.Context, param any) (*sql.Rows, error)
+	Exec(param any) (sql.Result, error)
+	ExecContext(ctx context.Context, param any) (sql.Result, error)
 	Statement() *Statement
 }
 
@@ -30,12 +30,12 @@ type executor struct {
 }
 
 // Query executes the query and returns the result.
-func (e *executor) Query(param interface{}) (*sql.Rows, error) {
+func (e *executor) Query(param any) (*sql.Rows, error) {
 	return e.QueryContext(context.Background(), param)
 }
 
 // QueryContext executes the query and returns the result.
-func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Rows, error) {
+func (e *executor) QueryContext(ctx context.Context, param any) (*sql.Rows, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
 		return nil, err
@@ -47,12 +47,12 @@ func (e *executor) QueryContext(ctx context.Context, param interface{}) (*sql.Ro
 }
 
 // Exec executes the query and returns the result.
-func (e *executor) Exec(param interface{}) (sql.Result, error) {
+func (e *executor) Exec(param any) (sql.Result, error) {
 	return e.ExecContext(context.Background(), param)
 }
 
 // ExecContext executes the query and returns the result.
-func (e *executor) ExecContext(ctx context.Context, param interface{}) (sql.Result, error) {
+func (e *executor) ExecContext(ctx context.Context, param any) (sql.Result, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (e *executor) Statement() *Statement {
 }
 
 // prepare
-func (e *executor) prepare(param interface{}) (query string, args []interface{}, err error) {
+func (e *executor) prepare(param any) (query string, args []any, err error) {
 	if e.err != nil {
 		return "", nil, e.err
 	}
@@ -151,7 +151,7 @@ func (e *genericExecutor[result]) ExecContext(ctx context.Context, p any) (sql.R
 	return e.Executor.ExecContext(ctx, p)
 }
 
-var _ GenericExecutor[interface{}] = (*genericExecutor[interface{}])(nil)
+var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
 
 // BinderExecutor is a binder executor.
 // It is used to bind the result to the given value.
