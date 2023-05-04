@@ -117,22 +117,27 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T,
 	retMap, err := e.Executor.Statement().ResultMap()
 
 	// set but not found
-	if err != nil && !errors.Is(err, ErrResultMapNotSet) {
-		return result, err
+	if err != nil {
+		if !errors.Is(err, ErrResultMapNotSet) {
+			return result, err
+		}
 	}
-
-	// prt is a pointer to T
-	var ptr any = &result
 
 	rv := reflect.ValueOf(result)
 
 	if rv.Kind() == reflect.Ptr {
 		// if T is a pointer, then set prt to T
-		result = reflect.New(rv.Type().Elem()).Interface().(T)
-		ptr = result
+		value := reflect.New(rv.Type().Elem()).Interface().(T)
+		if err = BindWithResultMap(rows, value, retMap); err != nil {
+			// if bind failed, then return the original value
+			// result is a zero value
+			return result, err
+		}
+		// if bind success, then return the new value
+		return value, nil
 	}
 	// bind the result to the pointer
-	err = BindWithResultMap(rows, ptr, retMap)
+	err = BindWithResultMap(rows, &result, retMap)
 	return
 }
 
