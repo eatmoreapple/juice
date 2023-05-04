@@ -363,6 +363,8 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 				value.Set(reflect.Append(value, field))
 			}
 		}
+
+		checked = true
 	}
 
 	return nil
