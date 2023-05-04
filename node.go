@@ -17,7 +17,7 @@ var paramRegex = regexp.MustCompile(`\#\{([a-zA-Z0-9_\.]+)\}`)
 // Node is a node of SQL.
 type Node interface {
 	// Accept accepts parameters and returns query and arguments.
-	Accept(translator driver.Translator, p Param) (query string, args []any, err error)
+	Accept(translator driver.Translator, p Parameter) (query string, args []any, err error)
 }
 
 var _ Node = (*TextNode)(nil)
@@ -27,25 +27,21 @@ type TextNode string
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c TextNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
-	if len(p) > 0 {
-		query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
-			if err != nil {
-				return s
-			}
-			param := paramRegex.FindStringSubmatch(s)[1]
+func (c TextNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
+		if err != nil {
+			return s
+		}
+		param := paramRegex.FindStringSubmatch(s)[1]
 
-			value, exists := p.Get(param)
-			if !exists {
-				err = fmt.Errorf("parameter %s not found", param)
-				return s
-			}
-			args = append(args, value.Interface())
-			return translator.Translate(s)
-		})
-	} else {
-		query = string(c)
-	}
+		value, exists := p.Get(param)
+		if !exists {
+			err = fmt.Errorf("parameter %s not found", param)
+			return s
+		}
+		args = append(args, value.Interface())
+		return translator.Translate(s)
+	})
 	return query, args, err
 }
 
@@ -65,7 +61,7 @@ func (c *ConditionNode) Parse(test string) (err error) {
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c *ConditionNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	matched, err := c.Match(p)
 	if err != nil {
 		return "", nil, err
@@ -89,7 +85,7 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Param) (query str
 }
 
 // Match returns true if test is matched.
-func (c *ConditionNode) Match(p Param) (bool, error) {
+func (c *ConditionNode) Match(p Parameter) (bool, error) {
 	value, err := eval(c.testExpr, p)
 	if err != nil {
 		return false, err
@@ -123,7 +119,7 @@ type WhereNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (w WhereNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (w WhereNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range w.Nodes {
@@ -174,7 +170,7 @@ type TrimNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (t TrimNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	if t.Prefix != "" {
@@ -228,7 +224,7 @@ type ForeachNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (f ForeachNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 
 	// if item already exists
 	if _, exists := p.Get(f.Item); exists {
@@ -269,11 +265,12 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 
 	for i := 0; i < length; i++ {
 
-		// set or replace item
-		p[f.Item] = reflect.Indirect(value.Index(i))
+		group := ParamGroup{
+			H{f.Item: value.Index(i).Interface()}.AsParam(), p,
+		}
 
 		for _, node := range f.Nodes {
-			q, a, err := node.Accept(translator, p)
+			q, a, err := node.Accept(translator, group)
 			if err != nil {
 				return "", nil, err
 			}
@@ -290,9 +287,6 @@ func (f ForeachNode) Accept(translator driver.Translator, p Param) (query string
 		}
 	}
 
-	// delete item from parameter
-	delete(p, f.Item)
-
 	// if length is not zero, add close
 	if length > 0 {
 		builder.WriteString(f.Close)
@@ -307,7 +301,7 @@ type SetNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (s SetNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range s.Nodes {
@@ -349,7 +343,7 @@ func (s SQLNode) ID() string {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (s SQLNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (s SQLNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range s.nodes {
@@ -379,7 +373,7 @@ type IncludeNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (i IncludeNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (i IncludeNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	sqlNode, err := i.mapper.GetSQLNodeByID(i.RefId)
 	if err != nil {
 		return "", nil, fmt.Errorf("sql node %s not found", i.RefId)
@@ -397,7 +391,7 @@ type ChooseNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (c ChooseNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (c ChooseNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	for _, node := range c.WhenNodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -428,7 +422,7 @@ type OtherwiseNode struct {
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (o OtherwiseNode) Accept(translator driver.Translator, p Param) (query string, args []any, err error) {
+func (o OtherwiseNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range o.Nodes {
@@ -460,7 +454,7 @@ type valueItem struct {
 type ValuesNode []*valueItem
 
 // Accept accepts parameters and returns query and arguments.
-func (v ValuesNode) Accept(translater driver.Translator, param Param) (query string, args []any, err error) {
+func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query string, args []any, err error) {
 	if len(v) == 0 {
 		return "", nil, nil
 	}
@@ -503,7 +497,7 @@ type selectFieldAliasItem struct {
 type SelectFieldAliasNode []*selectFieldAliasItem
 
 // Accept accepts parameters and returns query and arguments.
-func (s SelectFieldAliasNode) Accept(_ driver.Translator, _ Param) (query string, args []any, err error) {
+func (s SelectFieldAliasNode) Accept(_ driver.Translator, _ Parameter) (query string, args []any, err error) {
 	if len(s) == 0 {
 		return "", nil, nil
 	}

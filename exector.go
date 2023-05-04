@@ -73,12 +73,11 @@ func (e *executor) prepare(param any) (query string, args []any, err error) {
 	if e.err != nil {
 		return "", nil, e.err
 	}
-	values, err := ParamConvert(param, e.statement.Attribute("paramName"))
-	if err != nil {
-		return "", nil, err
-	}
+	value := newGenericParam(param, e.statement.Attribute("paramName"))
+
 	translator := e.engine.Driver.Translate()
-	query, args, err = e.statement.Accept(translator, values)
+
+	query, args, err = e.statement.Accept(translator, value)
 	if err != nil {
 		return "", nil, err
 	}

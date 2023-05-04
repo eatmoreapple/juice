@@ -22,7 +22,7 @@ func (s *SyntaxError) Error() string {
 	return fmt.Sprintf("syntax error: %v", s.err)
 }
 
-func Eval(expr string, params map[string]reflect.Value) (reflect.Value, error) {
+func Eval(expr string, params Parameter) (reflect.Value, error) {
 	exp, err := parser.ParseExpr(expr)
 	if err != nil {
 		return reflect.Value{}, &SyntaxError{err}
@@ -30,7 +30,7 @@ func Eval(expr string, params map[string]reflect.Value) (reflect.Value, error) {
 	return eval(exp, params)
 }
 
-func eval(exp ast.Expr, params map[string]reflect.Value) (reflect.Value, error) {
+func eval(exp ast.Expr, params Parameter) (reflect.Value, error) {
 	switch exp := exp.(type) {
 	case *ast.BinaryExpr:
 		return evalBinaryExpr(exp, params)
@@ -57,7 +57,7 @@ func eval(exp ast.Expr, params map[string]reflect.Value) (reflect.Value, error) 
 	}
 }
 
-func evalSliceExpr(exp *ast.SliceExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) {
 	value, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -86,7 +86,7 @@ func evalSliceExpr(exp *ast.SliceExpr, params map[string]reflect.Value) (reflect
 	return value.Slice(low, high), nil
 }
 
-func evalUnaryExpr(exp *ast.UnaryExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalUnaryExpr(exp *ast.UnaryExpr, params Parameter) (reflect.Value, error) {
 	value, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -109,7 +109,7 @@ func evalUnaryExpr(exp *ast.UnaryExpr, params map[string]reflect.Value) (reflect
 	}
 }
 
-func evalIndexExpr(exp *ast.IndexExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) {
 	value, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -128,7 +128,7 @@ func evalIndexExpr(exp *ast.IndexExpr, params map[string]reflect.Value) (reflect
 	}
 }
 
-func evalCallExpr(exp *ast.CallExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	fn, err := eval(exp.Fun, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -161,7 +161,7 @@ func evalCallExpr(exp *ast.CallExpr, params map[string]reflect.Value) (reflect.V
 	return fn.Call(args)[0], nil
 }
 
-func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, error) {
 	x, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -172,7 +172,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params map[string]reflect.Value) (r
 	return x.FieldByName(exp.Sel.Name), nil
 }
 
-func evalIdent(exp *ast.Ident, params Param) (reflect.Value, error) {
+func evalIdent(exp *ast.Ident, params Parameter) (reflect.Value, error) {
 	if fn, ok := builtins[exp.Name]; ok {
 		return fn, nil
 	}
@@ -207,7 +207,7 @@ func evalBasicLit(exp *ast.BasicLit) (reflect.Value, error) {
 	}
 }
 
-func evalBinaryExpr(exp *ast.BinaryExpr, params map[string]reflect.Value) (reflect.Value, error) {
+func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error) {
 	lhs, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -272,7 +272,7 @@ func comment(_ reflect.Value, _ reflect.Value) (reflect.Value, error) {
 }
 
 // evalFunc evaluates a function call expression.
-func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params map[string]reflect.Value) reflect.Value {
+func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params Parameter) reflect.Value {
 	var args []reflect.Value
 	if exp.Y != nil {
 		arg, err := eval(exp.Y, params)

@@ -1,14 +1,13 @@
 package juice
 
 import (
-	"reflect"
 	"testing"
 )
 
 func TestParam_Get(t *testing.T) {
-	param := Param{
-		"list": reflect.ValueOf([]any{1, 2, 3}),
-	}
+	param := H{
+		"list": []any{1, 2, 3},
+	}.AsParam()
 	value, exists := param.Get("list.1")
 	if !exists {
 		t.Error("exists error")
