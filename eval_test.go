@@ -101,9 +101,9 @@ func BenchmarkEval2(b *testing.B) {
 
 func TestLen(t *testing.T) {
 	param := Param{
-		"a": reflect.ValueOf([]interface{}{"a", "b", "c"}),
+		"a": reflect.ValueOf([]any{"a", "b", "c"}),
 		"b": reflect.ValueOf("aaa"),
-		"c": reflect.ValueOf(map[string]interface{}{"a": "a", "b": "b", "c": "c"}),
+		"c": reflect.ValueOf(map[string]any{"a": "a", "b": "b", "c": "c"}),
 	}
 	result, err := Eval(`len(a)`, param)
 	if err != nil {

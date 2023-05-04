@@ -32,7 +32,7 @@ type Engine struct {
 }
 
 // Object implements the Manager interface
-func (e *Engine) Object(v interface{}) Executor {
+func (e *Engine) Object(v any) Executor {
 	exe, err := e.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
@@ -41,7 +41,7 @@ func (e *Engine) Object(v interface{}) Executor {
 	return exe
 }
 
-func (e *Engine) executor(v interface{}) (*executor, error) {
+func (e *Engine) executor(v any) (*executor, error) {
 	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
 	if err != nil {
 		return nil, err

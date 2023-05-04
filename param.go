@@ -90,7 +90,7 @@ const (
 
 // ParamConvert converts any type to Param
 // alias will be used if the type is not a struct or a map
-func ParamConvert(v interface{}, alias string) (Param, error) {
+func ParamConvert(v any, alias string) (Param, error) {
 	if v == nil {
 		return make(Param), nil
 	}
@@ -142,9 +142,9 @@ func structConvert(value reflect.Value) (Param, error) {
 	return param, nil
 }
 
-// H is a shortcut for map[string]interface{}
+// H is a shortcut for map[string]any
 // It is used to create a map easily, and it can be converted to Param
-type H map[string]interface{}
+type H map[string]any
 
 // ParamConvert converts H to Param
 func (h H) ParamConvert() (Param, error) {

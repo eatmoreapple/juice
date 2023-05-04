@@ -15,7 +15,7 @@ func TestForeachNode_Accept(t *testing.T) {
 		Collection: "list",
 		Separator:  ", ",
 	}
-	params := map[string]reflect.Value{"list": reflect.ValueOf([]map[string]interface{}{
+	params := map[string]reflect.Value{"list": reflect.ValueOf([]map[string]any{
 		{"id": 1, "name": "a"},
 		{"id": 2, "name": "b"},
 	})}
