@@ -6,13 +6,18 @@ import (
 	"testing"
 )
 
+func testEval(expr string, v any) (result reflect.Value, err error) {
+	param := newGenericParam(v, "")
+	return Eval(expr, param)
+}
+
 func TestEval(t *testing.T) {
-	param := Param{
-		"id":   reflect.ValueOf(1),
-		"age":  reflect.ValueOf(18),
-		"name": reflect.ValueOf("eatmoreapple"),
+	param := H{
+		"id":   1,
+		"age":  18,
+		"name": "eatmoreapple",
 	}
-	result, err := Eval(`id > 0 && id < 2`, param)
+	result, err := testEval(`id > 0 && id < 2`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -22,7 +27,7 @@ func TestEval(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`age == 17 + 1 && age == 36 / 2 && age == 9 * 2 && age == 19 -1`, param)
+	result, err = testEval(`age == 17 + 1 && age == 36 / 2 && age == 9 * 2 && age == 19 -1`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -32,7 +37,7 @@ func TestEval(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`name == "eatmoreapple"`, param)
+	result, err = testEval(`name == "eatmoreapple"`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -43,7 +48,7 @@ func TestEval(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`"eat" + "more" + "apple"`, nil)
+	result, err = testEval(`"eat" + "more" + "apple"`, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -55,13 +60,13 @@ func TestEval(t *testing.T) {
 }
 
 func BenchmarkEval(b *testing.B) {
-	param := Param{
+	param := H{
 		"id":   reflect.ValueOf(1),
 		"age":  reflect.ValueOf(18),
 		"name": reflect.ValueOf("eatmoreapple"),
 	}
 	for i := 0; i < b.N; i++ {
-		value, err := Eval(`id > 0 && id < 2 && name == "eatmoreapple"`, param)
+		value, err := testEval(`id > 0 && id < 2 && name == "eatmoreapple"`, param)
 		if err != nil {
 			b.Error(err)
 			return
@@ -75,18 +80,19 @@ func BenchmarkEval(b *testing.B) {
 }
 
 func BenchmarkEval2(b *testing.B) {
-	param := Param{
-		"id":   reflect.ValueOf(1),
-		"age":  reflect.ValueOf(18),
-		"name": reflect.ValueOf("eatmoreapple"),
+	param := H{
+		"id":   1,
+		"age":  18,
+		"name": "eatmoreapple",
 	}
 	expr, err := parser.ParseExpr(`id > 0 && id < 2 && name == "eatmoreapple"`)
 	if err != nil {
 		b.Error(err)
 		return
 	}
+	p := newGenericParam(param, "")
 	for i := 0; i < b.N; i++ {
-		value, err := eval(expr, param)
+		value, err := eval(expr, p)
 		if err != nil {
 			b.Error(err)
 			return
@@ -100,12 +106,12 @@ func BenchmarkEval2(b *testing.B) {
 }
 
 func TestLen(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]any{"a", "b", "c"}),
-		"b": reflect.ValueOf("aaa"),
-		"c": reflect.ValueOf(map[string]any{"a": "a", "b": "b", "c": "c"}),
+	param := H{
+		"a": []any{"a", "b", "c"},
+		"b": "aaa",
+		"c": map[string]any{"a": "a", "b": "b", "c": "c"},
 	}
-	result, err := Eval(`len(a)`, param)
+	result, err := testEval(`len(a)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -114,7 +120,7 @@ func TestLen(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`len(b)`, param)
+	result, err = testEval(`len(b)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -123,7 +129,7 @@ func TestLen(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`len(c)`, param)
+	result, err = testEval(`len(c)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -135,10 +141,10 @@ func TestLen(t *testing.T) {
 }
 
 func TestSubStr(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf("eatmoreapple"),
+	param := H{
+		"a": "eatmoreapple",
 	}
-	result, err := Eval(`substr(a, 0, 3)`, param)
+	result, err := testEval(`substr(a, 0, 3)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -147,7 +153,7 @@ func TestSubStr(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`substr(a, 3, 4)`, param)
+	result, err = testEval(`substr(a, 3, 4)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -156,7 +162,7 @@ func TestSubStr(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`substr(a, 7, 5)`, param)
+	result, err = testEval(`substr(a, 7, 5)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -168,10 +174,10 @@ func TestSubStr(t *testing.T) {
 }
 
 func TestSubJoin(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	param := H{
+		"a": []string{"eat", "more", "apple"},
 	}
-	result, err := Eval(`join(a, "")`, param)
+	result, err := testEval(`join(a, "")`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -183,11 +189,11 @@ func TestSubJoin(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
-		"b": reflect.ValueOf([]int64{1, 2, 3}),
+	param := H{
+		"a": []string{"eat", "more", "apple"},
+		"b": []int64{1, 2, 3},
 	}
-	result, err := Eval(`contains(a, "eat")`, param)
+	result, err := testEval(`contains(a, "eat")`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -197,7 +203,7 @@ func TestContains(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`contains("eatmoreapple", "eat")`, param)
+	result, err = testEval(`contains("eatmoreapple", "eat")`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -207,7 +213,7 @@ func TestContains(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`contains(b, 3)`, param)
+	result, err = testEval(`contains(b, 3)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -217,7 +223,7 @@ func TestContains(t *testing.T) {
 		return
 	}
 
-	result, err = Eval(`contains(b, 4)`, param)
+	result, err = testEval(`contains(b, 4)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -229,10 +235,10 @@ func TestContains(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	param := H{
+		"a": []string{"eat", "more", "apple"},
 	}
-	result, err := Eval(`slice(a, 0, 1)`, param)
+	result, err := testEval(`slice(a, 0, 1)`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -248,7 +254,7 @@ func TestSlice(t *testing.T) {
 }
 
 func TestLparenRparen(t *testing.T) {
-	result, err := Eval(`2 * (2 + 5) == 14`, nil)
+	result, err := testEval(`2 * (2 + 5) == 14`, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -305,10 +311,10 @@ func TestUnaryExpr2(t *testing.T) {
 }
 
 func TestIndexExprSlice(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	param := H{
+		"a": []string{"eat", "more", "apple"},
 	}
-	result, err := Eval(`a[0]`, param)
+	result, err := testEval(`a[0]`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -317,7 +323,7 @@ func TestIndexExprSlice(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`a[0] + a[1]`, param)
+	result, err = testEval(`a[0] + a[1]`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -329,12 +335,12 @@ func TestIndexExprSlice(t *testing.T) {
 }
 
 func TestIndexExprMap(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf(map[string]string{
+	param := H{
+		"a": map[string]string{
 			"eat": "more",
-		}),
+		},
 	}
-	result, err := Eval(`a["eat"]`, param)
+	result, err := testEval(`a["eat"]`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -367,10 +373,10 @@ func TestStarExpr(t *testing.T) {
 }
 
 func TestSliceExpr(t *testing.T) {
-	param := Param{
-		"a": reflect.ValueOf([]string{"eat", "more", "apple"}),
+	param := H{
+		"a": []string{"eat", "more", "apple"},
 	}
-	result, err := Eval(`a[:]`, param)
+	result, err := testEval(`a[:]`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -391,7 +397,7 @@ func TestSliceExpr(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`a[1:]`, param)
+	result, err = testEval(`a[1:]`, param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -408,7 +414,7 @@ func TestSliceExpr(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
-	result, err = Eval(`a[1:2]`, param)
+	result, err = testEval(`a[1:2]`, param)
 	if err != nil {
 		t.Error(err)
 		return

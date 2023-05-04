@@ -652,7 +652,7 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 		}
 	}
 	if foreachNode.Collection == "" {
-		foreachNode.Collection = defaultParamKey
+		foreachNode.Collection = "param"
 	}
 	if foreachNode.Item == "" {
 		return nil, &nodeAttributeRequiredError{nodeName: "foreach", attrName: "item"}

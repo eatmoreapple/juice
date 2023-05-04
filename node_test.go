@@ -1,7 +1,6 @@
 package juice
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/eatmoreapple/juice/driver"
@@ -15,11 +14,11 @@ func TestForeachNode_Accept(t *testing.T) {
 		Collection: "list",
 		Separator:  ", ",
 	}
-	params := map[string]reflect.Value{"list": reflect.ValueOf([]map[string]any{
+	params := H{"list": []map[string]any{
 		{"id": 1, "name": "a"},
 		{"id": 2, "name": "b"},
-	})}
-	query, args, err := node.Accept(drv.Translate(), params)
+	}}
+	query, args, err := node.Accept(drv.Translate(), params.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
@@ -49,7 +48,9 @@ func TestIfNode_Accept(t *testing.T) {
 		return
 	}
 
-	query, args, err := node.Accept(drv.Translate(), map[string]reflect.Value{"id": reflect.ValueOf(1)})
+	h := H{"id": 1}
+
+	query, args, err := node.Accept(drv.Translate(), newGenericParam(h, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -71,7 +72,8 @@ func TestIfNode_Accept(t *testing.T) {
 func TestTextNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	node := TextNode("select * from user where id = #{id}")
-	query, args, err := node.Accept(drv.Translate(), map[string]reflect.Value{"id": reflect.ValueOf(1)})
+	param := newGenericParam(H{"id": 1}, "")
+	query, args, err := node.Accept(drv.Translate(), param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -98,11 +100,11 @@ func TestWhereNode_Accept(t *testing.T) {
 			TextNode("AND name = #{name}"),
 		},
 	}
-	params := map[string]reflect.Value{
-		"id":   reflect.ValueOf(1),
-		"name": reflect.ValueOf("a"),
+	params := H{
+		"id":   1,
+		"name": "a",
 	}
-	query, args, err := node.Accept(drv.Translate(), params)
+	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -159,11 +161,8 @@ func TestTrimNode_Accept(t *testing.T) {
 		Suffix:          ")",
 		SuffixOverrides: []string{","},
 	}
-	params := map[string]reflect.Value{
-		"id":   reflect.ValueOf(1),
-		"name": reflect.ValueOf("a"),
-	}
-	query, args, err := node.Accept(drv.Translate(), params)
+	params := H{"id": 1, "name": "a"}
+	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -188,11 +187,11 @@ func TestSetNode_Accept(t *testing.T) {
 			TextNode("name = #{name},"),
 		},
 	}
-	params := map[string]reflect.Value{
-		"id":   reflect.ValueOf(1),
-		"name": reflect.ValueOf("a"),
+	params := H{
+		"id":   1,
+		"name": "a",
 	}
-	query, args, err := node.Accept(drv.Translate(), params)
+	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return

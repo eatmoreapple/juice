@@ -6,151 +6,141 @@ import (
 	"strings"
 )
 
-// Param is a map of string to reflect.Value
-type Param map[string]reflect.Value
+// defaultParamKey is the default key of the parameter.
+const defaultParamKey = "param"
 
-// Get returns the value of the key
-// If the key is not found, it will return the default value
-func (p Param) Get(name string) (reflect.Value, bool) {
+// Parameter is the interface that wraps the Get method.
+// Get returns the value of the named parameter.
+type Parameter interface {
+	// Get returns the value of the named parameter with the type of reflect.Value.
+	Get(name string) (reflect.Value, bool)
+}
 
-	// split the name by dot
-	// if the name is user.name, it will be split to user and name
-	items := strings.Split(name, ".")
+// ParamGroup is a group of parameters which implements the Parameter interface.
+type ParamGroup []Parameter
 
-	var value reflect.Value
-
-	// try to one the value from the split name
-	for i, item := range items {
-
-		// if it is the first item, try to one the value from the param
-		// otherwise, try to one the value from the previous value
-
-		if i == 0 {
-			var exists bool
-			value, exists = p[item]
-			if !exists {
-				return reflect.Value{}, false
-			}
-			continue
+// Get implements Parameter.
+func (g ParamGroup) Get(name string) (reflect.Value, bool) {
+	for _, p := range g {
+		if value, ok := p.Get(name); ok {
+			return value, ok
 		}
+	}
+	return reflect.Value{}, false
+}
 
-		// if the previous value is not a struct, slice or a map, return false
-		value = reflect.Indirect(value)
+// structParameter is a parameter that wraps a struct.
+type structParameter struct {
+	reflect.Value
+}
 
+// Get implements Parameter.
+func (p structParameter) Get(name string) (reflect.Value, bool) {
+	// try to one the value from field tag first
+	for i := 0; i < p.NumField(); i++ {
+		field := p.Type().Field(i)
+		if field.Tag.Get("param") == name {
+			return p.Field(i), true
+		}
+	}
+	// if not found, try to one the value from field name
+	value := p.FieldByNameFunc(func(search string) bool {
+		// this might cause unexpected behavior
+		return strings.EqualFold(name, search)
+	})
+	return value, value.IsValid()
+}
+
+// mapParameter is a parameter that wraps a map.
+type mapParameter struct {
+	reflect.Value
+}
+
+// Get implements Parameter.
+func (p mapParameter) Get(name string) (reflect.Value, bool) {
+	value := p.MapIndex(reflect.ValueOf(name))
+	return value, value.IsValid()
+}
+
+// sliceParameter is a parameter that wraps a slice.
+type sliceParameter struct {
+	reflect.Value
+}
+
+// Get implements Parameter.
+func (p sliceParameter) Get(name string) (reflect.Value, bool) {
+	index, err := strconv.Atoi(name)
+	if err != nil {
+		return reflect.Value{}, false
+	}
+	value := p.Index(index)
+	return value, value.IsValid()
+}
+
+// genericParameter is a parameter that wraps a generic value.
+type genericParameter struct {
+	reflect.Value
+}
+
+func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
+	value = g.Value
+	items := strings.Split(name, ".")
+	var param Parameter
+	for _, item := range items {
+		// match the value type
+		// if the value is a map, then use mapParameter
+		// if the value is a struct, then use structParameter
+		// if the value is a slice or array, then use sliceParameter
+		// otherwise, return false
 		switch value.Kind() {
 		case reflect.Map:
-			value = value.MapIndex(reflect.ValueOf(item))
+			param = mapParameter{value}
 		case reflect.Struct:
-			field := value.FieldByName(item)
-			if !field.IsValid() {
-				// try to many it from tag
-				for i := 0; i < value.NumField(); i++ {
-					field := value.Type().Field(i)
-					if field.Tag.Get("param") == item {
-						value = value.Field(i)
-						break
-					}
-				}
-			} else {
-				value = field
-			}
+			param = structParameter{value}
 		case reflect.Slice, reflect.Array:
-			index, err := strconv.Atoi(item)
-			if err != nil {
-				return reflect.Value{}, false
-			}
-			value = value.Index(index)
+			param = sliceParameter{value}
 		default:
+			// otherwise, return false
+			return reflect.Value{}, false
+		}
+		value, exists = param.Get(item)
+		if !exists {
 			return reflect.Value{}, false
 		}
 
-		// if the value is not valid, return false
-		if !value.IsValid() {
-			return reflect.Value{}, false
-		}
+		// if the value is a pointer, then dereference it
+		value = reflect.Indirect(value)
 
-		// if the value is a pointer, one the value from the pointer
+		// if the value is an interface, then unwrap it
 		for value.Kind() == reflect.Interface {
 			value = value.Elem()
 		}
 	}
-
-	return value, value.IsValid()
+	return value, true
 }
 
-// ParamConverter is an interface that can convert itself to Param
-type ParamConverter interface {
-	ParamConvert() (Param, error)
-}
-
-const (
-	paramTag        = "param"
-	defaultParamKey = paramTag
-)
-
-// ParamConvert converts any type to Param
-// alias will be used if the type is not a struct or a map
-func ParamConvert(v any, alias string) (Param, error) {
+// newGenericParam creates a generic parameter.
+// if the value is not a map, struct, slice or array, then wrap it as a map.
+func newGenericParam(v any, wrapKey string) Parameter {
 	if v == nil {
-		return make(Param), nil
+		return nil
 	}
-	if p, ok := v.(ParamConverter); ok {
-		return p.ParamConvert()
-	}
-	if p, ok := v.(Param); ok {
-		return p, nil
-	}
-	// one the value of the interface
 	value := reflect.Indirect(reflect.ValueOf(v))
 	switch value.Kind() {
-	case reflect.Struct:
-		return structConvert(value)
-	case reflect.Map:
-		return mapConvert(value)
+	case reflect.Map, reflect.Struct, reflect.Slice, reflect.Array:
 	default:
-		// if the value is not a struct or a map, try to one the value from the default key
-		param := make(Param)
-		// if the default key is empty, use the defaultParamKey instead
-		if alias == "" {
-			alias = defaultParamKey
+		// if the value is not a map, struct, slice or array, then wrap it as a map
+		if wrapKey == "" {
+			wrapKey = defaultParamKey
 		}
-		param[alias] = value
-		return param, nil
+		value = reflect.ValueOf(H{wrapKey: v})
 	}
-}
-
-// mapConvert converts a map to Param
-func mapConvert(value reflect.Value) (Param, error) {
-	param := make(map[string]reflect.Value)
-	for _, key := range value.MapKeys() {
-		param[key.String()] = value.MapIndex(key)
-	}
-	return param, nil
-}
-
-// structConvert converts a struct to Param
-func structConvert(value reflect.Value) (Param, error) {
-	param := make(Param)
-	for i := 0; i < value.NumField(); i++ {
-		field := value.Type().Field(i)
-		tag := field.Tag.Get(paramTag)
-		if tag == "" {
-			tag = field.Name
-		}
-		param[tag] = reflect.Indirect(value.Field(i))
-	}
-	return param, nil
+	return &genericParameter{value}
 }
 
 // H is a shortcut for map[string]any
-// It is used to create a map easily, and it can be converted to Param
 type H map[string]any
 
-// ParamConvert converts H to Param
-func (h H) ParamConvert() (Param, error) {
-	var param = make(Param)
-	for k, v := range h {
-		param[k] = reflect.ValueOf(v)
-	}
-	return param, nil
+func (h H) AsParam() Parameter {
+	return newGenericParam(h, "")
 }
