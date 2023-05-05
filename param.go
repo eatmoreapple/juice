@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+// Param is an alias of any type.
+// It is used to represent the parameter of the statement and without type limitation.
+type Param = any
+
 // defaultParamKey is the default key of the parameter.
 const defaultParamKey = "param"
 
