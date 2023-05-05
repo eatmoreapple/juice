@@ -22,6 +22,11 @@ func (s *SyntaxError) Error() string {
 	return fmt.Sprintf("syntax error: %v", s.err)
 }
 
+// Unwrap returns the underlying error.
+func (s *SyntaxError) Unwrap() error {
+	return s.err
+}
+
 func Eval(expr string, params Parameter) (reflect.Value, error) {
 	exp, err := parser.ParseExpr(expr)
 	if err != nil {
