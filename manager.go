@@ -17,17 +17,17 @@ type GenericManager[T any] interface {
 
 // NewGenericManager returns a new GenericManager.
 func NewGenericManager[T any](manager Manager) GenericManager[T] {
-	return &genericManager[T]{manager}
+	return &genericManager[T]{Manager: manager}
 }
 
 // genericManager implements the GenericManager interface.
 type genericManager[T any] struct {
-	manager Manager
+	Manager
 }
 
 // Object implements the GenericManager interface.
 func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
-	exe := s.manager.Object(v)
+	exe := s.Manager.Object(v)
 	return &genericExecutor[T]{Executor: exe}
 }
 
@@ -57,7 +57,7 @@ type TxManager interface {
 	// Commit commits the transaction.
 	Commit() error
 	// Rollback rollbacks the transaction.
-	// The rollback will be ignored if the tx has been committed later in the function.
+	// The rollback will be ignored if the tx has been committed.
 	Rollback() error
 }
 
