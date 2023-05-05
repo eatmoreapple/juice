@@ -11,7 +11,15 @@ func kindIndirect(t reflect.Type) reflect.Type {
 	return t
 }
 
-// deepFieldByIndex get field by index
-func sliceElem(rv reflect.Value) reflect.Value {
-	return reflect.New(rv.Elem().Type().Elem()).Elem()
+func unwrapValue(v reflect.Value) reflect.Value {
+	for {
+		switch {
+		case v.Kind() == reflect.Ptr:
+			v = v.Elem()
+		case v.Kind() == reflect.Interface:
+			v = v.Elem()
+		default:
+			return v
+		}
+	}
 }
