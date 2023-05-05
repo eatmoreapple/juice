@@ -88,15 +88,15 @@ func (e *executor) prepare(param any) (query string, args []any, err error) {
 }
 
 // GenericExecutor is a generic executor.
-type GenericExecutor[result any] interface {
-	Query(param any) (result, error)
-	QueryContext(ctx context.Context, param any) (result, error)
+type GenericExecutor[T any] interface {
+	Query(param any) (T, error)
+	QueryContext(ctx context.Context, param any) (T, error)
 	Exec(param any) (sql.Result, error)
 	ExecContext(ctx context.Context, param any) (sql.Result, error)
 }
 
 // genericExecutor is a generic executor.
-type genericExecutor[result any] struct {
+type genericExecutor[T any] struct {
 	Executor
 }
 
@@ -141,12 +141,12 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T,
 }
 
 // Exec executes the query and returns the result.
-func (e *genericExecutor[result]) Exec(p any) (sql.Result, error) {
+func (e *genericExecutor[_]) Exec(p any) (sql.Result, error) {
 	return e.ExecContext(context.Background(), p)
 }
 
 // ExecContext executes the query and returns the result.
-func (e *genericExecutor[result]) ExecContext(ctx context.Context, p any) (sql.Result, error) {
+func (e *genericExecutor[_]) ExecContext(ctx context.Context, p any) (sql.Result, error) {
 	return e.Executor.ExecContext(ctx, p)
 }
 
