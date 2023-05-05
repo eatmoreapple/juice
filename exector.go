@@ -9,10 +9,10 @@ import (
 
 // Executor is an executor of SQL.
 type Executor interface {
-	Query(param any) (*sql.Rows, error)
-	QueryContext(ctx context.Context, param any) (*sql.Rows, error)
-	Exec(param any) (sql.Result, error)
-	ExecContext(ctx context.Context, param any) (sql.Result, error)
+	Query(param Param) (*sql.Rows, error)
+	QueryContext(ctx context.Context, param Param) (*sql.Rows, error)
+	Exec(param Param) (sql.Result, error)
+	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 	Statement() *Statement
 }
 
@@ -30,12 +30,12 @@ type executor struct {
 }
 
 // Query executes the query and returns the result.
-func (e *executor) Query(param any) (*sql.Rows, error) {
+func (e *executor) Query(param Param) (*sql.Rows, error) {
 	return e.QueryContext(context.Background(), param)
 }
 
 // QueryContext executes the query and returns the result.
-func (e *executor) QueryContext(ctx context.Context, param any) (*sql.Rows, error) {
+func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
 		return nil, err
@@ -47,12 +47,12 @@ func (e *executor) QueryContext(ctx context.Context, param any) (*sql.Rows, erro
 }
 
 // Exec executes the query and returns the result.
-func (e *executor) Exec(param any) (sql.Result, error) {
+func (e *executor) Exec(param Param) (sql.Result, error) {
 	return e.ExecContext(context.Background(), param)
 }
 
 // ExecContext executes the query and returns the result.
-func (e *executor) ExecContext(ctx context.Context, param any) (sql.Result, error) {
+func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
 	query, args, err := e.prepare(param)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (e *executor) Statement() *Statement {
 }
 
 // prepare
-func (e *executor) prepare(param any) (query string, args []any, err error) {
+func (e *executor) prepare(param Param) (query string, args []any, err error) {
 	if e.err != nil {
 		return "", nil, e.err
 	}
@@ -89,10 +89,10 @@ func (e *executor) prepare(param any) (query string, args []any, err error) {
 
 // GenericExecutor is a generic executor.
 type GenericExecutor[T any] interface {
-	Query(param any) (T, error)
-	QueryContext(ctx context.Context, param any) (T, error)
-	Exec(param any) (sql.Result, error)
-	ExecContext(ctx context.Context, param any) (sql.Result, error)
+	Query(param Param) (T, error)
+	QueryContext(ctx context.Context, param Param) (T, error)
+	Exec(param Param) (sql.Result, error)
+	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 }
 
 // genericExecutor is a generic executor.
@@ -101,12 +101,12 @@ type genericExecutor[T any] struct {
 }
 
 // Query executes the query and returns the scanner.
-func (e *genericExecutor[T]) Query(p any) (T, error) {
+func (e *genericExecutor[T]) Query(p Param) (T, error) {
 	return e.QueryContext(context.Background(), p)
 }
 
 // QueryContext executes the query and returns the scanner.
-func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T, err error) {
+func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
 	rows, err := e.Executor.QueryContext(ctx, p)
 	if err != nil {
 		return
@@ -141,12 +141,12 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p any) (result T,
 }
 
 // Exec executes the query and returns the result.
-func (e *genericExecutor[_]) Exec(p any) (sql.Result, error) {
+func (e *genericExecutor[_]) Exec(p Param) (sql.Result, error) {
 	return e.ExecContext(context.Background(), p)
 }
 
 // ExecContext executes the query and returns the result.
-func (e *genericExecutor[_]) ExecContext(ctx context.Context, p any) (sql.Result, error) {
+func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (sql.Result, error) {
 	return e.Executor.ExecContext(ctx, p)
 }
 
@@ -155,10 +155,10 @@ var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
 // BinderExecutor is a binder executor.
 // It is used to bind the result to the given value.
 type BinderExecutor interface {
-	Query(param any) (Binder, error)
-	QueryContext(ctx context.Context, param any) (Binder, error)
-	Exec(param any) (sql.Result, error)
-	ExecContext(ctx context.Context, param any) (sql.Result, error)
+	Query(param Param) (Binder, error)
+	QueryContext(ctx context.Context, param Param) (Binder, error)
+	Exec(param Param) (sql.Result, error)
+	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 }
 
 // binderExecutor is a binder executor.
@@ -168,12 +168,12 @@ type binderExecutor struct {
 }
 
 // Query executes the query and returns the scanner.
-func (b *binderExecutor) Query(param any) (Binder, error) {
+func (b *binderExecutor) Query(param Param) (Binder, error) {
 	return b.QueryContext(context.Background(), param)
 }
 
 // QueryContext executes the query and returns the scanner.
-func (b *binderExecutor) QueryContext(ctx context.Context, param any) (Binder, error) {
+func (b *binderExecutor) QueryContext(ctx context.Context, param Param) (Binder, error) {
 	rows, err := b.Executor.QueryContext(ctx, param)
 	if err != nil {
 		return nil, err
