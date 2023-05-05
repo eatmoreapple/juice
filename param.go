@@ -16,6 +16,9 @@ type Parameter interface {
 	Get(name string) (reflect.Value, bool)
 }
 
+// make sure that ParamGroup implements Parameter.
+var _ Parameter = (ParamGroup)(nil)
+
 // ParamGroup is a group of parameters which implements the Parameter interface.
 type ParamGroup []Parameter
 
@@ -29,6 +32,9 @@ func (g ParamGroup) Get(name string) (reflect.Value, bool) {
 	return reflect.Value{}, false
 }
 
+// make sure that structParameter implements Parameter.
+var _ Parameter = (*structParameter)(nil)
+
 // structParameter is a parameter that wraps a struct.
 type structParameter struct {
 	reflect.Value
@@ -39,7 +45,7 @@ func (p structParameter) Get(name string) (reflect.Value, bool) {
 	// try to one the value from field tag first
 	for i := 0; i < p.NumField(); i++ {
 		field := p.Type().Field(i)
-		if field.Tag.Get("param") == name {
+		if field.Tag.Get(defaultParamKey) == name {
 			return p.Field(i), true
 		}
 	}
@@ -51,6 +57,9 @@ func (p structParameter) Get(name string) (reflect.Value, bool) {
 	return value, value.IsValid()
 }
 
+// make sure that mapParameter implements Parameter.
+var _ Parameter = (*mapParameter)(nil)
+
 // mapParameter is a parameter that wraps a map.
 type mapParameter struct {
 	reflect.Value
@@ -61,6 +70,9 @@ func (p mapParameter) Get(name string) (reflect.Value, bool) {
 	value := p.MapIndex(reflect.ValueOf(name))
 	return value, value.IsValid()
 }
+
+// make sure that sliceParameter implements Parameter.
+var _ Parameter = (*sliceParameter)(nil)
 
 // sliceParameter is a parameter that wraps a slice.
 type sliceParameter struct {
@@ -108,13 +120,8 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 			return reflect.Value{}, false
 		}
 
-		// if the value is a pointer, then dereference it
-		value = reflect.Indirect(value)
-
-		// if the value is an interface, then unwrap it
-		for value.Kind() == reflect.Interface {
-			value = value.Elem()
-		}
+		// unwrap the value
+		value = unwrapValue(value)
 	}
 	return value, true
 }
@@ -125,9 +132,10 @@ func newGenericParam(v any, wrapKey string) Parameter {
 	if v == nil {
 		return nil
 	}
-	value := reflect.Indirect(reflect.ValueOf(v))
+	value := unwrapValue(reflect.ValueOf(v))
 	switch value.Kind() {
 	case reflect.Map, reflect.Struct, reflect.Slice, reflect.Array:
+		// do nothing
 	default:
 		// if the value is not a map, struct, slice or array, then wrap it as a map
 		if wrapKey == "" {
