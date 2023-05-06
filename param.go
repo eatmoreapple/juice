@@ -150,9 +150,15 @@ func newGenericParam(v any, wrapKey string) Parameter {
 	return &genericParameter{value}
 }
 
+// NewParameter creates a new parameter with the given value.
+func NewParameter(v Param) Parameter {
+	return newGenericParam(v, "")
+}
+
 // H is a shortcut for map[string]any
 type H map[string]any
 
+// AsParam converts the H to a Parameter.
 func (h H) AsParam() Parameter {
-	return newGenericParam(h, "")
+	return NewParameter(h)
 }
