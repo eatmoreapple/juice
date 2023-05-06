@@ -263,11 +263,13 @@ func (f ForeachNode) Accept(translator driver.Translator, p Parameter) (query st
 
 	end := length - 1
 
+	// group wraps parameter
+	// nil is for placeholder
+	group := ParamGroup{nil, p}
+
 	for i := 0; i < length; i++ {
 
-		group := ParamGroup{
-			H{f.Item: value.Index(i).Interface()}.AsParam(), p,
-		}
+		group[0] = H{f.Item: value.Index(i).Interface()}.AsParam()
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, group)
