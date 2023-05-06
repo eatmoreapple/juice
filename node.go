@@ -74,14 +74,16 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 			if err != nil {
 				return "", nil, err
 			}
-			builder.WriteString(q)
+			if len(q) > 0 {
+				builder.WriteString(q)
+			}
 			if len(a) > 0 {
 				args = append(args, a...)
 			}
 		}
 		return builder.String(), args, nil
 	}
-	return "", nil, err
+	return "", nil, nil
 }
 
 // Match returns true if test is matched.
