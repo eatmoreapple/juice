@@ -87,8 +87,19 @@ func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) 
 		// otherwise, it means the slice ends at the end of the slice
 		high = value.Len()
 	}
-	// return the slice
-	return value.Slice(low, high), nil
+	if !exp.Slice3 {
+		return value.Slice(low, high), nil
+	}
+	// like [1:2:3] expr
+	// if exp.Max is nil, it means the capacity of the slice
+	var max int
+	if exp.Max != nil {
+		max, err = strconv.Atoi(exp.Max.(*ast.BasicLit).Value)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+	return value.Slice3(low, high, max), nil
 }
 
 func evalUnaryExpr(exp *ast.UnaryExpr, params Parameter) (reflect.Value, error) {

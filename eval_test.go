@@ -527,3 +527,22 @@ func TestNot2(t *testing.T) {
 		return
 	}
 }
+
+func TestSlice3(t *testing.T) {
+	param := H{
+		"a": []string{"eat", "more", "apple"},
+	}
+	result, err := testEval(`a[1:2:3]`, param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Len() != 1 {
+		t.Errorf("eval error: %d", result.Len())
+		return
+	}
+	if result.Index(0).Interface() != "more" {
+		t.Error("eval error")
+		return
+	}
+}
