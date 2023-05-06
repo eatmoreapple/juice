@@ -1,6 +1,7 @@
 package juice
 
 import (
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -11,7 +12,15 @@ import (
 type Param = any
 
 // defaultParamKey is the default key of the parameter.
-const defaultParamKey = "param"
+var defaultParamKey = func() string {
+	// try to get the key from environment variable
+	key := os.Getenv("JUICE_PARAM_KEY")
+	// if not found, use the default key
+	if len(key) == 0 {
+		key = "param"
+	}
+	return key
+}()
 
 // Parameter is the interface that wraps the Get method.
 // Get returns the value of the named parameter.
