@@ -119,6 +119,11 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 		// otherwise, return false
 		switch value.Kind() {
 		case reflect.Map:
+			// if the map key is string type
+			if value.Type().Key().Kind() != reflect.String {
+				// TODO panic or return false?
+				panic("the map key must be string type")
+			}
 			param = mapParameter{value}
 		case reflect.Struct:
 			param = structParameter{value}
