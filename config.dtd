@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+        <!ELEMENT configuration (environments? mappers? settings?)>
+
+        <!ELEMENT environments (environment*)>
+        <!ATTLIST environments
+                default CDATA #REQUIRED>
+
+        <!ELEMENT environment (dataSource, driver, maxIdleConnNum?, maxOpenConnNum?, maxConnLifetime?, maxIdleConnLifetime?)>
+        <!ATTLIST environment
+                id CDATA #REQUIRED
+                provider CDATA #IMPLIED
+                >
+
+        <!ELEMENT dataSource (#PCDATA)>
+        <!ELEMENT driver (#PCDATA)>
+        <!ELEMENT maxIdleConnNum (#PCDATA)>
+        <!ELEMENT maxOpenConnNum (#PCDATA)>
+        <!ELEMENT maxConnLifetime (#PCDATA)>
+        <!ELEMENT maxIdleConnLifetime (#PCDATA)>
+
+        <!ELEMENT settings (setting+)>
+
+        <!ELEMENT setting EMPTY>
+        <!ATTLIST setting
+                name CDATA #REQUIRED
+                value CDATA #REQUIRED
+                >
+
+        <!ELEMENT mappers (mapper*)>
+        <!ATTLIST mappers
+                prefix CDATA #IMPLIED
+                >
+
+        <!ELEMENT mapper EMPTY>
+        <!ATTLIST mapper
+                resource CDATA #IMPLIED
+                url CDATA #IMPLIED
+                namespace CDATA #IMPLIED
+                >
