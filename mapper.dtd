@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+        <!ELEMENT mapper (resultMap* | sql* | select* | update* | delete* | insert* )+>
+        <!ATTLIST mapper
+                namespace CDATA #IMPLIED
+                >
+
+        <!ELEMENT include (#PCDATA)>
+        <!ATTLIST include
+                refid CDATA #REQUIRED
+                >
+
+        <!ELEMENT trim (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+        <!ATTLIST trim
+                prefix CDATA #IMPLIED
+                prefixOverrides CDATA #IMPLIED
+                suffix CDATA #IMPLIED
+                suffixOverrides CDATA #IMPLIED
+                >
+
+        <!ELEMENT where (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+
+        <!ELEMENT set (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+
+        <!ELEMENT foreach (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+        <!ATTLIST foreach
+                collection CDATA #REQUIRED
+                item CDATA #IMPLIED
+                index CDATA #IMPLIED
+                open CDATA #IMPLIED
+                close CDATA #IMPLIED
+                separator CDATA #IMPLIED
+                >
+
+        <!ELEMENT choose (when | otherwise)*>
+
+        <!ELEMENT when (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+        <!ATTLIST when
+                test CDATA #REQUIRED
+                >
+
+        <!ELEMENT otherwise (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+
+        <!ELEMENT if (#PCDATA | include | trim | where | set | foreach | choose | if)*>
+        <!ATTLIST if
+                test CDATA #REQUIRED
+                >
+
+        <!ELEMENT alias (field+)>
+
+        <!ELEMENT field EMPTY>
+        <!ATTLIST field
+                name CDATA #REQUIRED
+                alias CDATA #REQUIRED
+                >
+
+        <!ELEMENT values (value)+>
+
+        <!ELEMENT value EMPTY>
+        <!ATTLIST value
+                column CDATA #REQUIRED
+                property CDATA #IMPLIED
+                >
+
+
+        <!ELEMENT select (#PCDATA | include | trim | where | set | foreach | choose | if | alias)*>
+        <!ATTLIST select
+                id CDATA #REQUIRED
+                resultMap CDATA #IMPLIED
+                >
+
+        <!ELEMENT update (#PCDATA | include | trim | where | set | foreach | choose | if )*>
+        <!ATTLIST update
+                id CDATA #REQUIRED
+                >
+
+        <!ELEMENT delete (#PCDATA | include | trim | where | set | foreach | choose | if )*>
+        <!ATTLIST delete
+                id CDATA #REQUIRED
+                >
+
+        <!ELEMENT insert (#PCDATA | include | trim | where | set | foreach | choose | if )*>
+        <!ATTLIST insert
+                id CDATA #REQUIRED
+                >
+
+        <!ELEMENT id EMPTY>
+        <!ATTLIST id
+                column CDATA #REQUIRED
+                property CDATA #REQUIRED
+                >
+
+        <!ELEMENT result EMPTY>
+        <!ATTLIST result
+                column CDATA #REQUIRED
+                property CDATA #REQUIRED
+                >
+
+        <!ELEMENT association (association* | result*)>
+        <!ATTLIST association
+                property CDATA #REQUIRED
+                >
+
+        <!ELEMENT collection (association* | result*)>
+        <!ATTLIST collection
+                property CDATA #REQUIRED
+                >
+
+        <!ELEMENT sql (#PCDATA | include | trim | where | set | foreach | choose | if )*>
+        <!ATTLIST sql
+                id CDATA #REQUIRED
+                >
+
+        <!ELEMENT resultMap (id* | result* | association* | collection*)>
+        <!ATTLIST resultMap
+                id CDATA #REQUIRED
+                >
