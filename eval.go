@@ -136,9 +136,17 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 	}
 	switch value.Kind() {
 	case reflect.Array, reflect.Slice, reflect.String:
-		return value.Index(int(index.Int())), nil
+		i := index.Int()
+		if i >= int64(value.Len()) {
+			return reflect.Value{}, errors.New("index out of range")
+		}
+		return value.Index(int(i)), nil
 	case reflect.Map:
-		return value.MapIndex(index), nil
+		v := value.MapIndex(index)
+		if !v.IsValid() {
+			return reflect.Value{}, errors.New("map index out of range")
+		}
+		return v, nil
 	default:
 		return reflect.Value{}, errors.New("unsupported index expression")
 	}
