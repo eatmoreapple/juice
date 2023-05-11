@@ -38,6 +38,9 @@ type ParamGroup []Parameter
 // Get implements Parameter.
 func (g ParamGroup) Get(name string) (reflect.Value, bool) {
 	for _, p := range g {
+		if p == nil {
+			continue
+		}
 		if value, ok := p.Get(name); ok {
 			return value, ok
 		}
