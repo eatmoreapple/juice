@@ -651,8 +651,10 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 			foreachNode.Close = attr.Value
 		}
 	}
+
+	// if collection is empty, use default param key instead.
 	if foreachNode.Collection == "" {
-		foreachNode.Collection = "param"
+		foreachNode.Collection = defaultParamKey
 	}
 	if foreachNode.Item == "" {
 		return nil, &nodeAttributeRequiredError{nodeName: "foreach", attrName: "item"}
