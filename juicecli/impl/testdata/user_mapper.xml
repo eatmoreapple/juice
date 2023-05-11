@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<mapper namespace="testcase.Interface">
+<mapper namespace="testdata.Interface">
     <select id="GetUserByID" resultMap="User">
         select * from user limit 1
     </select>
