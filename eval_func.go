@@ -8,38 +8,53 @@ import (
 )
 
 // return the length of the string or array
-func length(v any) int {
+func length(v any) (int, error) {
 	switch v.(type) {
 	case nil:
-		return 0
+		return 0, nil
 	case string:
-		return len(v.(string))
+		return len(v.(string)), nil
 	default:
 		rv := reflect.Indirect(reflect.ValueOf(v))
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
-			return rv.Len()
+			return rv.Len(), nil
 		}
 	}
-	panic("len: invalid argument type")
+	return 0, errors.New("length: invalid argument type")
 }
 
 // strSub returns a substring of the string.
 // The first parameter is the string to be processed.
 // The second parameter is the start position of the substring.
 // The third parameter is the length of the substring.
-func strSub(v any, start, count int) string {
-	if str, ok := v.(string); ok {
-		return str[start : start+count]
+func strSub(str string, start, count int) (string, error) {
+	if start < 0 {
+		start = len(str) + start
 	}
-	panic("substr: invalid argument type")
+	if start < 0 {
+		start = 0
+	}
+	if start > len(str) {
+		start = len(str)
+	}
+	if count < 0 {
+		count = len(str) + count
+	}
+	if count < 0 {
+		count = 0
+	}
+	if start+count > len(str) {
+		count = len(str) - start
+	}
+	return str[start : start+count], nil
 }
 
 // strJoin joins the elements of the array into a string.
 // The first parameter is the array to be processed.
 // The second parameter is the separator.
 // Returns a string.
-func strJoin(v any, sep string) string {
+func strJoin(v any, sep string) (string, error) {
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
@@ -48,38 +63,38 @@ func strJoin(v any, sep string) string {
 			for i := 0; i < rv.Len(); i++ {
 				list = append(list, rv.Index(i).String())
 			}
-			return strings.Join(list, sep)
+			return strings.Join(list, sep), nil
 		}
 	}
-	panic("join: invalid argument type")
+	return "", errors.New("join: invalid argument type")
 }
 
 // contains returns true if the value is in the array or string.
-func contains(s any, v any) bool {
+func contains(s any, v any) (bool, error) {
 	switch s.(type) {
 	case string:
 		value, ok := v.(string)
 		if !ok {
 			v = fmt.Sprintf("%v", v)
 		}
-		return strings.Contains(s.(string), value)
+		return strings.Contains(s.(string), value), nil
 	default:
 		rv := reflect.Indirect(reflect.ValueOf(s))
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice, reflect.Map:
 			for i := 0; i < rv.Len(); i++ {
 				if rv.Index(i).Interface() == v {
-					return true
+					return true, nil
 				}
 			}
-			return false
+			return false, nil
 		}
 	}
-	panic("contains: invalid argument type")
+	return false, errors.New("contains: invalid argument type")
 }
 
 // slice returns a slice of the array or string.
-func slice(v any, start, count int) []any {
+func slice(v any, start, count int) ([]any, error) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
@@ -88,68 +103,68 @@ func slice(v any, start, count int) []any {
 		for i := 0; i < rt.Len(); i++ {
 			ret = append(ret, rt.Index(i).Interface())
 		}
-		return ret
+		return ret, nil
 	}
-	panic("slice: invalid argument type")
+	return nil, errors.New("slice: invalid argument type")
 }
 
 // title returns a copy of the string s with all Unicode letters that begin words mapped to their title case.
-func title(text string) string {
-	return strings.Title(text)
+func title(text string) (string, error) {
+	return strings.Title(text), nil
 }
 
 // lower returns a copy of the string s with all Unicode letters mapped to their lower case.
-func lower(text string) string {
-	return strings.ToLower(text)
+func lower(text string) (string, error) {
+	return strings.ToLower(text), nil
 }
 
 // upper returns a copy of the string s with all Unicode letters mapped to their upper case.
-func upper(text string) string {
-	return strings.ToUpper(text)
+func upper(text string) (string, error) {
+	return strings.ToUpper(text), nil
 }
 
 // trim returns a slice of the string s with all leading and trailing Unicode code points contained in cutset removed.
-func trim(text, cutest string) string {
-	return strings.Trim(text, cutest)
+func trim(text, cutest string) (string, error) {
+	return strings.Trim(text, cutest), nil
 }
 
 // trimLeft returns a slice of the string s with all leading Unicode code points contained in cutset removed.
-func trimLeft(text, cutest string) string {
-	return strings.TrimLeft(text, cutest)
+func trimLeft(text, cutest string) (string, error) {
+	return strings.TrimLeft(text, cutest), nil
 }
 
 // trimRight returns a slice of the string s with all trailing Unicode code points contained in cutset removed.
-func trimRight(text, cutest string) string {
-	return strings.TrimRight(text, cutest)
+func trimRight(text, cutest string) (string, error) {
+	return strings.TrimRight(text, cutest), nil
 }
 
 // replace returns a copy of the string s with the first n non-overlapping instances of old replaced by new.
 // If old is empty, it matches at the beginning of the string and after each UTF-8 sequence, yielding up to k+1 replacements for a k-rune string.
-func replace(text, old, new string, n int) string {
-	return strings.Replace(text, old, new, n)
+func replace(text, old, new string, n int) (string, error) {
+	return strings.Replace(text, old, new, n), nil
 }
 
 // replaceAll returns a copy of the string s with all non-overlapping instances of old replaced by new.
 // If old is empty, it matches at the beginning of the string and after each UTF-8 sequence, yielding up to k+1 replacements for a k-rune string.
-func replaceAll(text, old, new string) string {
-	return strings.ReplaceAll(text, old, new)
+func replaceAll(text, old, new string) (string, error) {
+	return strings.ReplaceAll(text, old, new), nil
 }
 
 // split returns a slice of strings after splitting the string s at each instance of sep.
-func split(text, sep string) []string {
-	return strings.Split(text, sep)
+func split(text, sep string) ([]string, error) {
+	return strings.Split(text, sep), nil
 }
 
 // splitN returns a slice of strings after splitting the string s at each instance of sep, at most n times.
 // If n == 0, SplitN returns an unlimited number of substrings.
 // If n < 0, SplitN splits after each instance of sep.
-func splitN(text, sep string, n int) []string {
-	return strings.SplitN(text, sep, n)
+func splitN(text, sep string, n int) ([]string, error) {
+	return strings.SplitN(text, sep, n), nil
 }
 
 // splitAfter returns a slice of strings after splitting the string s after each instance of sep.
-func splitAfter(text, sep string) []string {
-	return strings.SplitAfter(text, sep)
+func splitAfter(text, sep string) ([]string, error) {
+	return strings.SplitAfter(text, sep), nil
 }
 
 // RegisterEvalFunc registers a function for eval.
@@ -160,8 +175,12 @@ func RegisterEvalFunc(name string, v any) error {
 	if rv.Kind() != reflect.Func {
 		return errors.New("RegisterEvalFunc: v must be a function type")
 	}
-	if rv.Type().NumOut() != 1 {
-		return errors.New("RegisterEvalFunc: v must be a function with one return value")
+	if rv.Type().NumOut() != 2 {
+		return errors.New("RegisterEvalFunc: v must be a function with two return value")
+	}
+	// if last return value is error
+	if rv.Type().Out(rv.Type().NumOut()-1).String() != "error" {
+		return errors.New("RegisterEvalFunc: v must be a function with an error return value")
 	}
 	builtins[name] = rv
 	return nil

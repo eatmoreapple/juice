@@ -163,8 +163,8 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if fn.Type().NumIn() != len(exp.Args) {
 		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", fn.Type().NumIn(), len(exp.Args))
 	}
-	if fn.Type().NumOut() != 1 {
-		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 1, got %d", fn.Type().NumOut())
+	if fn.Type().NumOut() != 2 {
+		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 2, got %d", fn.Type().NumOut())
 	}
 	var args []reflect.Value
 	for i, arg := range exp.Args {
@@ -181,6 +181,18 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 			value = value.Convert(in)
 		}
 		args = append(args, value)
+	}
+	// call the function
+	rets := fn.Call(args)
+	// check if the function returns an error
+	if !rets[1].IsNil() {
+		// the second return value must be an error
+
+		// try to convert the second return value to error
+		if e, ok := rets[1].Interface().(error); ok && e != nil {
+			return reflect.Value{}, e
+		}
+		return reflect.Value{}, errors.New("cannot convert return value to error")
 	}
 	return fn.Call(args)[0], nil
 }
