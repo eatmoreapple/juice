@@ -21,7 +21,7 @@ func ParseGoModuleName(f io.Reader) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		data := string(line)
+		data := strings.TrimSpace(string(line))
 		if strings.HasPrefix(data, "module") {
 			module = strings.TrimSpace(strings.TrimPrefix(data, "module"))
 			break
