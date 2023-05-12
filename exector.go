@@ -124,7 +124,8 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 
 	rv := reflect.ValueOf(result)
 
-	if rv.Kind() == reflect.Ptr {
+	switch rv.Kind() {
+	case reflect.Ptr:
 		// if T is a pointer, then set prt to T
 		value := reflect.New(rv.Type().Elem()).Interface().(T)
 		if err = BindWithResultMap(rows, value, retMap); err != nil {
@@ -133,10 +134,11 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 			return result, err
 		}
 		// if bind success, then return the new value
-		return value, nil
+		result = value
+	default:
+		// bind the result to the pointer
+		err = BindWithResultMap(rows, &result, retMap)
 	}
-	// bind the result to the pointer
-	err = BindWithResultMap(rows, &result, retMap)
 	return
 }
 
