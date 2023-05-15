@@ -405,6 +405,9 @@ func (c collectionItemMapping) setCollection(rv reflect.Value) {
 	}
 }
 
+// discardIndex is the index of the discard column which will be ignored.
+const discardIndex = -1
+
 // ColumnDestination is a column destination which can be used to scan a row.
 type ColumnDestination interface {
 	// Destination returns the destination for the given reflect value and column.
@@ -447,7 +450,7 @@ func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string
 	}
 	dest := make([]any, len(columns))
 	for i, index := range s.indexes {
-		if index == -1 {
+		if index == discardIndex {
 			dest[i] = new(any)
 		} else {
 			dest[i] = rv.Field(index).Addr().Interface()
@@ -462,7 +465,7 @@ func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 
 	// index is the index of the field in the struct
 	for i := range s.indexes {
-		s.indexes[i] = -1
+		s.indexes[i] = discardIndex
 	}
 	for i := 0; i < tp.NumField(); i++ {
 		field := tp.Field(i)
@@ -480,6 +483,7 @@ func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 }
 
 // TODO fixme
+// I have no idea what i am doing
 type resultMapColumnDestination struct {
 	resultMap         *resultMapNode
 	indexes           map[string][]int
