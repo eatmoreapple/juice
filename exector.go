@@ -128,6 +128,8 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	case reflect.Ptr:
 		// if T is a pointer, then set prt to T
 		value := reflect.New(rv.Type().Elem()).Interface().(T)
+		// NOTE: create an object using with the reflection may be slow, but it is not a big problem.
+		// You should better use the direct type instead of the pointer type.
 		if err = BindWithResultMap(rows, value, retMap); err != nil {
 			// if bind failed, then return the original value
 			// result is a zero value

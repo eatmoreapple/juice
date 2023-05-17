@@ -111,11 +111,22 @@ func (f *readFuncBodyMaker) build() {
 	var builder = new(strings.Builder)
 	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
 	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
-	fmt.Fprintf(builder,
-		"\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)",
-		f.function.Results()[0].TypeName(), f.function.Name())
+	retType := f.function.Results()[0].TypeName()
+	// if is a pointer
+	isPointer := strings.HasPrefix(retType, "*")
+	if isPointer {
+		// if is a pointer, remove the *
+		// in order to get the real type and use it to create the object without using reflection.
+		retType = retType[1:]
+	}
+	fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)", retType, f.function.Name())
 	query := formatParams(f.function.Params())
-	fmt.Fprintf(builder, "\n\treturn executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+	fmt.Fprintf(builder, "\n\tret, err := executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+	if isPointer {
+		fmt.Fprintf(builder, "\n\treturn &ret, err")
+	} else {
+		fmt.Fprintf(builder, "\n\treturn ret, err")
+	}
 	body := formatCode(builder.String())
 	f.function.body = body
 }

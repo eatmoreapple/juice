@@ -72,7 +72,7 @@ package main
 import "github.com/eatmoreapple/juice"
 `
 
-// extraImport is a ast.File for extra import.
+// extraImport is an ast.File for extra import.
 var extraImport *ast.File
 
 func init() {
