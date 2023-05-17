@@ -125,7 +125,7 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 	// or if the interface is a string type, use the string as the id
 	// otherwise, use the reflection to get the id
 	switch t := v.(type) {
-	case StatementIDGetter:
+	case interface{ StatementID() string }:
 		id = t.StatementID()
 	case string:
 		id = t
@@ -183,10 +183,4 @@ func (m *Mappers) Attribute(key string) string {
 // Prefix returns the prefix of the Mappers.
 func (m *Mappers) Prefix() string {
 	return m.Attribute("prefix")
-}
-
-// StatementIDGetter is an interface for getting statement id.
-type StatementIDGetter interface {
-	// StatementID returns a statement id.
-	StatementID() string
 }
