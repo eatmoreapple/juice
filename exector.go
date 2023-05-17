@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -60,7 +61,62 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	middlewares := e.engine.middlewares
 	stmt := e.statement
 	ctx = SessionWithContext(ctx, e.session)
-	return middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
+	ret, err := middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	// If the statement is not an insert statement, return the result directly.
+	if !stmt.IsInsert() {
+		return ret, nil
+	}
+
+	// If the useGeneratedKeys is not set or false, return the result directly.
+	if stmt.Attribute("useGeneratedKeys") != "true" {
+		return ret, nil
+	}
+
+	// keyProperty is the name of the field that will be set the generated key.
+	keyProperty := stmt.Attribute("keyProperty")
+	// The keyProperty is empty, return the result directly.
+	if len(keyProperty) == 0 {
+		return nil, errors.New("the keyProperty is empty")
+	}
+
+	// checkout the input param
+	rv := reflect.ValueOf(param)
+
+	// If the useGeneratedKeys is set and true but the param is not a pointer.
+	if rv.Kind() != reflect.Ptr {
+		return nil, errors.New("useGeneratedKeys is true, but the param is not a pointer")
+	}
+
+	rv = reflect.Indirect(rv)
+
+	// If the useGeneratedKeys is set and true but the param is not a struct pointer.
+	if rv.Kind() != reflect.Struct {
+		return nil, errors.New("useGeneratedKeys is true, but the param is not a struct pointer")
+	}
+
+	// try to find the field from the given struct.
+	field := rv.FieldByName(keyProperty)
+
+	if !field.IsValid() {
+		return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
+	}
+
+	// If the field is not an int, return the result directly.
+	if !field.CanInt() {
+		return nil, fmt.Errorf("the keyProperty %s is not a int", keyProperty)
+	}
+
+	// get the last insert id
+	id, err := ret.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	// set the id to the field
+	field.SetInt(id)
+	return ret, nil
 }
 
 // Statement returns the statement.
