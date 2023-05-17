@@ -127,6 +127,11 @@ func (s *Statement) ForWrite() bool {
 	return s.Action() == Insert || s.Action() == Update || s.Action() == Delete
 }
 
+// IsInsert returns true if the statement's Action is Insert
+func (s *Statement) IsInsert() bool {
+	return s.Action() == Insert
+}
+
 // ResultMap returns the ResultMap of the statement.
 func (s *Statement) ResultMap() (ResultMap, error) {
 	key := s.Attribute("resultMap")
