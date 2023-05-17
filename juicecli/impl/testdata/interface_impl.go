@@ -10,11 +10,12 @@ import (
 
 type InterfaceImpl struct{}
 
-func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) (result0 []*User, result1 error) {
+func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) (result0 User, result1 error) {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
-	executor := juice.NewGenericManager[[]*User](manager).Object(iface.GetUserByID)
-	return executor.QueryContext(ctx, id)
+	executor := juice.NewGenericManager[User](manager).Object(iface.GetUserByID)
+	ret, err := executor.QueryContext(ctx, id)
+	return ret, err
 }
 
 func (i InterfaceImpl) CreateUser(ctx context.Context, u map[string]*User) (result0 error) {
