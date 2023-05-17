@@ -8,10 +8,13 @@ import (
 	"strings"
 )
 
+// replacer defines the replacer of function name
+var replacer = strings.NewReplacer("/", ".", "*", "", "(", "", ")", "")
+
+// runtimeFuncName returns the function name of runtime
 func runtimeFuncName(rv reflect.Value) string {
 	// one id from function name
 	name := runtime.FuncForPC(rv.Pointer()).Name()
-	replacer := strings.NewReplacer("/", ".", "*", "", "(", "", ")", "")
 	name = replacer.Replace(name)
 	return strings.TrimSuffix(name, "-fm")
 }
