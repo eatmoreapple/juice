@@ -525,7 +525,10 @@ func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query
 	builder.WriteString(") VALUES (")
 	builder.WriteString(v.values())
 	builder.WriteString(")")
-	node := pureTextNode(builder.String())
+	node, err := NewTextNode(builder.String())
+	if err != nil {
+		return "", nil, err
+	}
 	return node.Accept(translater, param)
 }
 
