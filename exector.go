@@ -101,6 +101,7 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 		for i := 0; i < ty.NumField(); i++ {
 			if autoIncr := ty.Field(i).Tag.Get("autoincr"); autoIncr == "true" {
 				field = rv.Field(i)
+				keyProperty = ty.Field(i).Name
 				break
 			}
 		}
