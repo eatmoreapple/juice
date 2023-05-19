@@ -87,20 +87,21 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 		return err
 	}
 
+	var cd ColumnDestination = &rowDestination{}
 	// if it's a struct, scan rows to struct
 	// now, we start scan rows
+
 	for rows.Next() {
 
 		// make a new element of slice
-		rv := reflect.New(el)
+		nrv := reflect.New(el)
 
 		// get the Value of element
-		el := rv.Elem()
+		nel := nrv.Elem()
 
 		// get the destination of element
-		var cd ColumnDestination = &rowDestination{}
 
-		dest, err := cd.Destination(el, columns)
+		dest, err := cd.Destination(nel, columns)
 
 		if err != nil {
 			return err
@@ -117,9 +118,9 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 
 		// append the element to result
 		if isPtr {
-			result = reflect.Append(result, rv)
+			result = reflect.Append(result, nrv)
 		} else {
-			result = reflect.Append(result, el)
+			result = reflect.Append(result, nel)
 		}
 	}
 
