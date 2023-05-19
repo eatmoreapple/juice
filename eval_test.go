@@ -61,9 +61,9 @@ func TestEval(t *testing.T) {
 
 func BenchmarkEval(b *testing.B) {
 	param := H{
-		"id":   reflect.ValueOf(1),
-		"age":  reflect.ValueOf(18),
-		"name": reflect.ValueOf("eatmoreapple"),
+		"id":   1,
+		"age":  18,
+		"name": "eatmoreapple",
 	}
 	for i := 0; i < b.N; i++ {
 		value, err := testEval(`id > 0 && id < 2 && name == "eatmoreapple"`, param)

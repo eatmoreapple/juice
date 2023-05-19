@@ -8,8 +8,12 @@ import (
 
 func TestForeachNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
+	textNode, err := NewTextNode("(#{item.id}, #{item.name})")
+	if err != nil {
+		t.Error(err)
+	}
 	node := ForeachNode{
-		Nodes:      []Node{TextNode("(#{item.id}, #{item.name})")},
+		Nodes:      []Node{textNode},
 		Item:       "item",
 		Collection: "list",
 		Separator:  ", ",
@@ -39,8 +43,9 @@ func TestForeachNode_Accept(t *testing.T) {
 
 func TestIfNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
+	node1, _ := NewTextNode("select * from user where id = #{id}")
 	node := IfNode{
-		Nodes: []Node{TextNode("select * from user where id = #{id}")},
+		Nodes: []Node{node1},
 	}
 
 	if node.Parse("id > 0") != nil {
@@ -71,7 +76,7 @@ func TestIfNode_Accept(t *testing.T) {
 
 func TestTextNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node := TextNode("select * from user where id = #{id}")
+	node, _ := NewTextNode("select * from user where id = #{id}")
 	param := newGenericParam(H{"id": 1}, "")
 	query, args, err := node.Accept(drv.Translate(), param)
 	if err != nil {
@@ -94,10 +99,12 @@ func TestTextNode_Accept(t *testing.T) {
 
 func TestWhereNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
+	node1, _ := NewTextNode("AND id = #{id}")
+	node2, _ := NewTextNode("AND name = #{name}")
 	node := WhereNode{
 		Nodes: []Node{
-			TextNode("AND id = #{id}"),
-			TextNode("AND name = #{name}"),
+			node1,
+			node2,
 		},
 	}
 	params := H{
@@ -122,10 +129,13 @@ func TestWhereNode_Accept(t *testing.T) {
 		return
 	}
 
+	node1, _ = NewTextNode("id = #{id}")
+	node2, _ = NewTextNode("AND name = #{name}")
+
 	node = WhereNode{
 		Nodes: []Node{
-			TextNode("id = #{id}"),
-			TextNode("AND name = #{name}"),
+			node1,
+			node2,
 		},
 	}
 
@@ -146,8 +156,9 @@ func TestWhereNode_Accept(t *testing.T) {
 
 func TestTrimNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
+	node1, _ := NewTextNode("name,")
 	ifNode := &IfNode{
-		Nodes: []Node{TextNode("name,")},
+		Nodes: []Node{node1},
 	}
 	if err := ifNode.Parse("id > 0"); err != nil {
 		t.Error(err)
@@ -181,10 +192,11 @@ func TestTrimNode_Accept(t *testing.T) {
 
 func TestSetNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
+	node1, _ := NewTextNode("id = #{id},")
+	node2, _ := NewTextNode("name = #{name},")
 	node := SetNode{
 		Nodes: []Node{
-			TextNode("id = #{id},"),
-			TextNode("name = #{name},"),
+			node1, node2,
 		},
 	}
 	params := H{

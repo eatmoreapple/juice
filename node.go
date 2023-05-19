@@ -12,7 +12,7 @@ import (
 )
 
 // paramRegex is a regular expression for parameter.
-var paramRegex = regexp.MustCompile(`\#\{([a-zA-Z0-9_\.]+)\}`)
+var paramRegex = regexp.MustCompile(`\#\{ *?([a-zA-Z0-9_\.]+) *?\}`)
 
 // Node is a node of SQL.
 type Node interface {
@@ -20,29 +20,85 @@ type Node interface {
 	Accept(translator driver.Translator, p Parameter) (query string, args []any, err error)
 }
 
+// pureTextNode is a node of pure text.
+var _ Node = (*pureTextNode)(nil)
+
+// pureTextNode is a node of pure text.
+// It is used to avoid unnecessary parameter replacement.
+type pureTextNode string
+
+func (p pureTextNode) Accept(_ driver.Translator, _ Parameter) (query string, args []any, err error) {
+	return string(p), nil, nil
+}
+
 var _ Node = (*TextNode)(nil)
 
 // TextNode is a node of text.
-type TextNode string
+// What is the difference between TextNode and pureTextNode?
+// TextNode is used to replace parameters with placeholders.
+// pureTextNode is used to avoid unnecessary parameter replacement.
+type TextNode struct {
+	value  string
+	params [][]string
+}
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
-func (c TextNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	query = paramRegex.ReplaceAllStringFunc(string(c), func(s string) string {
-		if err != nil {
-			return s
+func (c *TextNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	// If there is no parameter, return the value as it is.
+	if len(c.params) == 0 {
+		return c.value, nil, nil
+	}
+	// Otherwise, replace the parameter with a placeholder.
+	query = c.value
+	for _, param := range c.params {
+		if len(param) != 2 {
+			return "", nil, fmt.Errorf("invalid parameter %v", param)
 		}
-		param := paramRegex.FindStringSubmatch(s)[1]
+		matched, name := param[0], param[1]
 
-		value, exists := p.Get(param)
+		// try to get value from parameter
+		value, exists := p.Get(name)
 		if !exists {
-			err = fmt.Errorf("parameter %s not found", param)
-			return s
+			return "", nil, fmt.Errorf("parameter %s not found", param[1])
 		}
+		query = strings.Replace(query, matched, translator.Translate(name), 1)
 		args = append(args, value.Interface())
-		return translator.Translate(s)
-	})
-	return query, args, err
+	}
+	return query, args, nil
+}
+
+// build builds TextNode.
+func (c *TextNode) build() error {
+	var braceCount int
+	var s = c.value
+	for i := 0; i < len(s); i++ {
+		if s[i] == '#' && i+1 < len(s) && s[i+1] == '{' {
+			braceCount++
+			i++
+		} else if s[i] == '}' {
+			if braceCount <= 0 {
+				return fmt.Errorf("juice: invalid text node: %s", s)
+			}
+			braceCount--
+		}
+	}
+	if braceCount != 0 {
+		return fmt.Errorf("juice: invalid text node: %s", s)
+	}
+	params := paramRegex.FindAllStringSubmatch(s, -1)
+	if len(params) > 0 {
+		c.params = params
+	}
+	return nil
+}
+
+func NewTextNode(str string) (Node, error) {
+	var node = &TextNode{value: str}
+	if err := node.build(); err != nil {
+		return nil, err
+	}
+	return node, nil
 }
 
 type ConditionNode struct {
@@ -469,7 +525,7 @@ func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query
 	builder.WriteString(") VALUES (")
 	builder.WriteString(v.values())
 	builder.WriteString(")")
-	node := TextNode(builder.String())
+	node := pureTextNode(builder.String())
 	return node.Accept(translater, param)
 }
 
