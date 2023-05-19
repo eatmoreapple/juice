@@ -80,7 +80,7 @@
                 id CDATA #REQUIRED
                 >
 
-        <!ELEMENT insert (#PCDATA | include | trim | where | set | foreach | choose | if )*>
+        <!ELEMENT insert (#PCDATA | include | trim | where | set | foreach | choose | if | values )*>
         <!ATTLIST insert
                 id CDATA #REQUIRED
                 useGeneratedKeys CDATA #IMPLIED
