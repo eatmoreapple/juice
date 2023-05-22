@@ -194,7 +194,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 		}
 		return reflect.Value{}, errors.New("cannot convert return value to error")
 	}
-	return fn.Call(args)[0], nil
+	return rets[0], nil
 }
 
 func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, error) {
