@@ -160,10 +160,11 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if fn.Kind() != reflect.Func {
 		return reflect.Value{}, errors.New("unsupported call expression")
 	}
-	if numIn := fn.Type().NumIn(); numIn != len(exp.Args) {
+	fnType := fn.Type()
+	if numIn := fnType.NumIn(); numIn != len(exp.Args) {
 		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", numIn, len(exp.Args))
 	}
-	if fn.Type().NumOut() != 2 {
+	if fnType.NumOut() != 2 {
 		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 2, got %d", fn.Type().NumOut())
 	}
 	// evaluate the arguments
@@ -174,7 +175,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 			return reflect.Value{}, err
 		}
 		// type conversion for function arguments
-		in := fn.Type().In(i)
+		in := fnType.In(i)
 		if in.Kind() != value.Kind() {
 			if !value.CanConvert(in) {
 				return reflect.Value{}, fmt.Errorf("cannot convert %s to %s", value.Type().Name(), in.Name())
