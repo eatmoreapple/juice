@@ -160,8 +160,8 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if fn.Kind() != reflect.Func {
 		return reflect.Value{}, errors.New("unsupported call expression")
 	}
-	if fn.Type().NumIn() != len(exp.Args) {
-		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", fn.Type().NumIn(), len(exp.Args))
+	if numIn := fn.Type().NumIn(); numIn != len(exp.Args) {
+		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", numIn, len(exp.Args))
 	}
 	if fn.Type().NumOut() != 2 {
 		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 2, got %d", fn.Type().NumOut())
