@@ -215,10 +215,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	
 	engine, err := juice.DefaultEngine(cfg)
 	if err != nil {
 		panic(err)
 	}
+	
+	defer engine.Close()
 
 	if _, err := engine.DB().Exec(schema); err != nil {
 		panic(err)
