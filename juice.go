@@ -10,14 +10,13 @@ import (
 
 // Engine is the main struct of pillow
 type Engine struct {
-
 	// configuration is the configuration of the engine
 	// It is used to initialize the engine and to one the mapper statements
 	configuration *Configuration
 
-	// Driver is the driver used by the engine
+	// driver is the driver used by the engine
 	// It is used to initialize the database connection and translate the mapper statements
-	Driver driver.Driver
+	driver driver.Driver
 
 	// db is the database connection
 	db *sql.DB
@@ -97,7 +96,7 @@ func (e *Engine) init() error {
 	if err != nil {
 		return err
 	}
-	e.Driver = drv
+	e.driver = drv
 
 	// open the database connection
 	e.db, err = env.Connect()

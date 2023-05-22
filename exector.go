@@ -36,7 +36,7 @@ func (e *executor) build(param Param) (query string, args []any, err error) {
 	}
 	value := newGenericParam(param, e.statement.Attribute("paramName"))
 
-	translator := e.Statement().Engine().Driver.Translate()
+	translator := e.Statement().Engine().driver.Translate()
 
 	query, args, err = e.statement.Accept(translator, value)
 	if err != nil {
