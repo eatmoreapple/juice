@@ -11,8 +11,7 @@ Juice is a simple and lightweight framework. It is easy to use and easy to exten
 ### Features
 
 * Simple and lightweight
-* Easy to use
-* Easy to extend
+* Easy to use and extend
 * Support for multiple databases
 * Dynamic SQL
 * Result to entity mapping
@@ -45,20 +44,10 @@ The condition method can be used with `if` or `when` tags.
 For example:
 ```xml
 <!--ids = []int{1,2,3}-->
-<if test='len(ids) > 0 && substr("eatmoreapple", 0, 3) == "eat"'>
+<if test='len(ids) > 0'>
     your sql node here
 </if>
 ```
-
-It can register to the framework with your own condition method.
-
-Here are some default condition methods.
-
-* len: return the length of the given parameter
-* strsub: return the substring of the given parameter
-* join: join the given parameters with the given separator
-* contains: return true if the given parameter contains the given element
-* slice: return the slice of the given parameter
 
 ### Quick Start
 
@@ -246,6 +235,10 @@ func main() {
 
 ```
 
+```shell
+go run .
+```
+
 ### Document
 
 [Read the document](https://juice-doc.readthedocs.io/en/latest/index.html)
@@ -254,13 +247,6 @@ func main() {
 
 Juice is licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
 
-### Contact
-
-If you like this project, please give me a star. Thank you.
-And If you have any questions, please contact me by WeChat: `eatmoreapple`.
-
-
-### Invite the author to have a cup of coffee
-
+### Buy me a cup of coffee 
 
 <img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat_pay.jpg" align="left">
