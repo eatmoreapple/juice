@@ -82,6 +82,14 @@ func (e *Engine) DB() *sql.DB {
 	return e.db
 }
 
+// Close closes the database connection if it is not nil.
+func (e *Engine) Close() error {
+	if e.db != nil {
+		return e.db.Close()
+	}
+	return nil
+}
+
 // init initializes the engine
 func (e *Engine) init() error {
 
