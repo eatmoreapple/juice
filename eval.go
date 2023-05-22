@@ -166,7 +166,8 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if fn.Type().NumOut() != 2 {
 		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 2, got %d", fn.Type().NumOut())
 	}
-	var args []reflect.Value
+	// evaluate the arguments
+	args := make([]reflect.Value, 0, len(exp.Args))
 	for i, arg := range exp.Args {
 		value, err := eval(arg, params)
 		if err != nil {
