@@ -184,3 +184,9 @@ func (m *Mappers) Attribute(key string) string {
 func (m *Mappers) Prefix() string {
 	return m.Attribute("prefix")
 }
+
+func (m *Mappers) Init(engine *Engine) {
+	for _, stmt := range m.statements {
+		stmt.engine = engine
+	}
+}
