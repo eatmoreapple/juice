@@ -46,8 +46,7 @@ func (e *Engine) executor(v any) (*executor, error) {
 	if err != nil {
 		return nil, err
 	}
-	stat.engine = e
-	return &executor{engine: e, statement: stat}, nil
+	return &executor{statement: stat}, nil
 }
 
 // Tx returns a TxManager
@@ -102,6 +101,9 @@ func (e *Engine) init() error {
 
 	// open the database connection
 	e.db, err = env.Connect()
+
+	// initialize the mappers
+	e.configuration.Mappers.Init(e)
 	return err
 }
 

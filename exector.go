@@ -24,10 +24,40 @@ func inValidExecutor(err error) Executor {
 
 // executor is an executor of SQL.
 type executor struct {
-	err       error
 	session   Session
-	engine    *Engine
 	statement *Statement
+	err       error
+}
+
+// build builds the query and args.
+func (e *executor) build(param Param) (query string, args []any, err error) {
+	if e.err != nil {
+		return "", nil, e.err
+	}
+	value := newGenericParam(param, e.statement.Attribute("paramName"))
+
+	translator := e.Statement().Engine().Driver.Translate()
+
+	query, args, err = e.statement.Accept(translator, value)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(query) == 0 {
+		return "", nil, ErrEmptyQuery
+	}
+	return query, args, nil
+}
+
+// queryHandler returns the query handler.
+func (e *executor) queryHandler() QueryHandler {
+	next := sessionQueryHandler(e.session)
+	return e.Statement().Engine().middlewares.QueryContext(e.Statement(), next)
+}
+
+// execHandler returns the exec handler.
+func (e *executor) execHandler() ExecHandler {
+	next := sessionExecHandler(e.session)
+	return e.Statement().Engine().middlewares.ExecContext(e.Statement(), next)
 }
 
 // Query executes the query and returns the result.
@@ -37,14 +67,11 @@ func (e *executor) Query(param Param) (*sql.Rows, error) {
 
 // QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
-	query, args, err := e.prepare(param)
+	query, args, err := e.build(param)
 	if err != nil {
 		return nil, err
 	}
-	middlewares := e.engine.middlewares
-	stmt := e.statement
-	ctx = SessionWithContext(ctx, e.session)
-	return middlewares.QueryContext(stmt, sessionQueryHandler())(ctx, query, args...)
+	return e.queryHandler()(ctx, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -54,17 +81,16 @@ func (e *executor) Exec(param Param) (sql.Result, error) {
 
 // ExecContext executes the query and returns the result.
 func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
-	query, args, err := e.prepare(param)
+	query, args, err := e.build(param)
 	if err != nil {
 		return nil, err
 	}
-	middlewares := e.engine.middlewares
-	stmt := e.statement
-	ctx = SessionWithContext(ctx, e.session)
-	ret, err := middlewares.ExecContext(stmt, sessionExecHandler())(ctx, query, args...)
+	ret, err := e.execHandler()(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
+
+	stmt := e.Statement()
 	// If the statement is not an insert statement, return the result directly.
 	if !stmt.IsInsert() {
 		return ret, nil
@@ -134,25 +160,6 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 // Statement returns the statement.
 func (e *executor) Statement() *Statement {
 	return e.statement
-}
-
-// prepare
-func (e *executor) prepare(param Param) (query string, args []any, err error) {
-	if e.err != nil {
-		return "", nil, e.err
-	}
-	value := newGenericParam(param, e.statement.Attribute("paramName"))
-
-	translator := e.engine.Driver.Translate()
-
-	query, args, err = e.statement.Accept(translator, value)
-	if err != nil {
-		return "", nil, err
-	}
-	if len(query) == 0 {
-		return "", nil, ErrEmptyQuery
-	}
-	return query, args, nil
 }
 
 // GenericExecutor is a generic executor.
