@@ -2,9 +2,13 @@ package juice
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eatmoreapple/juice/cache"
 	"reflect"
 )
 
@@ -53,18 +57,6 @@ func (e *executor) build(param Param) (query string, args []any, err error) {
 	return e.Statement().Build(param)
 }
 
-// queryHandler returns the query handler.
-func (e *executor) queryHandler() QueryHandler {
-	next := sessionQueryHandler(e.session)
-	return e.Statement().Engine().middlewares.QueryContext(e.Statement(), next)
-}
-
-// execHandler returns the exec handler.
-func (e *executor) execHandler() ExecHandler {
-	next := sessionExecHandler(e.session)
-	return e.Statement().Engine().middlewares.ExecContext(e.Statement(), next)
-}
-
 // Query executes the query and returns the result.
 func (e *executor) Query(param Param) (*sql.Rows, error) {
 	return e.QueryContext(context.Background(), param)
@@ -76,7 +68,7 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	if err != nil {
 		return nil, err
 	}
-	return e.queryHandler()(ctx, query, args...)
+	return e.Statement().QueryHandler(e.Session())(ctx, query, args...)
 }
 
 // Exec executes the query and returns the result.
@@ -90,7 +82,7 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	if err != nil {
 		return nil, err
 	}
-	ret, err := e.execHandler()(ctx, query, args...)
+	ret, err := e.Statement().ExecHandler(e.Session())(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +191,7 @@ type GenericExecutor[T any] interface {
 // genericExecutor is a generic executor.
 type genericExecutor[T any] struct {
 	Executor
+	cache cache.Cache
 }
 
 // Query executes the query and returns the scanner.
@@ -208,7 +201,53 @@ func (e *genericExecutor[T]) Query(p Param) (T, error) {
 
 // QueryContext executes the query and returns the scanner.
 func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
-	rows, err := e.Executor.QueryContext(ctx, p)
+	query, args, err := e.Executor.Statement().Build(p)
+	if err != nil {
+		return
+	}
+	var ptr any = &result
+
+	rv := reflect.ValueOf(result)
+
+	if rv.Kind() == reflect.Ptr {
+		result = reflect.New(rv.Type().Elem()).Interface().(T)
+		ptr = result
+	}
+
+	// If the cache is enabled and cache is not disabled in this statement.
+	if e.cache != nil && e.Statement().Attribute("cache") != "false" {
+		// cacheKey is the key which is used to get the result and put the result to the cache.
+		var cacheKey string
+
+		// CacheKeyFunc is the function which is used to generate the cache key.
+		// default is the md5 of the query and args.
+		// reset the CacheKeyFunc variable to change the default behavior.
+		cacheKey, err = CacheKeyFunc(query, args)
+		if err != nil {
+			return
+		}
+
+		// try to get the result from the cache
+		// if the result is found, return it directly.
+		if err = e.cache.Get(ctx, cacheKey, ptr); err == nil {
+			return
+		}
+
+		// ErrCacheNotFound means the cache is not found,
+		// we should continue to query the database.
+		if !errors.Is(err, cache.ErrCacheNotFound) {
+			return
+		}
+		// put the result to the cache
+		defer func() {
+			if err == nil {
+				err = e.cache.Set(ctx, cacheKey, result)
+			}
+		}()
+	}
+
+	// try to query the database.
+	rows, err := e.Statement().QueryHandler(e.Session())(ctx, query, args...)
 	if err != nil {
 		return
 	}
@@ -216,32 +255,13 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 
 	retMap, err := e.Executor.Statement().ResultMap()
 
-	// set but not found
+	// ErrResultMapNotSet means the result map is not set, use the default result map.
 	if err != nil {
 		if !errors.Is(err, ErrResultMapNotSet) {
-			return result, err
+			return
 		}
 	}
-
-	rv := reflect.ValueOf(result)
-
-	switch rv.Kind() {
-	case reflect.Ptr:
-		// if T is a pointer, then set prt to T
-		value := reflect.New(rv.Type().Elem()).Interface().(T)
-		// NOTE: create an object using with the reflection may be slow, but it is not a big problem.
-		// You should better use the direct type instead of the pointer type.
-		if err = BindWithResultMap(rows, value, retMap); err != nil {
-			// if bind failed, then return the original value
-			// result is a zero value
-			return result, err
-		}
-		// if bind success, then return the new value
-		result = value
-	default:
-		// bind the result to the pointer
-		err = BindWithResultMap(rows, &result, retMap)
-	}
+	err = BindWithResultMap(rows, ptr, retMap)
 	return
 }
 
@@ -251,7 +271,13 @@ func (e *genericExecutor[_]) Exec(p Param) (sql.Result, error) {
 }
 
 // ExecContext executes the query and returns the result.
-func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (sql.Result, error) {
+func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
+	defer func() {
+		if err == nil && e.cache != nil {
+			// clear the cache
+			_ = e.cache.Flush(ctx)
+		}
+	}()
 	return e.Executor.ExecContext(ctx, p)
 }
 
@@ -291,3 +317,22 @@ func (b *binderExecutor) QueryContext(ctx context.Context, param Param) (Binder,
 }
 
 var _ BinderExecutor = (*binderExecutor)(nil)
+
+// cacheKeyFunc defines the function which is used to generate the cache key.
+type cacheKeyFunc func(query string, args []any) (string, error)
+
+// CacheKeyFunc is the function which is used to generate the cache key.
+// default is the md5 of the query and args.
+// reset the CacheKeyFunc variable to change the default behavior.
+var CacheKeyFunc cacheKeyFunc = func(query string, args []any) (string, error) {
+	writer := md5.New()
+	writer.Write([]byte(query))
+	if len(args) > 0 {
+		item, err := json.Marshal(args)
+		if err != nil {
+			return "", err
+		}
+		writer.Write(item)
+	}
+	return hex.EncodeToString(writer.Sum(nil)), nil
+}

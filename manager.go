@@ -3,6 +3,7 @@ package juice
 import (
 	"context"
 	"database/sql"
+	"github.com/eatmoreapple/juice/cache"
 )
 
 // Manager is an interface for managing database operations.
@@ -17,18 +18,23 @@ type GenericManager[T any] interface {
 
 // NewGenericManager returns a new GenericManager.
 func NewGenericManager[T any](manager Manager) GenericManager[T] {
-	return &genericManager[T]{Manager: manager}
+	m := &genericManager[T]{Manager: manager}
+	if tcm, ok := manager.(TxCacheManager); ok {
+		m.cache = tcm.Cache()
+	}
+	return m
 }
 
 // genericManager implements the GenericManager interface.
 type genericManager[T any] struct {
 	Manager
+	cache cache.Cache
 }
 
 // Object implements the GenericManager interface.
 func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
 	exe := s.Manager.Object(v)
-	return &genericExecutor[T]{Executor: exe}
+	return &genericExecutor[T]{Executor: exe, cache: s.cache}
 }
 
 type BinderManager interface {
@@ -95,6 +101,47 @@ func (t *txManager) Rollback() error {
 		return t.err
 	}
 	return t.tx.Rollback()
+}
+
+// TxCacheManager defines a transactional cache manager whose cache can be accessed.
+// All queries in the transaction will be cached.
+// cache.Flush() will be called after Commit() or Rollback().
+type TxCacheManager interface {
+	TxManager
+	Cache() cache.Cache
+}
+
+// txCacheManager implements the TxCacheManager interface.
+type txCacheManager struct {
+	manager TxManager
+	cache   cache.Cache
+}
+
+// Object implements the Manager interface.
+func (t *txCacheManager) Object(v any) Executor {
+	return t.manager.Object(v)
+}
+
+// Commit commits the transaction and flushes the cache.
+func (t *txCacheManager) Commit() error {
+	defer func() { _ = t.cache.Flush(context.Background()) }()
+	return t.manager.Commit()
+}
+
+// Rollback rollbacks the transaction and flushes the cache.
+func (t *txCacheManager) Rollback() error {
+	defer func() { _ = t.cache.Flush(context.Background()) }()
+	return t.manager.Rollback()
+}
+
+// Cache returns the cache of the TxCacheManager.
+func (t *txCacheManager) Cache() cache.Cache {
+	return t.cache
+}
+
+// NewTxCacheManager returns a new TxCacheManager.
+func NewTxCacheManager(manager TxManager, cache cache.Cache) TxCacheManager {
+	return &txCacheManager{manager: manager, cache: cache}
 }
 
 type managerKey struct{}
