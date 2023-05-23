@@ -177,7 +177,7 @@ func (f *writeFuncBodyMaker) build() {
 	var builder = new(strings.Builder)
 	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
 	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
-	fmt.Fprintf(builder, "\n\texecutor := manager.Object(iface.%s)", f.function.Name())
+	fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[any](manager).Object(iface.%s)", f.function.Name())
 	query := formatParams(f.function.Params())
 	if len(f.function.Results()) == 1 {
 		fmt.Fprintf(builder, "\n\t_, err := executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
