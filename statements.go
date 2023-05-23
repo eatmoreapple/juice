@@ -98,10 +98,6 @@ func (s *Statement) Accept(translator driver.Translator, p Parameter) (query str
 	return
 }
 
-func (s *Statement) String() string {
-	return s.Name()
-}
-
 // Mapper is an getter of statements.
 func (s *Statement) Mapper() *Mapper {
 	return s.mapper
@@ -139,4 +135,20 @@ func (s *Statement) ResultMap() (ResultMap, error) {
 		return nil, ErrResultMapNotSet
 	}
 	return s.Mapper().GetResultMapByID(key)
+}
+
+// Build builds the statement with the given parameter.
+func (s *Statement) Build(param Param) (query string, args []any, err error) {
+	value := newGenericParam(param, s.Attribute("paramName"))
+
+	translator := s.Engine().driver.Translate()
+
+	query, args, err = s.Accept(translator, value)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(query) == 0 {
+		return "", nil, ErrEmptyQuery
+	}
+	return query, args, nil
 }
