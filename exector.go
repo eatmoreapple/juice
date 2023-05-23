@@ -10,11 +10,27 @@ import (
 
 // Executor is an executor of SQL.
 type Executor interface {
+	// Query executes a query that returns rows, typically a SELECT.
+	// The param are the placeholder collection for this query.
 	Query(param Param) (*sql.Rows, error)
+
+	// QueryContext executes a query that returns rows, typically a SELECT.
+	// The param are the placeholder collection for this query.
 	QueryContext(ctx context.Context, param Param) (*sql.Rows, error)
+
+	// Exec executes a query without returning any rows.
+	// The param are the placeholder collection for this query.
 	Exec(param Param) (sql.Result, error)
+
+	// ExecContext executes a query without returning any rows.
+	// The param are the placeholder collection for this query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
+
+	// Statement returns the statement of the current executor.
 	Statement() *Statement
+
+	// Session returns the session of the current executor.
+	Session() Session
 }
 
 // inValidExecutor is an invalid executor.
@@ -151,12 +167,33 @@ func (e *executor) Statement() *Statement {
 	return e.statement
 }
 
+func (e *executor) Session() Session {
+	return e.session
+}
+
 // GenericExecutor is a generic executor.
 type GenericExecutor[T any] interface {
+	// Query executes the query and returns the direct result.
+	// The args are for any placeholder parameters in the query.
 	Query(param Param) (T, error)
+
+	// QueryContext executes the query and returns the direct result.
+	// The args are for any placeholder parameters in the query.
 	QueryContext(ctx context.Context, param Param) (T, error)
+
+	// Exec executes a query without returning any rows.
+	// The args are for any placeholder parameters in the query.
 	Exec(param Param) (sql.Result, error)
+
+	// ExecContext executes a query without returning any rows.
+	// The args are for any placeholder parameters in the query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
+
+	// Statement returns the statement of the current executor.
+	Statement() *Statement
+
+	// Session returns the session of the current executor.
+	Session() Session
 }
 
 // genericExecutor is a generic executor.
