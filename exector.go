@@ -34,18 +34,7 @@ func (e *executor) build(param Param) (query string, args []any, err error) {
 	if e.err != nil {
 		return "", nil, e.err
 	}
-	value := newGenericParam(param, e.statement.Attribute("paramName"))
-
-	translator := e.Statement().Engine().driver.Translate()
-
-	query, args, err = e.statement.Accept(translator, value)
-	if err != nil {
-		return "", nil, err
-	}
-	if len(query) == 0 {
-		return "", nil, ErrEmptyQuery
-	}
-	return query, args, nil
+	return e.Statement().Build(param)
 }
 
 // queryHandler returns the query handler.
