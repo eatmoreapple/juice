@@ -3,6 +3,7 @@ package juice
 import (
 	"context"
 	"database/sql"
+	"github.com/eatmoreapple/juice/cache"
 	"sync"
 
 	"github.com/eatmoreapple/juice/driver"
@@ -28,6 +29,9 @@ type Engine struct {
 	// It is used to intercept the execution of the statements
 	// like logging, tracing, etc.
 	middlewares MiddlewareGroup
+
+	// cacheFactory is the cache factory of the engine
+	cacheFactory func() cache.Cache
 }
 
 // Object implements the Manager interface
@@ -57,6 +61,17 @@ func (e *Engine) Tx() TxManager {
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
 	tx, err := e.DB().BeginTx(ctx, opt)
 	return &txManager{engine: e, tx: tx, err: err}
+}
+
+// CacheTx returns a TxCacheManager.
+func (e *Engine) CacheTx() TxCacheManager {
+	return e.ContextCacheTx(context.Background(), nil)
+}
+
+// ContextCacheTx returns a TxCacheManager with the given context.
+func (e *Engine) ContextCacheTx(ctx context.Context, opt *sql.TxOptions) TxCacheManager {
+	tx := e.ContextTx(ctx, opt)
+	return NewTxCacheManager(tx, e.cacheFactory())
 }
 
 // GetConfiguration returns the configuration of the engine
@@ -90,6 +105,13 @@ func (e *Engine) Close() error {
 	return nil
 }
 
+func (e *Engine) SetCacheFactory(factory func() cache.Cache) {
+	if factory == nil {
+		panic("cache factory is nil")
+	}
+	e.cacheFactory = factory
+}
+
 // init initializes the engine
 func (e *Engine) init() error {
 
@@ -111,6 +133,9 @@ func (e *Engine) init() error {
 
 	// initialize the mappers
 	e.configuration.Mappers.Init(e)
+
+	// set default cache factory
+	e.SetCacheFactory(func() cache.Cache { return cache.New() })
 	return err
 }
 
