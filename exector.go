@@ -273,7 +273,8 @@ func (e *genericExecutor[_]) Exec(p Param) (sql.Result, error) {
 // ExecContext executes the query and returns the result.
 func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
 	defer func() {
-		if err == nil && e.cache != nil {
+		// If the cache is enabled and flushCache is not disabled in this statement.
+		if err == nil && e.cache != nil && e.Statement().Attribute("flushCache") != "false" {
 			// clear the cache
 			_ = e.cache.Flush(ctx)
 		}
