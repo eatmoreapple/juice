@@ -154,13 +154,13 @@ func (s *Statement) Build(param Param) (query string, args []any, err error) {
 }
 
 // QueryHandler returns the QueryHandler of the statement.
-func (s *Statement) QueryHandler(session Session) QueryHandler {
-	next := sessionQueryHandler(session)
+func (s *Statement) QueryHandler() QueryHandler {
+	next := sessionQueryHandler()
 	return s.Engine().middlewares.QueryContext(s, next)
 }
 
 // ExecHandler returns the ExecHandler of the statement.
-func (s *Statement) ExecHandler(session Session) ExecHandler {
-	next := sessionExecHandler(session)
+func (s *Statement) ExecHandler() ExecHandler {
+	next := sessionExecHandler()
 	return s.Engine().middlewares.ExecContext(s, next)
 }
