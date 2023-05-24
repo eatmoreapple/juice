@@ -35,28 +35,3 @@ func BindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
 	}
 	return resultMap.ResultTo(rv, rows)
 }
-
-// Binder bind sql.Rows to dest
-type Binder interface {
-	// Bind sql.Rows to dest
-	// It can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
-	Bind(v any) error
-}
-
-// rowsBinder is a wrapper of sql.Rows
-// rowsBinder implements Binder
-type rowsBinder struct {
-	rows   *sql.Rows
-	mapper ResultMap
-}
-
-// Bind implement Binder.Bind
-func (r *rowsBinder) Bind(v any) error {
-	// NOTE: rows won't be closed when the function returns.
-	// It's the caller's responsibility to close rows.
-	if scanner, ok := v.(RowsScanner); ok {
-		return scanner.ScanRows(r.rows)
-	}
-	defer func() { _ = r.rows.Close() }()
-	return BindWithResultMap(r.rows, v, r.mapper)
-}

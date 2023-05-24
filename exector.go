@@ -284,41 +284,6 @@ func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.
 
 var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
 
-// BinderExecutor is a binder executor.
-// It is used to bind the result to the given value.
-type BinderExecutor interface {
-	Query(param Param) (Binder, error)
-	QueryContext(ctx context.Context, param Param) (Binder, error)
-	Exec(param Param) (sql.Result, error)
-	ExecContext(ctx context.Context, param Param) (sql.Result, error)
-}
-
-// binderExecutor is a binder executor.
-// binderExecutor implements the BinderExecutor interface.
-type binderExecutor struct {
-	Executor
-}
-
-// Query executes the query and returns the scanner.
-func (b *binderExecutor) Query(param Param) (Binder, error) {
-	return b.QueryContext(context.Background(), param)
-}
-
-// QueryContext executes the query and returns the scanner.
-func (b *binderExecutor) QueryContext(ctx context.Context, param Param) (Binder, error) {
-	rows, err := b.Executor.QueryContext(ctx, param)
-	if err != nil {
-		return nil, err
-	}
-	retMap, err := b.Executor.Statement().ResultMap()
-	if err != nil && !errors.Is(err, ErrResultMapNotSet) {
-		return nil, err
-	}
-	return &rowsBinder{rows: rows, mapper: retMap}, nil
-}
-
-var _ BinderExecutor = (*binderExecutor)(nil)
-
 // cacheKeyFunc defines the function which is used to generate the cache key.
 type cacheKeyFunc func(query string, args []any) (string, error)
 
