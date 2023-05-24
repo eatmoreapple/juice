@@ -201,21 +201,33 @@ func (e *genericExecutor[T]) Query(p Param) (T, error) {
 
 // QueryContext executes the query and returns the scanner.
 func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
-	query, args, err := e.Executor.Statement().Build(p)
+	// check Statement is nil or not
+	// cause Executor may be an invalid Executor
+	statement := e.Statement()
+	if statement == nil {
+		return result, errors.New("no statement found")
+	}
+
+	// build the query and args
+	query, args, err := statement.Build(p)
 	if err != nil {
 		return
 	}
+
+	// ptr is the pointer of the result, it is the destination of the binding.
 	var ptr any = &result
 
 	rv := reflect.ValueOf(result)
 
+	// if the result is a pointer, create a new instance of the element.
+	// you'd better not use a nil pointer as the result.
 	if rv.Kind() == reflect.Ptr {
 		result = reflect.New(rv.Type().Elem()).Interface().(T)
 		ptr = result
 	}
 
 	// If the cache is enabled and cache is not disabled in this statement.
-	if e.cache != nil && e.Statement().Attribute("cache") != "false" {
+	if e.cache != nil && statement.Attribute("cache") != "false" {
 		// cacheKey is the key which is used to get the result and put the result to the cache.
 		var cacheKey string
 
@@ -247,13 +259,13 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	}
 
 	// try to query the database.
-	rows, err := e.Statement().QueryHandler(e.Session())(ctx, query, args...)
+	rows, err := statement.QueryHandler(e.Session())(ctx, query, args...)
 	if err != nil {
 		return
 	}
 	defer func() { _ = rows.Close() }()
 
-	retMap, err := e.Executor.Statement().ResultMap()
+	retMap, err := statement.ResultMap()
 
 	// ErrResultMapNotSet means the result map is not set, use the default result map.
 	if err != nil {
