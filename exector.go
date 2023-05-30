@@ -236,7 +236,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 		// CacheKeyFunc is the function which is used to generate the cache key.
 		// default is the md5 of the query and args.
 		// reset the CacheKeyFunc variable to change the default behavior.
-		cacheKey, err = CacheKeyFunc(query, args)
+		cacheKey, err = CacheKeyFunc(statement, query, args)
 		if err != nil {
 			return
 		}
