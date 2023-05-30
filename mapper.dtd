@@ -68,7 +68,7 @@
         <!ATTLIST select
                 id CDATA #REQUIRED
                 resultMap CDATA #IMPLIED
-                cache CDATA #IMPLIED
+                useCache CDATA #IMPLIED
                 >
 
         <!ELEMENT update (#PCDATA | include | trim | where | set | foreach | choose | if )*>

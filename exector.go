@@ -229,7 +229,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	}
 
 	// If the cache is enabled and cache is not disabled in this statement.
-	if e.cache != nil && statement.Attribute("cache") != "false" {
+	if e.cache != nil && statement.Attribute("useCache") != "false" {
 		// cacheKey is the key which is used to get the result and put the result to the cache.
 		var cacheKey string
 
