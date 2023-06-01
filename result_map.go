@@ -74,7 +74,7 @@ type RowsResultMap struct{}
 func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 
 	if rv.Kind() != reflect.Ptr {
-		return errors.New("result must be a pointer")
+		return errors.New(" must be a pointer")
 	}
 
 	// rv must be a pointer to slice or array
@@ -87,7 +87,7 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	isPtr := el.Kind() == reflect.Ptr
 
 	// make a new slice of element type
-	result := reflect.MakeSlice(rv.Type(), 0, 0)
+	ret := reflect.MakeSlice(rv.Type(), 0, 0)
 
 	// get the element type of pointer
 	el = kindIndirect(el)
@@ -127,16 +127,16 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 			return err
 		}
 
-		// append the element to result
+		// append the element to
 		if isPtr {
-			result = reflect.Append(result, nrv)
+			ret = reflect.Append(ret, nrv)
 		} else {
-			result = reflect.Append(result, nel)
+			ret = reflect.Append(ret, nel)
 		}
 	}
 
 	// set result to given entity
-	rv.Set(result)
+	rv.Set(ret)
 
 	return nil
 }
@@ -239,7 +239,7 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 		// from now on, we have got all the fields of element
 
 		// scan the rowDestination with dest
-		if err := rows.Scan(dest...); err != nil {
+		if err = rows.Scan(dest...); err != nil {
 			return err
 		}
 
@@ -348,7 +348,7 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 		}
 
 		// scan the rowDestination with dest
-		if err := rows.Scan(dest...); err != nil {
+		if err = rows.Scan(dest...); err != nil {
 			return err
 		}
 
@@ -364,10 +364,10 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 			if pk != currentPk {
 				return errors.New("result has more than one rowDestination but no collection")
 			}
-			// set collection
-			for _, collection := range r.collectionGroup {
-				value := rv.FieldByName(collection.property)
-				item := cd.collectionMapping[collection.property]
+			// set group
+			for _, group := range r.collectionGroup {
+				value := rv.FieldByName(group.property)
+				item := cd.collectionMapping[group.property]
 				field := item.rv
 				if item.isPtr {
 					field = field.Addr()
@@ -573,16 +573,16 @@ func (s *resultMapColumnDestination) setIndexes(rv reflect.Value, columns []stri
 			s.indexes[column] = make([]int, 0, len(cs))
 			// try to find the field of element by column name
 			for i, name := range cs {
-				var ok bool
+				var found bool
 				// if it is first time to find this field, we need to find it
 				if i == 0 {
-					field, ok = tp.FieldByName(name)
+					field, found = tp.FieldByName(name)
 				} else {
 					// if it is not first time to find this field, we need to find it from the last field
-					field, ok = field.Type.FieldByName(name)
+					field, found = field.Type.FieldByName(name)
 				}
 				// if we can't find the field, return error
-				if !ok {
+				if !found {
 					return fmt.Errorf("field %s is not valid", name)
 				}
 				// append the index of field to indexes
@@ -597,29 +597,29 @@ func (s *resultMapColumnDestination) setIndexes(rv reflect.Value, columns []stri
 	// try to find those fields which are not found in mapping
 	if s.resultMap.HasCollection() {
 		for _, index := range s.unFoundedIndex {
-			// find form collection
+			// find form group
 			column := columns[index]
-			for _, collection := range s.resultMap.collectionGroup {
-				mapping := collection.mapping
+			for _, group := range s.resultMap.collectionGroup {
+				mapping := group.mapping
 				// if we have a mapping for this column, use it
 				if names, ok := mapping[column]; ok {
 					// try to find the destination field index of element by column name
 					s.indexes[column] = make([]int, 0, len(names))
 					var field reflect.StructField
 					for i, name := range names {
-						var ok bool
+						var found bool
 						if i == 0 {
-							field, ok = tp.FieldByName(name)
+							field, found = tp.FieldByName(name)
 						} else {
 							if field.Type.Kind() == reflect.Slice {
 								el := field.Type.Elem()
 								if el.Kind() == reflect.Ptr {
 									el = el.Elem()
 								}
-								field, ok = el.FieldByName(name)
+								field, found = el.FieldByName(name)
 							}
 						}
-						if !ok {
+						if !found {
 							return fmt.Errorf("field %s is not valid", name)
 						}
 						s.indexes[column] = append(s.indexes[column], field.Index[0])
@@ -632,31 +632,31 @@ func (s *resultMapColumnDestination) setIndexes(rv reflect.Value, columns []stri
 	var elValue = rv
 
 	for column, _ := range s.unFoundedIndex {
-		for _, collection := range s.resultMap.collectionGroup {
-			mapping := collection.mapping
+		for _, group := range s.resultMap.collectionGroup {
+			mapping := group.mapping
 			if _, ok := mapping[column]; ok {
 				if s.collectionMapping == nil {
 					s.collectionMapping = make(collectionItemMapping, 0)
 				}
-				_, ok := s.collectionMapping[collection.property]
+				_, ok = s.collectionMapping[group.property]
 				if !ok {
-					// slice must be a slice, we have checked it before
-					slice := elValue.FieldByName(collection.property).Type()
-					// slice element must be a struct, we have checked it before
-					elType := slice.Elem()
+					// sliceType must be a slice, we have checked it before
+					sliceType := elValue.FieldByName(group.property).Type()
+					// sliceType element must be a struct, we have checked it before
+					elType := sliceType.Elem()
 					// if it's a pointer, get the element type of pointer
 					tyIsPtr := elType.Kind() == reflect.Ptr
 					if tyIsPtr {
 						elType = elType.Elem()
 					}
 					value := reflect.New(elType).Elem()
-					s.collectionMapping[collection.property] = &collectionItem{
+					s.collectionMapping[group.property] = &collectionItem{
 						rv:      value,
 						columns: make(map[string]struct{}),
 						isPtr:   tyIsPtr,
 					}
 				}
-				s.collectionMapping[collection.property].columns[column] = struct{}{}
+				s.collectionMapping[group.property].columns[column] = struct{}{}
 				break
 			}
 		}
