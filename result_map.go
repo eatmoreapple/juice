@@ -426,8 +426,14 @@ type ColumnDestination interface {
 	Destination(rv reflect.Value, column []string) ([]any, error)
 }
 
+// rowDestination is a ColumnDestination which can be used to scan a row.
 type rowDestination struct {
+	// indexes stores the index of the column in the struct.
+	// if the index is discardIndex, the column will be ignored.
+	// this could not be used to for deep struct scan.
 	indexes []int
+
+	// checked is a flag to check if the dest has sql.RawBytes
 	checked bool
 }
 
@@ -447,13 +453,14 @@ func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]any,
 }
 
 func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]any, error) {
+	// if there is only one column, we can use the value directly.
+	if len(columns) == 1 {
+		return []any{rv.Addr().Interface()}, nil
+	}
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)
 	}
-	if len(columns) != 1 {
-		return nil, errors.New("only one column is allowed for non-struct")
-	}
-	return []any{rv.Addr().Interface()}, nil
+	return nil, fmt.Errorf("expected struct, but got %s", rv.Type())
 }
 
 func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string) ([]any, error) {
