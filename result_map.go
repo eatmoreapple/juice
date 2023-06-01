@@ -11,6 +11,9 @@ type ResultMap interface {
 	ResultTo(rv reflect.Value, row *sql.Rows) error
 }
 
+// ErrTooManyRows is returned when the result set has too many rows but excepted only one row.
+var ErrTooManyRows = errors.New("juice: too many rows in result set")
+
 // RowResultMap is a ResultMap that maps a rowDestination to a non-slice type.
 type RowResultMap struct{}
 
@@ -30,14 +33,13 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 		re = re.Elem()
 	}
 
+	// if it has any row data
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			return err
 		}
 		return sql.ErrNoRows
 	}
-
-	var err error
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -50,10 +52,19 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
+	// scan the row data to dest
 	if err = rows.Scan(dest...); err != nil {
 		return err
 	}
-	return rows.Err()
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	// return ErrTooManyRows if there are more than one row data
+	// it means the result is a slice, but the destination is not
+	if rows.Next() {
+		return ErrTooManyRows
+	}
+	return nil
 }
 
 // RowsResultMap is a ResultMap that maps a rowDestination to a slice type.
