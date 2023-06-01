@@ -4,9 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"github.com/eatmoreapple/juice/cache"
-	"sync"
-
 	"github.com/eatmoreapple/juice/driver"
+	"sync"
 )
 
 // Engine is the main struct of pillow
@@ -23,7 +22,11 @@ type Engine struct {
 	db *sql.DB
 
 	// rw is the read write lock
-	rw sync.RWMutex
+	// default use sync.RWMutex
+	// if you have many multiple processes to access the same database,
+	// you can use the distributed lock, such as redis, etc.
+	// call SetLocker to set your own business lock.
+	rw RWLocker
 
 	// middlewares is the middlewares of the engine
 	// It is used to intercept the execution of the statements
@@ -105,11 +108,21 @@ func (e *Engine) Close() error {
 	return nil
 }
 
+// SetCacheFactory sets the cache factory of the engine.
 func (e *Engine) SetCacheFactory(factory func() cache.Cache) {
 	if factory == nil {
 		panic("cache factory is nil")
 	}
 	e.cacheFactory = factory
+}
+
+// SetLocker sets the locker of the engine
+// it is not goroutine safe, so it should be called before the engine is used
+func (e *Engine) SetLocker(locker RWLocker) {
+	if locker == nil {
+		panic("locker is nil")
+	}
+	e.rw = locker
 }
 
 // init initializes the engine
@@ -142,6 +155,7 @@ func (e *Engine) init() error {
 // NewEngine creates a new Engine
 func NewEngine(configuration *Configuration) (*Engine, error) {
 	engine := &Engine{}
+	engine.SetLocker(&sync.RWMutex{})
 	engine.SetConfiguration(configuration)
 	if err := engine.init(); err != nil {
 		return nil, err
