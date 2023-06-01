@@ -41,6 +41,54 @@ func TestForeachNode_Accept(t *testing.T) {
 	}
 }
 
+func TestForeachMapNode_Accept(t *testing.T) {
+	drv := driver.MySQLDriver{}
+	textNode, err := NewTextNode("(#{item}, #{index})")
+	if err != nil {
+		t.Error(err)
+	}
+	node := ForeachNode{
+		Nodes:      []Node{textNode},
+		Item:       "item",
+		Index:      "index",
+		Collection: "map",
+		Separator:  ", ",
+	}
+	params := H{"map": map[string]any{"a": 1}}
+	query, args, err := node.Accept(drv.Translate(), params.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if query != "(?, ?)" {
+		t.Error("query error")
+		return
+	}
+	if len(args) != 2 {
+		t.Error("args error")
+		return
+	}
+	if args[0] != 1 || args[1] != "a" {
+		t.Error("args error")
+		return
+	}
+
+	params = H{"map": map[string]any{"a": 1, "b": 2}}
+	query, args, err = node.Accept(drv.Translate(), params.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if query != "(?, ?), (?, ?)" {
+		t.Error("query error")
+		return
+	}
+	if len(args) != 4 {
+		t.Error("args error")
+		return
+	}
+}
+
 func TestIfNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	node1, _ := NewTextNode("select * from user where id = #{id}")

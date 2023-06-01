@@ -305,29 +305,39 @@ func (f ForeachNode) Accept(translator driver.Translator, p Parameter) (query st
 		value = value.Elem()
 	}
 
-	if value.Kind() != reflect.Slice {
-		return "", nil, fmt.Errorf("collection %s is not a slice", f.Collection)
+	switch value.Kind() {
+	case reflect.Array, reflect.Slice:
+		return f.acceptSlice(value, translator, p)
+	case reflect.Map:
+		return f.acceptMap(value, translator, p)
+	default:
+		return "", nil, fmt.Errorf("collection %s is not a slice or map", f.Collection)
+	}
+}
+
+func (f ForeachNode) acceptSlice(value reflect.Value, translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	sliceLength := value.Len()
+
+	if sliceLength == 0 {
+		return "", nil, nil
 	}
 
 	var builder = getBuilder()
 	defer putBuilder(builder)
 
-	length := value.Len()
+	builder.WriteString(f.Open)
 
-	// if length is not zero, add open
-	if length > 0 {
-		builder.WriteString(f.Open)
-	}
-
-	end := length - 1
+	end := sliceLength - 1
 
 	// group wraps parameter
 	// nil is for placeholder
 	group := ParamGroup{nil, p}
 
-	for i := 0; i < length; i++ {
+	for i := 0; i < sliceLength; i++ {
 
-		group[0] = H{f.Item: value.Index(i).Interface()}.AsParam()
+		item := unwrapValue(value.Index(i)).Interface()
+
+		group[0] = H{f.Item: item, f.Index: i}.AsParam()
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, group)
@@ -347,10 +357,59 @@ func (f ForeachNode) Accept(translator driver.Translator, p Parameter) (query st
 		}
 	}
 
-	// if length is not zero, add close
-	if length > 0 {
-		builder.WriteString(f.Close)
+	// if sliceLength is not zero, add close
+	builder.WriteString(f.Close)
+
+	return builder.String(), args, nil
+}
+
+func (f ForeachNode) acceptMap(value reflect.Value, translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	keys := value.MapKeys()
+
+	if len(keys) == 0 {
+		return "", nil, nil
 	}
+
+	var builder = getBuilder()
+	defer putBuilder(builder)
+
+	builder.WriteString(f.Open)
+
+	end := len(keys) - 1
+
+	var index int
+
+	// group wraps parameter
+	// nil is for placeholder
+	group := ParamGroup{nil, p}
+
+	for _, key := range keys {
+
+		item := unwrapValue(value.MapIndex(key)).Interface()
+
+		group[0] = H{f.Item: item, f.Index: unwrapValue(key).Interface()}.AsParam()
+
+		for _, node := range f.Nodes {
+			q, a, err := node.Accept(translator, group)
+			if err != nil {
+				return "", nil, err
+			}
+			if len(q) > 0 {
+				builder.WriteString(q)
+			}
+			if len(a) > 0 {
+				args = append(args, a...)
+			}
+		}
+
+		if index < end {
+			builder.WriteString(f.Separator)
+		}
+
+		index++
+	}
+
+	builder.WriteString(f.Close)
 
 	return builder.String(), args, nil
 }
