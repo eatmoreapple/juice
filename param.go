@@ -59,10 +59,10 @@ type structParameter struct {
 // Get implements Parameter.
 func (p structParameter) Get(name string) (reflect.Value, bool) {
 	// try to one the value from field tag first
+	tp := p.Type()
 	for i := 0; i < p.NumField(); i++ {
-		field := p.Type().Field(i)
-		if field.Tag.Get(defaultParamKey) == name {
-			return p.Field(i), true
+		if tp.Field(i).Tag.Get(defaultParamKey) == name {
+			return unwrapValue(p.Field(i)), true
 		}
 	}
 	// if not found, try to one the value from field name
@@ -70,7 +70,10 @@ func (p structParameter) Get(name string) (reflect.Value, bool) {
 		// this might cause unexpected behavior
 		return strings.EqualFold(name, search)
 	})
-	return value, value.IsValid()
+	if !value.IsValid() {
+		return reflect.Value{}, false
+	}
+	return unwrapValue(value), true
 }
 
 // make sure that mapParameter implements Parameter.
@@ -84,7 +87,10 @@ type mapParameter struct {
 // Get implements Parameter.
 func (p mapParameter) Get(name string) (reflect.Value, bool) {
 	value := p.MapIndex(reflect.ValueOf(name))
-	return value, value.IsValid()
+	if !value.IsValid() {
+		return reflect.Value{}, false
+	}
+	return unwrapValue(value), true
 }
 
 // make sure that sliceParameter implements Parameter.
@@ -102,7 +108,10 @@ func (p sliceParameter) Get(name string) (reflect.Value, bool) {
 		return reflect.Value{}, false
 	}
 	value := p.Index(index)
-	return value, value.IsValid()
+	if !value.IsValid() {
+		return reflect.Value{}, false
+	}
+	return unwrapValue(value), true
 }
 
 // genericParameter is a parameter that wraps a generic value.
@@ -115,6 +124,8 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 	items := strings.Split(name, ".")
 	var param Parameter
 	for _, item := range items {
+		// make sure that the value is not an pointer.
+		value = unwrapValue(value)
 		// match the value type
 		// if the value is a map, then use mapParameter
 		// if the value is a struct, then use structParameter
