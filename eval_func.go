@@ -167,6 +167,9 @@ func splitAfter(text, sep string) ([]string, error) {
 	return strings.SplitAfter(text, sep), nil
 }
 
+// errType is the reflect.Type of error.
+var errType = reflect.TypeOf((*error)(nil)).Elem()
+
 // RegisterEvalFunc registers a function for eval.
 // The function must be a function with one return value.
 // And Allowed to overwrite the built-in function.
@@ -179,7 +182,7 @@ func RegisterEvalFunc(name string, v any) error {
 		return errors.New("RegisterEvalFunc: v must be a function with two return value")
 	}
 	// if last return value is error
-	if rv.Type().Out(rv.Type().NumOut()-1).String() != "error" {
+	if !rv.Type().Out(rv.Type().NumOut() - 1).Implements(errType) {
 		return errors.New("RegisterEvalFunc: v must be a function with an error return value")
 	}
 	builtins[name] = rv
