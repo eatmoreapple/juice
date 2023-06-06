@@ -1009,8 +1009,8 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 	return nil, &nodeUnclosedError{nodeName: "resultMap"}
 }
 
-func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, endTag string) (*result, error) {
-	result := &result{}
+func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, endTag string) (*resultNode, error) {
+	result := &resultNode{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
 		case "column":

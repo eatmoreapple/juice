@@ -635,13 +635,13 @@ func (s SelectFieldAliasNode) Accept(_ driver.Translator, _ Parameter) (query st
 }
 
 type primaryResult interface {
-	Pk() *result
+	Pk() *resultNode
 }
 
 // resultMapNode implements ResultMapper interface
 type resultMapNode struct {
 	id              string
-	pk              *result
+	pk              *resultNode
 	results         resultGroup
 	associations    associationGroup
 	collectionGroup collectionGroup
@@ -683,7 +683,7 @@ func (r *resultMapNode) init() error {
 
 	// check if collectionGroup is valid
 	if r.HasCollection() && !r.HasPk() {
-		return fmt.Errorf("result map %s has collection but no primary key", r.ID())
+		return fmt.Errorf("resultNode map %s has collection but no primary key", r.ID())
 	}
 
 	// release memory
@@ -709,7 +709,7 @@ func (r *resultMapNode) HasPk() bool {
 	return r.pk != nil
 }
 
-func (r *resultMapNode) Pk() *result {
+func (r *resultMapNode) Pk() *resultNode {
 	return r.pk
 }
 
@@ -717,16 +717,16 @@ func (r *resultMapNode) HasCollection() bool {
 	return len(r.collectionGroup) > 0
 }
 
-// result defines a result mapping.
-type result struct {
+// resultNode defines a resultNode mapping.
+type resultNode struct {
 	// property is the name of the property to map to.
 	property string
 	// column is the name of the column to map from.
 	column string
 }
 
-// resultGroup defines a group of result mappings.
-type resultGroup []*result
+// resultGroup defines a group of resultNode mappings.
+type resultGroup []*resultNode
 
 // mapping returns a mapping of column to property.
 func (r resultGroup) mapping() (map[string][]string, error) {
@@ -804,7 +804,7 @@ type collection struct {
 	// property is the name of the property to map to.
 	parent           primaryResult
 	property         string
-	id               *result
+	id               *resultNode
 	resultGroup      resultGroup
 	associationGroup associationGroup
 	mapping          map[string][]string
@@ -841,7 +841,7 @@ func (c *collection) init() error {
 	return nil
 }
 
-func (c *collection) Pk() *result {
+func (c *collection) Pk() *resultNode {
 	return c.id
 }
 
