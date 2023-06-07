@@ -60,7 +60,7 @@ func (c *TextNode) Accept(translator driver.Translator, p Parameter) (query stri
 		// try to get value from parameter
 		value, exists := p.Get(name)
 		if !exists {
-			return "", nil, fmt.Errorf("parameter %s not found", param[1])
+			return "", nil, fmt.Errorf("parameter %s not found", name)
 		}
 		query = strings.Replace(query, matched, translator.Translate(name), 1)
 		args = append(args, value.Interface())
