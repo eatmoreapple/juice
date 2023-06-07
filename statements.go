@@ -8,7 +8,7 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
-var formatRegexp = regexp.MustCompile(`\$\{([a-zA-Z0-9_\.]+)\}`)
+var formatRegexp = regexp.MustCompile(`\$\{ *?([a-zA-Z0-9_\.]+) *?\}`)
 
 // Statement defines a sql statement.
 type Statement struct {
