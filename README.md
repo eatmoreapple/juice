@@ -8,18 +8,6 @@ This is a SQL mapper framework for Golang. It is inspired by MyBatis.
 
 Juice is a simple and lightweight framework. It is easy to use and easy to extend.
 
-### Features
-
-* Simple and lightweight
-* Easy to use and extend
-* Multiple databases
-* Dynamic SQL
-* Result to entity mapping
-* Generic type support
-* Middleware support
-* Transaction cache
-* Code generation
-
 ### Example
 
 ```shell
