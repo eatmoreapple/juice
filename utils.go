@@ -21,22 +21,26 @@ func runtimeFuncName(rv reflect.Value) string {
 
 // reflectValueToString converts reflect.Value to string
 func reflectValueToString(v reflect.Value) string {
-	if stringer, ok := v.Interface().(interface {
-		String() string
-	}); ok {
-		return stringer.String()
-	}
-	switch v.Kind() {
-	case reflect.String:
-		return v.String()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	switch t := v.Interface().(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	case []byte:
+		return string(v.Bytes())
+	case fmt.Stringer:
+		return t.String()
+	case int, int8, int16, int32, int64:
 		return strconv.FormatInt(v.Int(), 10)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case uint, uint8, uint16, uint32, uint64:
 		return strconv.FormatUint(v.Uint(), 10)
-	case reflect.Float32, reflect.Float64:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
-	case reflect.Bool:
+	case float32:
+		return strconv.FormatFloat(v.Float(), 'g', -1, 32)
+	case float64:
+		return strconv.FormatFloat(v.Float(), 'g', -1, 64)
+	case bool:
 		return strconv.FormatBool(v.Bool())
+	default:
+		return fmt.Sprintf("%v", t)
 	}
-	return fmt.Sprintf("%v", v.Interface())
 }
