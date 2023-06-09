@@ -96,7 +96,12 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	}
 
 	// If the useGeneratedKeys is not set or false, return the result directly.
-	if stmt.Attribute("useGeneratedKeys") != "true" {
+	useGeneratedKeys := stmt.Attribute("useGeneratedKeys") == "true" ||
+		// If the useGeneratedKeys is not set, but the global useGeneratedKeys is set and true.
+		stmt.Configuration().Settings.Get("useGeneratedKeys") == "true"
+
+	// If the useGeneratedKeys is not set or false, return the result directly.
+	if !useGeneratedKeys {
 		return ret, nil
 	}
 
