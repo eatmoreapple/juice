@@ -208,13 +208,12 @@ func (e *genericExecutor[T]) Query(p Param) (T, error) {
 
 // QueryContext executes the query and returns the scanner.
 func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
-	// check Statement is nil or not
-	// cause Executor may be an invalid Executor
-	statement := e.Statement()
-	if statement == nil {
-		return result, errors.New("no statement found")
+	// check the error of the executor
+	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
+		return result, exe.err
 	}
 
+	statement := e.Statement()
 	// build the query and args
 	query, args, err := statement.Build(p)
 	if err != nil {
@@ -292,6 +291,10 @@ func (e *genericExecutor[_]) Exec(p Param) (sql.Result, error) {
 
 // ExecContext executes the query and returns the result.
 func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
+	// check the error of the executor
+	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
+		return ret, exe.err
+	}
 	defer func() {
 		// If the cache is enabled and flushCache is not disabled in this statement.
 		if err == nil && e.cache != nil && e.Statement().Attribute("flushCache") != "false" {
