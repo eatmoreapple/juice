@@ -44,7 +44,9 @@ vim mappers.xml
 
 <mapper namespace="main.Repository">
     <select id="HelloWorld">
-        select "hello world"
+        <if test="1 == 1">  <!-- always be true -->
+            select "hello world"
+        </if>
     </select>
 </mapper>
 ```
