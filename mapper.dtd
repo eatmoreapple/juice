@@ -103,12 +103,12 @@
                 property CDATA #REQUIRED
                 >
 
-        <!ELEMENT association (association* | result*)>
+        <!ELEMENT association (association*,result*)>
         <!ATTLIST association
                 property CDATA #REQUIRED
                 >
 
-        <!ELEMENT collection (association* | result*)>
+        <!ELEMENT collection (association*,result*)>
         <!ATTLIST collection
                 property CDATA #REQUIRED
                 >
@@ -118,7 +118,7 @@
                 id CDATA #REQUIRED
                 >
 
-        <!ELEMENT resultMap (id* | result* | association* | collection*)>
+        <!ELEMENT resultMap (id*,result*,association*,collection*)>
         <!ATTLIST resultMap
                 id CDATA #REQUIRED
                 >
