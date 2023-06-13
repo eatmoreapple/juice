@@ -54,7 +54,9 @@ func (m *memeryCache) Get(_ context.Context, key string, dst any) error {
 func (m *memeryCache) Flush(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.data = nil
+	for k := range m.data {
+		delete(m.data, k)
+	}
 	return nil
 }
 
