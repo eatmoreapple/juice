@@ -117,9 +117,12 @@ func (p sliceParameter) Get(name string) (reflect.Value, bool) {
 // genericParameter is a parameter that wraps a generic value.
 type genericParameter struct {
 	reflect.Value
+
+	// cache is used to cache the value of the parameter.
+	cache map[string]reflect.Value
 }
 
-func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
+func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 	value = g.Value
 	items := strings.Split(name, ".")
 	var param Parameter
@@ -158,6 +161,26 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 	return value, true
 }
 
+// Get implements Parameter.
+// It will cache the value of the parameter for better performance.
+func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
+	// try to get the value from cache first
+	value, exists = g.cache[name]
+	if exists {
+		return value, exists
+	}
+	// if not found, then get the value from the generic parameter
+	value, exists = g.get(name)
+	if exists {
+		if g.cache == nil {
+			g.cache = make(map[string]reflect.Value)
+		}
+		// cache the value
+		g.cache[name] = value
+	}
+	return value, exists
+}
+
 // newGenericParam creates a generic parameter.
 // if the value is not a map, struct, slice or array, then wrap it as a map.
 func newGenericParam(v any, wrapKey string) Parameter {
@@ -175,7 +198,7 @@ func newGenericParam(v any, wrapKey string) Parameter {
 		}
 		value = reflect.ValueOf(H{wrapKey: v})
 	}
-	return &genericParameter{value}
+	return &genericParameter{Value: value}
 }
 
 // NewParameter creates a new parameter with the given value.
