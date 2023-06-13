@@ -69,18 +69,21 @@
                 id CDATA #REQUIRED
                 resultMap CDATA #IMPLIED
                 useCache CDATA #IMPLIED
+                paramName CDATA #IMPLIED
                 >
 
         <!ELEMENT update (#PCDATA | include | trim | where | set | foreach | choose | if )*>
         <!ATTLIST update
                 id CDATA #REQUIRED
                 flushCache CDATA #IMPLIED
+                paramName CDATA #IMPLIED
                 >
 
         <!ELEMENT delete (#PCDATA | include | trim | where | set | foreach | choose | if )*>
         <!ATTLIST delete
                 id CDATA #REQUIRED
                 flushCache CDATA #IMPLIED
+                paramName CDATA #IMPLIED
                 >
 
         <!ELEMENT insert (#PCDATA | include | trim | where | set | foreach | choose | if | values )*>
@@ -89,6 +92,7 @@
                 useGeneratedKeys CDATA #IMPLIED
                 keyProperty CDATA #IMPLIED
                 flushCache CDATA #IMPLIED
+                paramName CDATA #IMPLIED
                 >
 
         <!ELEMENT id EMPTY>
