@@ -7,4 +7,7 @@ type Configuration struct {
 	Mappers Mappers
 	// Settings is a map of settings.
 	Settings Settings
+
+	// engine which binds the configuration
+	engine *Engine
 }
