@@ -68,7 +68,7 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = WithSession(ctx, e.Session())
+	ctx = SessionWithContext(ctx, e.Session())
 	return e.Statement().QueryHandler()(ctx, query, args...)
 }
 
@@ -83,7 +83,7 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = WithSession(ctx, e.Session())
+	ctx = SessionWithContext(ctx, e.Session())
 	ret, err := e.Statement().ExecHandler()(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	}
 
 	// try to query the database.
-	ctx = WithSession(ctx, e.Session())
+	ctx = SessionWithContext(ctx, e.Session())
 	rows, err := statement.QueryHandler()(ctx, query, args...)
 	if err != nil {
 		return

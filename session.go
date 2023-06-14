@@ -18,8 +18,8 @@ var ErrNoSession = errors.New("no session found in context")
 
 type sessionKey struct{}
 
-// WithSession returns a new context with the session.
-func WithSession(ctx context.Context, sess Session) context.Context {
+// SessionWithContext returns a new context with the session.
+func SessionWithContext(ctx context.Context, sess Session) context.Context {
 	return context.WithValue(ctx, sessionKey{}, sess)
 }
 
