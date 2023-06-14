@@ -135,3 +135,14 @@ func ManagerFromContext(ctx context.Context) Manager {
 func ContextWithManager(ctx context.Context, manager Manager) context.Context {
 	return context.WithValue(ctx, managerKey{}, manager)
 }
+
+// IsTxManager returns true if the manager is a TxManager.
+func IsTxManager(manager Manager) bool {
+	_, ok := manager.(TxManager)
+	return ok
+}
+
+// HasTxManager returns true if the context has a TxManager.
+func HasTxManager(ctx context.Context) bool {
+	return IsTxManager(ManagerFromContext(ctx))
+}
