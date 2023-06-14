@@ -105,6 +105,20 @@ func (m *Mapper) Engine() *Engine {
 	return m.Configuration().engine
 }
 
+// checkResultMap checks statement's resultMap attribute is valid or not.
+func (m *Mapper) checkResultMap() error {
+	for _, stmt := range m.statements {
+		resultMapName := stmt.attrs["resultMap"]
+		if resultMapName == "" {
+			continue
+		}
+		if _, err := m.GetResultMapByID(resultMapName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Mappers is a map of mappers.
 type Mappers struct {
 	statements map[string]*Statement

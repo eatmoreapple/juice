@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Engine is the main struct of pillow
+// Engine is the implementation of Manager interface and the core of juice.
 type Engine struct {
 	// configuration is the configuration of the engine
 	// It is used to initialize the engine and to one the mapper statements
@@ -37,6 +37,14 @@ type Engine struct {
 	cacheFactory func() cache.Cache
 }
 
+func (e *Engine) executor(v any) (*executor, error) {
+	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
+	if err != nil {
+		return nil, err
+	}
+	return &executor{statement: stat}, nil
+}
+
 // Object implements the Manager interface
 func (e *Engine) Object(v any) Executor {
 	exe, err := e.executor(v)
@@ -45,14 +53,6 @@ func (e *Engine) Object(v any) Executor {
 	}
 	exe.session = e.DB()
 	return exe
-}
-
-func (e *Engine) executor(v any) (*executor, error) {
-	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
-	if err != nil {
-		return nil, err
-	}
-	return &executor{statement: stat}, nil
 }
 
 // Tx returns a TxManager
