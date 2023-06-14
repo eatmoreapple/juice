@@ -239,11 +239,15 @@ func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query strin
 		if err != nil {
 			return "", nil, err
 		}
-		builder.WriteString(q)
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
 		if !strings.HasSuffix(q, " ") && i < len(t.Nodes)-1 {
 			builder.WriteString(" ")
 		}
-		args = append(args, a...)
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
 	}
 	query = builder.String()
 	if len(t.PrefixOverrides) > 0 {
