@@ -101,6 +101,10 @@ func (m *Mapper) Configuration() *Configuration {
 	return m.mappers.Configuration()
 }
 
+func (m *Mapper) Engine() *Engine {
+	return m.Configuration().engine
+}
+
 // Mappers is a map of mappers.
 type Mappers struct {
 	statements map[string]*Statement
@@ -183,10 +187,4 @@ func (m *Mappers) Attribute(key string) string {
 // Prefix returns the prefix of the Mappers.
 func (m *Mappers) Prefix() string {
 	return m.Attribute("prefix")
-}
-
-func (m *Mappers) Init(engine *Engine) {
-	for _, stmt := range m.statements {
-		stmt.engine = engine
-	}
 }

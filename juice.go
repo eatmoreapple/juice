@@ -89,6 +89,7 @@ func (e *Engine) SetConfiguration(cfg *Configuration) {
 	e.rw.Lock()
 	defer e.rw.Unlock()
 	e.configuration = cfg
+	cfg.engine = e
 }
 
 // Use adds a middleware to the engine
@@ -143,9 +144,6 @@ func (e *Engine) init() error {
 
 	// open the database connection
 	e.db, err = env.Connect()
-
-	// initialize the mappers
-	e.configuration.Mappers.Init(e)
 
 	// set default cache factory
 	e.SetCacheFactory(func() cache.Cache { return cache.New() })
