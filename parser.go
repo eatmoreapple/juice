@@ -193,6 +193,10 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 				if err != nil {
 					return err
 				}
+				// check result map
+				if err = mapper.checkResultMap(); err != nil {
+					return err
+				}
 				mapper.mappers = mappers
 				for _, stmt := range mapper.statements {
 					key := fmt.Sprintf("%s.%s", mapper.name(), stmt.ID())
