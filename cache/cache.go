@@ -28,12 +28,12 @@ type memeryCache struct {
 }
 
 func (m *memeryCache) Set(_ context.Context, key string, value any) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.data == nil {
 		m.data = make(map[string][]byte)
 	}
