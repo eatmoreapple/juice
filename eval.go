@@ -187,13 +187,18 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	// call the function
 	rets := fn.Call(args)
 	// check if the function returns an error
-	if !rets[1].IsNil() {
+	errRet := rets[1]
+	if !errRet.IsNil() {
 		// the second return value must be an error
 
+		// we need to check if the second return value implements the error interface
+
 		// try to convert the second return value to error
-		if e, ok := rets[1].Interface().(error); ok && e != nil {
-			return reflect.Value{}, e
+		if ok := errRet.Type().Implements(errType); ok {
+			// I believe this is always true
+			return reflect.Value{}, errRet.Interface().(error)
 		}
+		// this should never happen, but just in case
 		return reflect.Value{}, errors.New("cannot convert return value to error")
 	}
 	return rets[0], nil
