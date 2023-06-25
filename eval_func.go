@@ -204,6 +204,7 @@ var builtins = map[string]reflect.Value{}
 func init() {
 	builtins["true"] = reflect.ValueOf(true)
 	builtins["false"] = reflect.ValueOf(false)
+	builtins["nil"] = reflect.ValueOf(nil)
 	MustRegisterEvalFunc("len", length)
 	MustRegisterEvalFunc("substr", strSub)
 	MustRegisterEvalFunc("join", strJoin)
