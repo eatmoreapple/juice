@@ -558,3 +558,30 @@ func TestNil(t *testing.T) {
 		return
 	}
 }
+
+func TestEql(t *testing.T) {
+	var a *int
+	left := reflect.ValueOf(a)
+	right := reflect.ValueOf(nil)
+	result, err := eql(left, right)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	left = reflect.ValueOf(nil)
+	right = reflect.ValueOf(nil)
+	result, err = eql(left, right)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
