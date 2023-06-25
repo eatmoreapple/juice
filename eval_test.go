@@ -546,3 +546,15 @@ func TestSlice3(t *testing.T) {
 		return
 	}
 }
+
+func TestNil(t *testing.T) {
+	result, err := Eval(`nil`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.IsValid() {
+		t.Error("eval error")
+		return
+	}
+}
