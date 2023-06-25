@@ -39,7 +39,7 @@ vim mappers.xml
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+<!DOCTYPE mapper PUBLIC "-//juice.org//DTD Config 1.0//EN"
         "https://raw.githubusercontent.com/eatmoreapple/juice/main/mapper.dtd">
 
 <mapper namespace="main.Repository">
