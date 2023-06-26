@@ -103,6 +103,9 @@ func main() {
 
 Juice is licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
 
-### Buy me a cup of coffee
+## Support Me
 
-<img width="210px"  src="https://github.com/eatmoreapple/eatMoreApple/blob/main/img/wechat_pay.jpg" align="left">
+If you like my work, please consider supporting me by buying me a coffee.
+
+<a href="https://raw.githubusercontent.com/eatmoreapple/eatmoreapple/main/img/wechat_pay.jpg" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150" ></a>
+
