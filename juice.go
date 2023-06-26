@@ -158,6 +158,8 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	if err := engine.init(); err != nil {
 		return nil, err
 	}
+	// add the default middlewares
+	engine.Use(&useGeneratedKeysMiddleware{})
 	return engine, nil
 }
 

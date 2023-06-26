@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/eatmoreapple/juice/cache"
 	"log"
 	"reflect"
@@ -142,6 +143,99 @@ func (t TimeoutMiddleware) getTimeout(stmt *Statement) (timeout int64) {
 	}
 	timeout, _ = strconv.ParseInt(timeoutAttr, 10, 64)
 	return
+}
+
+// useGeneratedKeysMiddleware is a middleware that set the last insert id to the struct.
+type useGeneratedKeysMiddleware struct{}
+
+// QueryContext implements Middleware.
+// return the result directly and do nothing.
+func (m *useGeneratedKeysMiddleware) QueryContext(_ *Statement, next QueryHandler) QueryHandler {
+	return next
+}
+
+// ExecContext implements Middleware.
+// ExecContext will set the last insert id to the struct.
+func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+	if !stmt.IsInsert() {
+		return next
+	}
+	// If the useGeneratedKeys is not set or false, return the result directly.
+	useGeneratedKeys := stmt.Attribute("useGeneratedKeys") == "true" ||
+		// If the useGeneratedKeys is not set, but the global useGeneratedKeys is set and true.
+		stmt.Configuration().Settings.Get("useGeneratedKeys") == "true"
+
+	if !useGeneratedKeys {
+		return next
+	}
+	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
+		result, err := next(ctx, query, args...)
+
+		if err != nil {
+			return nil, err
+		}
+
+		param := ParamFromContext(ctx)
+
+		if param == nil {
+			return nil, errors.New("useGeneratedKeys is true, but the param is nil")
+		}
+
+		// checkout the input param
+		rv := reflect.ValueOf(param)
+
+		// If the useGeneratedKeys is set and true but the param is not a pointer.
+		if rv.Kind() != reflect.Ptr {
+			return nil, errors.New("useGeneratedKeys is true, but the param is not a pointer")
+		}
+
+		rv = reflect.Indirect(rv)
+
+		// If the useGeneratedKeys is set and true but the param is not a struct pointer.
+		if rv.Kind() != reflect.Struct {
+			return nil, errors.New("useGeneratedKeys is true, but the param is not a struct pointer")
+		}
+
+		var field reflect.Value
+
+		// keyProperty is the name of the field that will be set the generated key.
+		keyProperty := stmt.Attribute("keyProperty")
+		// The keyProperty is empty, return the result directly.
+		if len(keyProperty) == 0 {
+			ty := rv.Type()
+			// If the keyProperty is empty, try to find from the tag.
+			for i := 0; i < ty.NumField(); i++ {
+				if autoIncr := ty.Field(i).Tag.Get("autoincr"); autoIncr == "true" {
+					field = rv.Field(i)
+					keyProperty = ty.Field(i).Name
+					break
+				}
+			}
+			if !field.IsValid() {
+				return nil, errors.New("keyProperty not set or not tag named `autoincr`")
+			}
+		} else {
+			// try to find the field from the given struct.
+			field = rv.FieldByName(keyProperty)
+			if !field.IsValid() {
+				return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
+			}
+		}
+
+		// If the field is not an int, return the result directly.
+		if !field.CanInt() {
+			return nil, fmt.Errorf("the keyProperty %s is not a int", keyProperty)
+		}
+
+		// get the last insert id
+		id, err := result.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
+		// set the id to the field
+		field.SetInt(id)
+		return result, nil
+	}
 }
 
 // GenericMiddleware defines the middleware interface for the generic execution.
