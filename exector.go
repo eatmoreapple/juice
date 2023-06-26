@@ -193,12 +193,16 @@ type GenericExecutor[T any] interface {
 
 	// Session returns the session of the current executor.
 	Session() Session
+
+	// Use adds a middleware to the current executor.
+	Use(middlewares ...GenericMiddleware[T])
 }
 
 // genericExecutor is a generic executor.
 type genericExecutor[T any] struct {
 	Executor
-	cache cache.Cache
+	cache       cache.Cache
+	middlewares GenericMiddlewareGroup[T]
 }
 
 // Query executes the query and returns the scanner.
@@ -212,13 +216,42 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
 		return result, exe.err
 	}
-
 	statement := e.Statement()
 	// build the query and args
 	query, args, err := statement.Build(p)
 	if err != nil {
 		return
 	}
+
+	if e.cache != nil {
+		e.Use(&CacheMiddleware[T]{cache: e.cache})
+	}
+
+	// get the cache key
+	ctx = SessionWithContext(ctx, e.Session())
+
+	// call the middleware
+	return e.middlewares.QueryContext(statement, e.queryContext)(ctx, query, args...)
+}
+
+func (e *genericExecutor[T]) queryContext(ctx context.Context, query string, args ...any) (result T, err error) {
+	statement := e.Statement()
+
+	retMap, err := statement.ResultMap()
+
+	// ErrResultMapNotSet means the result map is not set, use the default result map.
+	if err != nil {
+		if !errors.Is(err, ErrResultMapNotSet) {
+			return
+		}
+	}
+
+	// try to query the database.
+	rows, err := statement.QueryHandler()(ctx, query, args...)
+	if err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
 
 	// ptr is the pointer of the result, it is the destination of the binding.
 	var ptr any = &result
@@ -232,54 +265,6 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 		ptr = result
 	}
 
-	// If the cache is enabled and cache is not disabled in this statement.
-	if e.cache != nil && statement.Attribute("useCache") != "false" {
-		// cacheKey is the key which is used to get the result and put the result to the cache.
-		var cacheKey string
-
-		// CacheKeyFunc is the function which is used to generate the cache key.
-		// default is the md5 of the query and args.
-		// reset the CacheKeyFunc variable to change the default behavior.
-		cacheKey, err = CacheKeyFunc(statement, query, args)
-		if err != nil {
-			return
-		}
-
-		// try to get the result from the cache
-		// if the result is found, return it directly.
-		if err = e.cache.Get(ctx, cacheKey, ptr); err == nil {
-			return
-		}
-
-		// ErrCacheNotFound means the cache is not found,
-		// we should continue to query the database.
-		if !errors.Is(err, cache.ErrCacheNotFound) {
-			return
-		}
-		// put the result to the cache
-		defer func() {
-			if err == nil {
-				err = e.cache.Set(ctx, cacheKey, result)
-			}
-		}()
-	}
-
-	// try to query the database.
-	ctx = SessionWithContext(ctx, e.Session())
-	rows, err := statement.QueryHandler()(ctx, query, args...)
-	if err != nil {
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	retMap, err := statement.ResultMap()
-
-	// ErrResultMapNotSet means the result map is not set, use the default result map.
-	if err != nil {
-		if !errors.Is(err, ErrResultMapNotSet) {
-			return
-		}
-	}
 	err = BindWithResultMap(rows, ptr, retMap)
 	return
 }
@@ -295,14 +280,15 @@ func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.
 	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
 		return ret, exe.err
 	}
-	defer func() {
-		// If the cache is enabled and flushCache is not disabled in this statement.
-		if err == nil && e.cache != nil && e.Statement().Attribute("flushCache") != "false" {
-			// clear the cache
-			_ = e.cache.Flush(ctx)
-		}
-	}()
 	return e.Executor.ExecContext(ctx, p)
+}
+
+// Use adds a middleware to the current executor.
+func (e *genericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
+	if len(middlewares) == 0 {
+		return
+	}
+	e.middlewares = append(e.middlewares, middlewares...)
 }
 
 var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
