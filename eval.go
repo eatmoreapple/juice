@@ -67,6 +67,9 @@ func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) 
 	if err != nil {
 		return reflect.Value{}, err
 	}
+
+	value = unwrapValue(value)
+
 	var low, high int
 
 	// like [1:] expr
@@ -130,6 +133,8 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 	if err != nil {
 		return reflect.Value{}, err
 	}
+	value = unwrapValue(value)
+
 	index, err := eval(exp.Index, params)
 	if err != nil {
 		return reflect.Value{}, err
@@ -148,7 +153,7 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 		}
 		return v, nil
 	default:
-		return reflect.Value{}, errors.New("unsupported index expression")
+		return reflect.Value{}, fmt.Errorf("invalid index expression: %v", value.Kind())
 	}
 }
 
@@ -174,6 +179,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 		if err != nil {
 			return reflect.Value{}, err
 		}
+		value = unwrapValue(value)
 		// type conversion for function arguments
 		in := fnType.In(i)
 		if in.Kind() != value.Kind() {
@@ -222,9 +228,6 @@ func evalIdent(exp *ast.Ident, params Parameter) (reflect.Value, error) {
 	value, ok := params.Get(exp.Name)
 	if !ok {
 		return reflect.Value{}, fmt.Errorf("undefined identifier: %s", exp.Name)
-	}
-	for value.Kind() == reflect.Interface {
-		value = value.Elem()
 	}
 	return value, nil
 }
@@ -340,8 +343,19 @@ func eql(right, left reflect.Value) (reflect.Value, error) {
 		if !right.IsValid() {
 			valid = left
 		}
+
 		// if the invalid value is nil, the valid value is equal to nil
-		if canNil(valid) {
+		if isNilAble(valid) {
+			// nil value
+			if valid.Equal(nilValue) {
+				return reflect.ValueOf(true), nil
+			}
+
+			// unwrap interface value
+			if valid.Kind() == reflect.Interface {
+				valid = valid.Elem()
+			}
+			// nil value but not nil type
 			return reflect.ValueOf(valid.IsNil()), nil
 		}
 		return reflect.ValueOf(false), fmt.Errorf("invalid operation: %s == %s", right.Kind(), left.Kind())

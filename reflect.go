@@ -4,6 +4,7 @@ import (
 	"reflect"
 )
 
+// kindIndirect returns the type of the element of the pointer type.
 func kindIndirect(t reflect.Type) reflect.Type {
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -11,6 +12,15 @@ func kindIndirect(t reflect.Type) reflect.Type {
 	return t
 }
 
+// typeIndirect returns the type of the element of the pointer type.
+func typeIndirect(v reflect.Value) reflect.Kind {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return v.Kind()
+}
+
+// unwrapValue returns the value of the element of the pointer type.
 func unwrapValue(v reflect.Value) reflect.Value {
 	for {
 		switch {
@@ -24,7 +34,8 @@ func unwrapValue(v reflect.Value) reflect.Value {
 	}
 }
 
-func canNil(v reflect.Value) bool {
+// isNilAble returns true if the type can be nil.
+func isNilAble(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 		return true

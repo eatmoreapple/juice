@@ -73,7 +73,7 @@ func (p structParameter) Get(name string) (reflect.Value, bool) {
 	if !value.IsValid() {
 		return reflect.Value{}, false
 	}
-	return unwrapValue(value), true
+	return value, true
 }
 
 // make sure that mapParameter implements Parameter.
@@ -90,7 +90,7 @@ func (p mapParameter) Get(name string) (reflect.Value, bool) {
 	if !value.IsValid() {
 		return reflect.Value{}, false
 	}
-	return unwrapValue(value), true
+	return value, true
 }
 
 // make sure that sliceParameter implements Parameter.
@@ -111,7 +111,7 @@ func (p sliceParameter) Get(name string) (reflect.Value, bool) {
 	if !value.IsValid() {
 		return reflect.Value{}, false
 	}
-	return unwrapValue(value), true
+	return value, true
 }
 
 // genericParameter is a parameter that wraps a generic value.
@@ -127,16 +127,15 @@ func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 	items := strings.Split(name, ".")
 	var param Parameter
 	for _, item := range items {
-		// make sure that the value is not an pointer.
+
+		// only unwrap when the value need to call Get method
 		value = unwrapValue(value)
+
 		// match the value type
-		// if the value is a map, then use mapParameter
-		// if the value is a struct, then use structParameter
-		// if the value is a slice or array, then use sliceParameter
-		// otherwise, return false
+		// only map, struct, slice and array can be wrapped as parameter
 		switch value.Kind() {
 		case reflect.Map:
-			// if the map key is string type
+			// if the map key is not a string type
 			if value.Type().Key().Kind() != reflect.String {
 				// TODO panic or return false?
 				panic("the map key must be string type")
@@ -154,9 +153,6 @@ func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 		if !exists {
 			return reflect.Value{}, false
 		}
-
-		// unwrap the value
-		value = unwrapValue(value)
 	}
 	return value, true
 }
@@ -187,8 +183,11 @@ func newGenericParam(v any, wrapKey string) Parameter {
 	if v == nil {
 		return nil
 	}
-	value := unwrapValue(reflect.ValueOf(v))
-	switch value.Kind() {
+	value := reflect.ValueOf(v)
+
+	tp := typeIndirect(value)
+
+	switch tp {
 	case reflect.Map, reflect.Struct, reflect.Slice, reflect.Array:
 		// do nothing
 	default:
