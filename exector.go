@@ -2,10 +2,7 @@ package juice
 
 import (
 	"context"
-	"crypto/md5"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"github.com/eatmoreapple/juice/cache"
 	"reflect"
@@ -188,23 +185,3 @@ func (e *genericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
 }
 
 var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
-
-// cacheKeyFunc defines the function which is used to generate the cache key.
-type cacheKeyFunc func(stmt *Statement, query string, args []any) (string, error)
-
-// CacheKeyFunc is the function which is used to generate the cache key.
-// default is the md5 of the query and args.
-// reset the CacheKeyFunc variable to change the default behavior.
-var CacheKeyFunc cacheKeyFunc = func(stmt *Statement, query string, args []any) (string, error) {
-	// only same statement same query same args can get the same cache key
-	writer := md5.New()
-	writer.Write([]byte(stmt.ID() + query))
-	if len(args) > 0 {
-		item, err := json.Marshal(args)
-		if err != nil {
-			return "", err
-		}
-		writer.Write(item)
-	}
-	return hex.EncodeToString(writer.Sum(nil)), nil
-}
