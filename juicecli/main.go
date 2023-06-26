@@ -65,7 +65,7 @@ func Do() error {
 	if !ok {
 		return errors.New("juice: unknown command " + name)
 	}
-	if len(os.Args) > 2 && os.Args[2] == "--help" {
+	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h") {
 		println(cmd.Help())
 		return nil
 	}
