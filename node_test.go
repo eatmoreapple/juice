@@ -22,7 +22,7 @@ func TestForeachNode_Accept(t *testing.T) {
 		{"id": 1, "name": "a"},
 		{"id": 2, "name": "b"},
 	}}
-	query, args, err := node.Accept(drv.Translate(), params.AsParam())
+	query, args, err := node.Accept(drv.Translator(), params.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
@@ -55,7 +55,7 @@ func TestForeachMapNode_Accept(t *testing.T) {
 		Separator:  ", ",
 	}
 	params := H{"map": map[string]any{"a": 1}}
-	query, args, err := node.Accept(drv.Translate(), params.AsParam())
+	query, args, err := node.Accept(drv.Translator(), params.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
@@ -74,7 +74,7 @@ func TestForeachMapNode_Accept(t *testing.T) {
 	}
 
 	params = H{"map": map[string]any{"a": 1, "b": 2}}
-	query, args, err = node.Accept(drv.Translate(), params.AsParam())
+	query, args, err = node.Accept(drv.Translator(), params.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
@@ -103,7 +103,7 @@ func TestIfNode_Accept(t *testing.T) {
 
 	h := H{"id": 1}
 
-	query, args, err := node.Accept(drv.Translate(), newGenericParam(h, ""))
+	query, args, err := node.Accept(drv.Translator(), newGenericParam(h, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -126,7 +126,7 @@ func TestTextNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	node, _ := NewTextNode("select * from user where id = #{id}")
 	param := newGenericParam(H{"id": 1}, "")
-	query, args, err := node.Accept(drv.Translate(), param)
+	query, args, err := node.Accept(drv.Translator(), param)
 	if err != nil {
 		t.Error(err)
 		return
@@ -159,7 +159,7 @@ func TestWhereNode_Accept(t *testing.T) {
 		"id":   1,
 		"name": "a",
 	}
-	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
+	query, args, err := node.Accept(drv.Translator(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -221,7 +221,7 @@ func TestTrimNode_Accept(t *testing.T) {
 		SuffixOverrides: []string{","},
 	}
 	params := H{"id": 1, "name": "a"}
-	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
+	query, args, err := node.Accept(drv.Translator(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -251,7 +251,7 @@ func TestSetNode_Accept(t *testing.T) {
 		"id":   1,
 		"name": "a",
 	}
-	query, args, err := node.Accept(drv.Translate(), newGenericParam(params, ""))
+	query, args, err := node.Accept(drv.Translator(), newGenericParam(params, ""))
 	if err != nil {
 		t.Error(err)
 		return

@@ -140,7 +140,7 @@ func (s *Statement) ResultMap() (ResultMap, error) {
 func (s *Statement) Build(param Param) (query string, args []any, err error) {
 	value := newGenericParam(param, s.Attribute("paramName"))
 
-	translator := s.Engine().Driver().Translate()
+	translator := s.Engine().Driver().Translator()
 
 	query, args, err = s.Accept(translator, value)
 	if err != nil {

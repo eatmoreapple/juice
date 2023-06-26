@@ -8,8 +8,8 @@ import (
 
 // Driver is a driver of database.
 type Driver interface {
-	// Translate returns a translator of SQL.
-	Translate() Translator
+	// Translator returns a translator of SQL.
+	Translator() Translator
 }
 
 var (
@@ -49,7 +49,7 @@ func Get(name string) (Driver, error) {
 type SimpleDriver struct{}
 
 // Translate returns a translator of SQL.
-func (d SimpleDriver) Translate() Translator {
+func (d SimpleDriver) Translator() Translator {
 	return TranslateFunc(func(matched string) string {
 		return "?"
 	})
@@ -77,7 +77,7 @@ func (d SQLiteDriver) String() string {
 type PostgresDriver struct{}
 
 // Translate is a function to translate a matched string.
-func (d PostgresDriver) Translate() Translator {
+func (d PostgresDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
 		i++
@@ -93,7 +93,7 @@ func (d PostgresDriver) String() string {
 type OracleDriver struct{}
 
 // Translate is a function to translate a matched string.
-func (o OracleDriver) Translate() Translator {
+func (o OracleDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
 		i++
