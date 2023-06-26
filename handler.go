@@ -30,3 +30,6 @@ func sessionExecHandler() ExecHandler {
 		return sess.ExecContext(ctx, query, args...)
 	}
 }
+
+// GenericQueryHandler defines the handler of the generic query.
+type GenericQueryHandler[T any] func(ctx context.Context, query string, args ...any) (T, error)
