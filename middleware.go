@@ -145,6 +145,8 @@ func (t TimeoutMiddleware) getTimeout(stmt *Statement) (timeout int64) {
 	return
 }
 
+var _ Middleware = (*useGeneratedKeysMiddleware)(nil) // compile time check
+
 // useGeneratedKeysMiddleware is a middleware that set the last insert id to the struct.
 type useGeneratedKeysMiddleware struct{}
 

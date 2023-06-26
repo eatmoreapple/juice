@@ -13,17 +13,9 @@ import (
 
 // Executor is an executor of SQL.
 type Executor interface {
-	// Query executes a query that returns rows, typically a SELECT.
-	// The param are the placeholder collection for this query.
-	Query(param Param) (*sql.Rows, error)
-
 	// QueryContext executes a query that returns rows, typically a SELECT.
 	// The param are the placeholder collection for this query.
 	QueryContext(ctx context.Context, param Param) (*sql.Rows, error)
-
-	// Exec executes a query without returning any rows.
-	// The param are the placeholder collection for this query.
-	Exec(param Param) (sql.Result, error)
 
 	// ExecContext executes a query without returning any rows.
 	// The param are the placeholder collection for this query.
@@ -56,11 +48,6 @@ func (e *executor) build(param Param) (query string, args []any, err error) {
 	return e.Statement().Build(param)
 }
 
-// Query executes the query and returns the result.
-func (e *executor) Query(param Param) (*sql.Rows, error) {
-	return e.QueryContext(context.Background(), param)
-}
-
 // QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
 	query, args, err := e.build(param)
@@ -70,11 +57,6 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	ctx = SessionWithContext(ctx, e.Session())
 	ctx = CtxWithParam(ctx, param)
 	return e.Statement().QueryHandler()(ctx, query, args...)
-}
-
-// Exec executes the query and returns the result.
-func (e *executor) Exec(param Param) (sql.Result, error) {
-	return e.ExecContext(context.Background(), param)
 }
 
 // ExecContext executes the query and returns the result.
@@ -101,17 +83,9 @@ func (e *executor) Session() Session {
 
 // GenericExecutor is a generic executor.
 type GenericExecutor[T any] interface {
-	// Query executes the query and returns the direct result.
-	// The args are for any placeholder parameters in the query.
-	Query(param Param) (T, error)
-
 	// QueryContext executes the query and returns the direct result.
 	// The args are for any placeholder parameters in the query.
 	QueryContext(ctx context.Context, param Param) (T, error)
-
-	// Exec executes a query without returning any rows.
-	// The args are for any placeholder parameters in the query.
-	Exec(param Param) (sql.Result, error)
 
 	// ExecContext executes a query without returning any rows.
 	// The args are for any placeholder parameters in the query.
@@ -133,11 +107,6 @@ type genericExecutor[T any] struct {
 	Executor
 	cache       cache.Cache
 	middlewares GenericMiddlewareGroup[T]
-}
-
-// Query executes the query and returns the scanner.
-func (e *genericExecutor[T]) Query(p Param) (T, error) {
-	return e.QueryContext(context.Background(), p)
 }
 
 // QueryContext executes the query and returns the scanner.
@@ -199,11 +168,6 @@ func (e *genericExecutor[T]) queryContext(ctx context.Context, query string, arg
 
 	err = BindWithResultMap(rows, ptr, retMap)
 	return
-}
-
-// Exec executes the query and returns the result.
-func (e *genericExecutor[_]) Exec(p Param) (sql.Result, error) {
-	return e.ExecContext(context.Background(), p)
 }
 
 // ExecContext executes the query and returns the result.
