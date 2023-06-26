@@ -1,6 +1,7 @@
 package juice
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"strconv"
@@ -10,6 +11,19 @@ import (
 // Param is an alias of any type.
 // It is used to represent the parameter of the statement and without type limitation.
 type Param = any
+
+type paramCtxKey struct{}
+
+// CtxWithParam returns a new context with the parameter.
+func CtxWithParam(ctx context.Context, param Param) context.Context {
+	return context.WithValue(ctx, paramCtxKey{}, param)
+}
+
+// ParamFromContext returns the parameter from the context.
+func ParamFromContext(ctx context.Context) Param {
+	param, _ := ctx.Value(paramCtxKey{}).(Param)
+	return param
+}
 
 // defaultParamKey is the default key of the parameter.
 var defaultParamKey = func() string {

@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/eatmoreapple/juice/cache"
 	"reflect"
 )
@@ -69,6 +68,7 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 		return nil, err
 	}
 	ctx = SessionWithContext(ctx, e.Session())
+	ctx = CtxWithParam(ctx, param)
 	return e.Statement().QueryHandler()(ctx, query, args...)
 }
 
@@ -84,81 +84,10 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 		return nil, err
 	}
 	ctx = SessionWithContext(ctx, e.Session())
-	ret, err := e.Statement().ExecHandler()(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
 
-	stmt := e.Statement()
-	// If the statement is not an insert statement, return the result directly.
-	if !stmt.IsInsert() {
-		return ret, nil
-	}
+	ctx = CtxWithParam(ctx, param)
 
-	// If the useGeneratedKeys is not set or false, return the result directly.
-	useGeneratedKeys := stmt.Attribute("useGeneratedKeys") == "true" ||
-		// If the useGeneratedKeys is not set, but the global useGeneratedKeys is set and true.
-		stmt.Configuration().Settings.Get("useGeneratedKeys") == "true"
-
-	// If the useGeneratedKeys is not set or false, return the result directly.
-	if !useGeneratedKeys {
-		return ret, nil
-	}
-
-	// checkout the input param
-	rv := reflect.ValueOf(param)
-
-	// If the useGeneratedKeys is set and true but the param is not a pointer.
-	if rv.Kind() != reflect.Ptr {
-		return nil, errors.New("useGeneratedKeys is true, but the param is not a pointer")
-	}
-
-	rv = reflect.Indirect(rv)
-
-	// If the useGeneratedKeys is set and true but the param is not a struct pointer.
-	if rv.Kind() != reflect.Struct {
-		return nil, errors.New("useGeneratedKeys is true, but the param is not a struct pointer")
-	}
-
-	var field reflect.Value
-
-	// keyProperty is the name of the field that will be set the generated key.
-	keyProperty := stmt.Attribute("keyProperty")
-	// The keyProperty is empty, return the result directly.
-	if len(keyProperty) == 0 {
-		ty := rv.Type()
-		// If the keyProperty is empty, try to find from the tag.
-		for i := 0; i < ty.NumField(); i++ {
-			if autoIncr := ty.Field(i).Tag.Get("autoincr"); autoIncr == "true" {
-				field = rv.Field(i)
-				keyProperty = ty.Field(i).Name
-				break
-			}
-		}
-		if !field.IsValid() {
-			return nil, errors.New("keyProperty not set or not tag named `autoincr`")
-		}
-	} else {
-		// try to find the field from the given struct.
-		field = rv.FieldByName(keyProperty)
-		if !field.IsValid() {
-			return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
-		}
-	}
-
-	// If the field is not an int, return the result directly.
-	if !field.CanInt() {
-		return nil, fmt.Errorf("the keyProperty %s is not a int", keyProperty)
-	}
-
-	// get the last insert id
-	id, err := ret.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	// set the id to the field
-	field.SetInt(id)
-	return ret, nil
+	return e.Statement().ExecHandler()(ctx, query, args...)
 }
 
 // Statement returns the statement.
@@ -195,6 +124,7 @@ type GenericExecutor[T any] interface {
 	Session() Session
 
 	// Use adds a middleware to the current executor.
+	// The difference between Engine.Use and Executor.Use is only works for the current executor.
 	Use(middlewares ...GenericMiddleware[T])
 }
 
@@ -229,6 +159,8 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 
 	// get the cache key
 	ctx = SessionWithContext(ctx, e.Session())
+
+	ctx = CtxWithParam(ctx, p)
 
 	// call the middleware
 	return e.middlewares.QueryContext(statement, e.queryContext)(ctx, query, args...)
