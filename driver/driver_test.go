@@ -7,7 +7,7 @@ import (
 
 func TestMySQLDriver(t *testing.T) {
 	driver := MySQLDriver{}
-	translator := driver.Translate()
+	translator := driver.Translator()
 	if translator.Translate("foo") != "?" {
 		t.Fatal("failed to translate")
 	}
@@ -15,7 +15,7 @@ func TestMySQLDriver(t *testing.T) {
 
 func TestSQLiteDriver(t *testing.T) {
 	driver := SQLiteDriver{}
-	translator := driver.Translate()
+	translator := driver.Translator()
 	if translator.Translate("foo") != "?" {
 		t.Fatal("failed to translate")
 	}
@@ -23,13 +23,13 @@ func TestSQLiteDriver(t *testing.T) {
 
 func TestPostgresDriver(t *testing.T) {
 	driver := PostgresDriver{}
-	translator := driver.Translate()
+	translator := driver.Translator()
 	for i := 0; i < 10; i++ {
 		if translator.Translate("foo") != "$"+strconv.Itoa(i+1) {
 			t.Fatal("failed to translate")
 		}
 	}
-	translator = driver.Translate()
+	translator = driver.Translator()
 	for i := 0; i < 10; i++ {
 		if translator.Translate("bar") != "$"+strconv.Itoa(i+1) {
 			t.Fatal("failed to translate")
@@ -39,13 +39,13 @@ func TestPostgresDriver(t *testing.T) {
 
 func TestOracleDriver(t *testing.T) {
 	driver := OracleDriver{}
-	translator := driver.Translate()
+	translator := driver.Translator()
 	for i := 0; i < 10; i++ {
 		if translator.Translate("foo") != ":"+strconv.Itoa(i+1) {
 			t.Fatal("failed to translate")
 		}
 	}
-	translator = driver.Translate()
+	translator = driver.Translator()
 	for i := 0; i < 10; i++ {
 		if translator.Translate("bar") != ":"+strconv.Itoa(i+1) {
 			t.Fatal("failed to translate")
