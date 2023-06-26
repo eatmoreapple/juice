@@ -101,6 +101,7 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	var cd ColumnDestination = &rowDestination{}
 	// if it's a struct, scan rows to struct
 	// now, we start scan rows
+	values := make([]reflect.Value, 0)
 
 	for rows.Next() {
 
@@ -129,14 +130,14 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 
 		// append the element to
 		if isPtr {
-			ret = reflect.Append(ret, nrv)
+			values = append(values, nrv)
 		} else {
-			ret = reflect.Append(ret, nel)
+			values = append(values, nel)
 		}
 	}
 
 	// set result to given entity
-	rv.Set(ret)
+	rv.Set(reflect.Append(ret, values...))
 
 	return nil
 }
