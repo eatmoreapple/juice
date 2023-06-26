@@ -145,6 +145,7 @@ func (t TimeoutMiddleware) getTimeout(stmt *Statement) (timeout int64) {
 	return
 }
 
+// ensure useGeneratedKeysMiddleware implements Middleware
 var _ Middleware = (*useGeneratedKeysMiddleware)(nil) // compile time check
 
 // useGeneratedKeysMiddleware is a middleware that set the last insert id to the struct.
@@ -177,6 +178,8 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 			return nil, err
 		}
 
+		// try to get param from context
+		// FIXME: the param should be set to the context before the query is executed.
 		param := ParamFromContext(ctx)
 
 		if param == nil {
@@ -209,19 +212,16 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 			for i := 0; i < ty.NumField(); i++ {
 				if autoIncr := ty.Field(i).Tag.Get("autoincr"); autoIncr == "true" {
 					field = rv.Field(i)
-					keyProperty = ty.Field(i).Name
 					break
 				}
-			}
-			if !field.IsValid() {
-				return nil, errors.New("keyProperty not set or not tag named `autoincr`")
 			}
 		} else {
 			// try to find the field from the given struct.
 			field = rv.FieldByName(keyProperty)
-			if !field.IsValid() {
-				return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
-			}
+		}
+
+		if !field.IsValid() {
+			return nil, fmt.Errorf("the keyProperty %s is not found or not field has the autoincr tag", keyProperty)
 		}
 
 		// If the field is not an int, return the result directly.
@@ -284,7 +284,8 @@ type CacheMiddleware[T any] struct {
 
 // QueryContext implements Middleware.
 func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
-	if c.cache == nil {
+	// If the cache is nil or the useCache is false, return the result directly.
+	if c.cache == nil || stmt.Attribute("useCache") == "false" {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (result T, err error) {
@@ -300,46 +301,43 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 			ptr = result
 		}
 
-		// If the cache is enabled and cache is not disabled in this statement.
-		if stmt.Attribute("useCache") != "false" {
-			// cacheKey is the key which is used to get the result and put the result to the cache.
-			var cacheKey string
+		// cacheKey is the key which is used to get the result and put the result to the cache.
+		var cacheKey string
 
-			// CacheKeyFunc is the function which is used to generate the cache key.
-			// default is the md5 of the query and args.
-			// reset the CacheKeyFunc variable to change the default behavior.
-			cacheKey, err = CacheKeyFunc(stmt, query, args)
-			if err != nil {
-				return
-			}
-
-			// try to get the result from the cache
-			// if the result is found, return it directly.
-			if err = c.cache.Get(ctx, cacheKey, ptr); err == nil {
-				return
-			}
-
-			// ErrCacheNotFound means the cache is not found,
-			// we should continue to query the database.
-			if !errors.Is(err, cache.ErrCacheNotFound) {
-				return
-			}
-			// put the result to the cache
-			defer func() {
-				if err == nil {
-					err = c.cache.Set(ctx, cacheKey, result)
-				}
-			}()
+		// CacheKeyFunc is the function which is used to generate the cache key.
+		// default is the md5 of the query and args.
+		// reset the CacheKeyFunc variable to change the default behavior.
+		cacheKey, err = CacheKeyFunc(stmt, query, args)
+		if err != nil {
+			return
 		}
 
-		return next(ctx, query, args...)
+		// try to get the result from the cache
+		// if the result is found, return it directly.
+		if err = c.cache.Get(ctx, cacheKey, ptr); err == nil {
+			return
+		}
+
+		// ErrCacheNotFound means the cache is not found,
+		// we should continue to query the database.
+		if !errors.Is(err, cache.ErrCacheNotFound) {
+			return
+		}
+
+		// call the next handler
+		result, err = next(ctx, query, args...)
+		if err != nil {
+			return
+		}
+		err = c.cache.Set(ctx, cacheKey, result)
+		return
 	}
 }
 
+// ExecContext implements Middleware.
 func (c *CacheMiddleware[T]) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
 	// if the cache is enabled and flushCache is not disabled in this statement.
-	flushCache := stmt.Attribute("flushCache") != "false" && c.cache != nil
-	if !flushCache {
+	if stmt.Attribute("flushCache") == "false" || c.cache == nil {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
