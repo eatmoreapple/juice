@@ -585,3 +585,65 @@ func TestEql(t *testing.T) {
 		return
 	}
 }
+
+func TestExprNilEQ(t *testing.T) {
+	//result, err := Eval("a == nil", H{"a": nil}.AsParam())
+	//if err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+	//if !result.Bool() {
+	//	t.Error("eval error")
+	//	return
+	//}
+	//var a *int
+	//result, err := Eval("a == nil", H{"a": a}.AsParam())
+	//if err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+	//if !result.Bool() {
+	//	t.Error("eval error")
+	//	return
+	//}
+
+	var entity struct {
+		A *int `param:"a"`
+	}
+	result, err := Eval("a == nil", newGenericParam(entity, ""))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
+
+func TestExprNilNEQ(t *testing.T) {
+	param := H{"a": []int64{1}}.AsParam()
+	result, err := Eval("a != nil", param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	result, err = Eval("a[0]", param)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	result, err = eql(result, reflect.ValueOf(1))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}

@@ -201,10 +201,21 @@ func MustRegisterEvalFunc(name string, v any) {
 // builtins is a map of built-in functions.
 var builtins = map[string]reflect.Value{}
 
+var (
+	// trueValue is the reflect.Value of true.
+	trueValue = reflect.ValueOf(true)
+
+	// falseValue is the reflect.Value of false.
+	falseValue = reflect.ValueOf(false)
+
+	// nilValue is the reflect.Value of nil.
+	nilValue = reflect.ValueOf(nil)
+)
+
 func init() {
-	builtins["true"] = reflect.ValueOf(true)
-	builtins["false"] = reflect.ValueOf(false)
-	builtins["nil"] = reflect.ValueOf(nil)
+	builtins["true"] = trueValue
+	builtins["false"] = falseValue
+	builtins["nil"] = nilValue
 	MustRegisterEvalFunc("len", length)
 	MustRegisterEvalFunc("substr", strSub)
 	MustRegisterEvalFunc("join", strJoin)
