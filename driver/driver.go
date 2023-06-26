@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"database/sql"
 	"fmt"
 	"strconv"
 	"sync"
@@ -10,6 +11,9 @@ import (
 type Driver interface {
 	// Translator returns a translator of SQL.
 	Translator() Translator
+
+	// Open opens a database connection.
+	Open(dataSourceName string) (*sql.DB, error)
 }
 
 var (
@@ -46,13 +50,25 @@ func Get(name string) (Driver, error) {
 }
 
 // SimpleDriver is a driver of MySQL、SQLite.
-type SimpleDriver struct{}
+type SimpleDriver struct {
+	name string
+}
 
-// Translate returns a translator of SQL.
+// Translator returns a translator of SQL.
 func (d SimpleDriver) Translator() Translator {
-	return TranslateFunc(func(matched string) string {
-		return "?"
-	})
+	return TranslateFunc(func(matched string) string { return "?" })
+}
+
+func (d SimpleDriver) String() string {
+	return d.Name()
+}
+
+func (d SimpleDriver) Name() string {
+	return d.name
+}
+
+func (d SimpleDriver) Open(dataSourceName string) (*sql.DB, error) {
+	return sql.Open(d.Name(), dataSourceName)
 }
 
 // MySQLDriver is a driver of MySQL.
@@ -60,23 +76,18 @@ type MySQLDriver struct {
 	SimpleDriver
 }
 
-func (d MySQLDriver) String() string {
-	return "mysql"
-}
-
 // SQLiteDriver is a driver of SQLite.
 type SQLiteDriver struct {
 	SimpleDriver
 }
 
-func (d SQLiteDriver) String() string {
-	return "sqlite"
+// PostgresDriver is a driver of PostgreSQL.
+type PostgresDriver struct {
+	SimpleDriver
 }
 
-// PostgresDriver is a driver of PostgreSQL.
-type PostgresDriver struct{}
-
-// Translate is a function to translate a matched string.
+// Translator is a function to translate a matched string.
+// Rewrite this function to change the translation.
 func (d PostgresDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
@@ -85,14 +96,13 @@ func (d PostgresDriver) Translator() Translator {
 	})
 }
 
-func (d PostgresDriver) String() string {
-	return "postgres"
+// OracleDriver is a driver of Oracle.
+type OracleDriver struct {
+	SimpleDriver
 }
 
-// OracleDriver is a driver of Oracle.
-type OracleDriver struct{}
-
-// Translate is a function to translate a matched string.
+// Translator is a function to translate a matched string.
+// Rewrite this function to change the translation.
 func (o OracleDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
@@ -101,13 +111,9 @@ func (o OracleDriver) Translator() Translator {
 	})
 }
 
-func (o OracleDriver) String() string {
-	return "oracle"
-}
-
 func init() {
-	Register("mysql", &MySQLDriver{})
-	Register("sqlite", &SQLiteDriver{})
-	Register("postgres", &PostgresDriver{})
-	Register("oracle", &OracleDriver{})
+	Register("mysql", &MySQLDriver{SimpleDriver: SimpleDriver{name: "mysql"}})
+	Register("sqlite", &SQLiteDriver{SimpleDriver: SimpleDriver{name: "sqlite"}})
+	Register("postgres", &PostgresDriver{SimpleDriver: SimpleDriver{name: "postgres"}})
+	Register("oracle", &OracleDriver{SimpleDriver: SimpleDriver{name: "oracle"}})
 }

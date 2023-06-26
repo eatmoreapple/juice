@@ -149,11 +149,14 @@ func (e *Engine) init() error {
 	e.driver = drv
 
 	// open the database connection
-	e.db, err = env.Connect()
+	e.db, err = env.Connect(drv)
 
+	if err != nil {
+		return err
+	}
 	// set default cache factory
 	e.SetCacheFactory(func() cache.Cache { return cache.New() })
-	return err
+	return nil
 }
 
 // NewEngine creates a new Engine
