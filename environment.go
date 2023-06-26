@@ -3,6 +3,7 @@ package juice
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eatmoreapple/juice/driver"
 	"os"
 	"time"
 )
@@ -57,20 +58,31 @@ func (e *Environment) provider() EnvValueProvider {
 }
 
 // Connect returns a database connection.
-func (e *Environment) Connect() (*sql.DB, error) {
-	db, err := sql.Open(e.Driver, e.DataSource)
+func (e *Environment) Connect(driver driver.Driver) (*sql.DB, error) {
+	// Open a database connection with the given driver.
+	db, err := driver.Open(e.DataSource)
 	if err != nil {
 		return nil, err
 	}
+
+	// Set connection parameters.
+
+	// set max idle connection number if it is specified.
 	if e.MaxIdleConnNum > 0 {
 		db.SetMaxIdleConns(e.MaxIdleConnNum)
 	}
+
+	// set max open connection number if it is specified.
 	if e.MaxOpenConnNum > 0 {
 		db.SetMaxOpenConns(e.MaxOpenConnNum)
 	}
+
+	// set max connection lifetime if it is specified.
 	if e.MaxConnLifetime > 0 {
 		db.SetConnMaxLifetime(time.Duration(e.MaxConnLifetime) * time.Second)
 	}
+
+	// set max idle connection lifetime if it is specified.
 	if e.MaxIdleConnLifetime > 0 {
 		db.SetConnMaxLifetime(time.Duration(e.MaxIdleConnLifetime) * time.Second)
 	}
