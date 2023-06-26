@@ -91,17 +91,29 @@ func (e *Environment) Connect(driver driver.Driver) (*sql.DB, error) {
 
 // Environments is a collection of environments.
 type Environments struct {
-	// Default is an identifier of the default environment.
-	Default string
+	attr map[string]string
 
 	// envs is a map of environments.
 	// The key is an identifier of the environment.
 	envs map[string]*Environment
 }
 
+// SetAttr sets a value of the attribute.
+func (e *Environments) SetAttr(key, value string) {
+	if e.attr == nil {
+		e.attr = make(map[string]string)
+	}
+	e.attr[key] = value
+}
+
+// Attr returns a value of the attribute.
+func (e *Environments) Attr(key string) string {
+	return e.attr[key]
+}
+
 // DefaultEnv returns the default environment.
 func (e *Environments) DefaultEnv() (*Environment, error) {
-	return e.Use(e.Default)
+	return e.Use(e.Attr("default"))
 }
 
 // Use returns the environment specified by the identifier.
@@ -161,9 +173,7 @@ func RegisterEnvValueProvider(name string, provider EnvValueProvider) {
 }
 
 // defaultEnvValueProvider is a default environment value provider.
-var defaultEnvValueProvider EnvValueProviderFunc = func(key string) (string, error) {
-	return key, nil
-}
+var defaultEnvValueProvider EnvValueProviderFunc = func(key string) (string, error) { return key, nil }
 
 // GetEnvValueProvider returns a environment value provider.
 func GetEnvValueProvider(key string) EnvValueProvider {

@@ -73,12 +73,9 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElement) (*Environments, error) {
 	var envs Environments
 	for _, attr := range token.Attr {
-		if attr.Name.Local == "default" {
-			envs.Default = attr.Value
-			break
-		}
+		envs.SetAttr(attr.Name.Local, attr.Value)
 	}
-	if envs.Default == "" {
+	if envs.Attr("default") == "" {
 		return nil, errors.New("default environment is not specified")
 	}
 	for {
