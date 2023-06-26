@@ -97,8 +97,14 @@ func (e *Engine) Use(middleware Middleware) {
 	e.middlewares = append(e.middlewares, middleware)
 }
 
+// DB returns the database connection of the engine
 func (e *Engine) DB() *sql.DB {
 	return e.db
+}
+
+// Driver returns the driver of the engine
+func (e *Engine) Driver() driver.Driver {
+	return e.driver
 }
 
 // Close closes the database connection if it is not nil.
