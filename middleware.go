@@ -324,8 +324,11 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 			ptr = result
 		}
 
-		// check the CacheKeyFunc variable
-		if CacheKeyFunc == nil {
+		// cached this function incase the CacheKeyFunc is changed by other goroutines.
+		keyFunc := CacheKeyFunc
+
+		// check the keyFunc variable
+		if keyFunc == nil {
 			return result, errors.New("CacheKeyFunc is nil")
 		}
 
@@ -335,7 +338,7 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 		// CacheKeyFunc is the function which is used to generate the cache key.
 		// default is the md5 of the query and args.
 		// reset the CacheKeyFunc variable to change the default behavior.
-		cacheKey, err = CacheKeyFunc(stmt, query, args)
+		cacheKey, err = keyFunc(stmt, query, args)
 		if err != nil {
 			return
 		}
