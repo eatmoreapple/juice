@@ -675,7 +675,7 @@ func TestSelectorFunc(t *testing.T) {
 		A *testStruct `param:"a"`
 	}
 	entity.A = &testStruct{}
-	result, err := Eval("entity.A.Test(1)", H{"entity": entity}.AsParam())
+	result, err := Eval("entity.A.Test()", H{"entity": entity}.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
