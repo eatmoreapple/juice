@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -9,6 +25,50 @@ import (
 	"math/cmplx"
 	"reflect"
 	"strconv"
+)
+
+// Evaluator is an evaluator of the expression.
+type Evaluator interface {
+	// Parse parses the expression and returns the expression.
+	Parse(expr string) (Expression, error)
+}
+
+// EvalValue is an alias of EvalValue.
+// for semantic.
+type EvalValue = reflect.Value
+
+// Expression is an expression which can be evaluated to a value.
+type Expression interface {
+	// Eval evaluates the expression and returns the value.
+	Eval(params Parameter) (EvalValue, error)
+}
+
+// goEvaluator is an evaluator of the expression who uses the go/ast package.
+type goEvaluator struct{}
+
+// Parse parses the expression and returns the expression.
+func (e *goEvaluator) Parse(expr string) (Expression, error) {
+	exp, err := parser.ParseExpr(expr)
+	if err != nil {
+		return nil, &SyntaxError{err}
+	}
+	return &goExpression{exp}, nil
+}
+
+// goExpression is an expression who uses the go/ast package.
+type goExpression struct {
+	ast.Expr
+}
+
+// Eval evaluates the expression and returns the value.
+func (e *goExpression) Eval(params Parameter) (EvalValue, error) {
+	return eval(e.Expr, params)
+}
+
+var (
+	// DefaultEvaluator is the default evaluator.
+	// Reset it to change the default behavior.
+	DefaultEvaluator Evaluator = &goEvaluator{}
 )
 
 // SyntaxError represents a syntax error.
@@ -58,7 +118,7 @@ func eval(exp ast.Expr, params Parameter) (reflect.Value, error) {
 	case *ast.SliceExpr:
 		return evalSliceExpr(exp, params)
 	default:
-		return reflect.Value{}, errors.New("unsupported expression")
+		return reflect.Value{}, fmt.Errorf("unsupported expression: %T", exp)
 	}
 }
 
