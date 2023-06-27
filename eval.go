@@ -9,6 +9,7 @@ import (
 	"math/cmplx"
 	"reflect"
 	"strconv"
+	"unicode"
 )
 
 // SyntaxError represents a syntax error.
@@ -205,6 +206,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 			return reflect.Value{}, errRet.Interface().(error)
 		}
 		// this should never happen, but just in case
+		// should i mark it unreachable?
 		return reflect.Value{}, errors.New("cannot convert return value to error")
 	}
 	return rets[0], nil
@@ -215,10 +217,61 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 	if err != nil {
 		return reflect.Value{}, err
 	}
+	x = unwrapValue(x)
 	if x.Kind() != reflect.Struct {
 		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", exp.Sel.Name)
 	}
-	return x.FieldByName(exp.Sel.Name), nil
+
+	if exp.Sel == nil {
+		return reflect.Value{}, errors.New("invalid selector expression")
+	}
+
+	if len(exp.Sel.Name) == 0 {
+		return reflect.Value{}, errors.New("invalid selector expression")
+	}
+
+	fieldOrTagName := exp.Sel.Name
+
+	// check if the field name is exported
+	isExported := unicode.IsUpper([]rune(fieldOrTagName)[0])
+
+	var result reflect.Value
+
+	// findFromTag is a closure function that tries to find the field from the field tag
+	findFromTag := func() {
+		tp := x.Type()
+		for i := 0; i < x.NumField(); i++ {
+			field := tp.Field(i)
+			if field.Tag.Get(defaultParamKey) == fieldOrTagName {
+				result = x.Field(i)
+				break
+			}
+		}
+	}
+
+	// unexported field cannot be accessed, so we try to find from the field tag
+	if !isExported {
+		// find from the field tag
+		findFromTag()
+	} else {
+		// find from the field name
+		result = x.FieldByName(exp.Sel.Name)
+
+		// if we cannot find the field, try to find from the field tag
+		// some programs may use the field tag to specify the field name
+		if !result.IsValid() {
+			// find from tag
+			findFromTag()
+		}
+	}
+
+	// we failed to find the field
+	// it means you wrote a wrong expression
+	if !result.IsValid() {
+		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", exp.Sel.Name)
+	}
+
+	return result, nil
 }
 
 func evalIdent(exp *ast.Ident, params Parameter) (reflect.Value, error) {
