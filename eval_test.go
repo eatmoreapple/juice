@@ -663,3 +663,25 @@ func TestSelector(t *testing.T) {
 		return
 	}
 }
+
+type testStruct struct{}
+
+func (t testStruct) Test() (bool, error) {
+	return true, nil
+}
+
+func TestSelectorFunc(t *testing.T) {
+	var entity struct {
+		A *testStruct `param:"a"`
+	}
+	entity.A = &testStruct{}
+	result, err := Eval("entity.A.Test(1)", H{"entity": entity}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+}
