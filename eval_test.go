@@ -684,4 +684,18 @@ func TestSelectorFunc(t *testing.T) {
 		t.Error("eval error")
 		return
 	}
+
+	f := func() (string, error) {
+		return "test", nil
+	}
+
+	result, err = Eval("f()", H{"f": f}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.String() != "test" {
+		t.Error("eval error")
+		return
+	}
 }

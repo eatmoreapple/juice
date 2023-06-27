@@ -163,6 +163,9 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if err != nil {
 		return reflect.Value{}, err
 	}
+	if fn.Kind() == reflect.Interface {
+		fn = fn.Elem()
+	}
 	if fn.Kind() != reflect.Func {
 		return reflect.Value{}, errors.New("unsupported call expression")
 	}
