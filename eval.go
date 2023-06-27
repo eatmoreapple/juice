@@ -213,55 +213,71 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 }
 
 func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, error) {
-	x, err := eval(exp.X, params)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-	x = unwrapValue(x)
-	if x.Kind() != reflect.Struct {
-		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", exp.Sel.Name)
-	}
-
 	if exp.Sel == nil {
 		return reflect.Value{}, errors.New("invalid selector expression")
 	}
 
-	if len(exp.Sel.Name) == 0 {
+	fieldOrTagOrMethodName := exp.Sel.Name
+
+	if len(fieldOrTagOrMethodName) == 0 {
 		return reflect.Value{}, errors.New("invalid selector expression")
 	}
 
-	fieldOrTagName := exp.Sel.Name
+	x, err := eval(exp.X, params)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+
+	unwarned := unwrapValue(x)
 
 	// check if the field name is exported
-	isExported := unicode.IsUpper([]rune(fieldOrTagName)[0])
+	isExported := unicode.IsUpper([]rune(fieldOrTagOrMethodName)[0])
 
 	var result reflect.Value
 
-	// findFromTag is a closure function that tries to find the field from the field tag
-	findFromTag := func() {
-		tp := x.Type()
-		for i := 0; i < x.NumField(); i++ {
-			field := tp.Field(i)
-			if field.Tag.Get(defaultParamKey) == fieldOrTagName {
-				result = x.Field(i)
-				break
+	if unwarned.Kind() == reflect.Struct {
+
+		// findFromTag is a closure function that tries to find the field from the field tag
+		findFromTag := func() {
+			tp := unwarned.Type()
+			for i := 0; i < unwarned.NumField(); i++ {
+				field := tp.Field(i)
+				if field.Tag.Get(defaultParamKey) == fieldOrTagOrMethodName {
+					result = unwarned.Field(i)
+					break
+				}
 			}
 		}
-	}
 
-	// unexported field cannot be accessed, so we try to find from the field tag
-	if !isExported {
-		// find from the field tag
-		findFromTag()
-	} else {
-		// find from the field name
-		result = x.FieldByName(exp.Sel.Name)
-
-		// if we cannot find the field, try to find from the field tag
-		// some programs may use the field tag to specify the field name
-		if !result.IsValid() {
-			// find from tag
+		// unexported field cannot be accessed, so we try to find from the field tag
+		if !isExported {
+			// find from the field tag
 			findFromTag()
+		} else {
+			// find from the field name first
+			if unwarned.NumField() > 0 {
+				result = unwarned.FieldByName(fieldOrTagOrMethodName)
+			}
+
+			// it is a method?
+			if !result.IsValid() && unwarned.NumMethod() > 0 {
+				// use x directly, in case x is a pointer
+				result = x.MethodByName(fieldOrTagOrMethodName)
+			}
+
+			// not a method either, try to find from the field tag,
+			// try to find from the field tag
+			if !result.IsValid() {
+				// only fools would write uppercase tags
+				findFromTag()
+			}
+		}
+	} else {
+		// if the expression is not a struct
+		// try to find method from the type
+		if isExported && x.NumMethod() > 0 {
+			// use x directly, in case x is a pointer
+			result = x.MethodByName(fieldOrTagOrMethodName)
 		}
 	}
 
