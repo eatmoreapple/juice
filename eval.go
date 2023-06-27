@@ -9,7 +9,6 @@ import (
 	"math/cmplx"
 	"reflect"
 	"strconv"
-	"unicode"
 )
 
 // SyntaxError represents a syntax error.
@@ -234,7 +233,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 	unwarned := unwrapValue(x)
 
 	// check if the field name is exported
-	isExported := unicode.IsUpper([]rune(fieldOrTagOrMethodName)[0])
+	isExported := token.IsExported(fieldOrTagOrMethodName)
 
 	var result reflect.Value
 
@@ -287,7 +286,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 	// we failed to find the field
 	// it means you wrote a wrong expression
 	if !result.IsValid() {
-		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", exp.Sel.Name)
+		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", fieldOrTagOrMethodName)
 	}
 
 	return result, nil
