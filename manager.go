@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -33,8 +49,12 @@ type genericManager[T any] struct {
 
 // Object implements the GenericManager interface.
 func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
-	exe := s.Manager.Object(v)
-	return &genericExecutor[T]{Executor: exe, cache: s.cache}
+	exe := &genericExecutor[T]{Executor: s.Manager.Object(v)}
+	// add the cache middleware if the cache is not nil
+	if s.cache != nil {
+		exe.Use(&CacheMiddleware[T]{cache: s.cache})
+	}
+	return exe
 }
 
 // TxManager is a transactional mapper executor

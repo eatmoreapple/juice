@@ -1,10 +1,25 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/eatmoreapple/juice/cache"
 	"reflect"
 )
 
@@ -30,6 +45,12 @@ func inValidExecutor(err error) Executor {
 	return &executor{err: err}
 }
 
+// executorParamContext returns a new context with the session and param.
+func executorParamContext(ctx context.Context, e Executor, param Param) context.Context {
+	ctx = SessionWithContext(ctx, e.Session())
+	return CtxWithParam(ctx, param)
+}
+
 // executor is an executor of SQL.
 type executor struct {
 	session   Session
@@ -51,8 +72,7 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = SessionWithContext(ctx, e.Session())
-	ctx = CtxWithParam(ctx, param)
+	ctx = executorParamContext(ctx, e, param)
 	return e.Statement().QueryHandler()(ctx, query, args...)
 }
 
@@ -62,10 +82,7 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = SessionWithContext(ctx, e.Session())
-
-	ctx = CtxWithParam(ctx, param)
-
+	ctx = executorParamContext(ctx, e, param)
 	return e.Statement().ExecHandler()(ctx, query, args...)
 }
 
@@ -102,7 +119,6 @@ type GenericExecutor[T any] interface {
 // genericExecutor is a generic executor.
 type genericExecutor[T any] struct {
 	Executor
-	cache       cache.Cache
 	middlewares GenericMiddlewareGroup[T]
 }
 
@@ -118,16 +134,8 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	if err != nil {
 		return
 	}
-
-	if e.cache != nil {
-		e.Use(&CacheMiddleware[T]{cache: e.cache})
-	}
-
 	// get the cache key
-	ctx = SessionWithContext(ctx, e.Session())
-
-	ctx = CtxWithParam(ctx, p)
-
+	ctx = executorParamContext(ctx, e, p)
 	// call the middleware
 	return e.middlewares.QueryContext(statement, e.queryContext)(ctx, query, args...)
 }
@@ -184,4 +192,5 @@ func (e *genericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
 	e.middlewares = append(e.middlewares, middlewares...)
 }
 
+// ensure genericExecutor implements GenericExecutor.
 var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
