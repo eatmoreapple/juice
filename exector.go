@@ -135,7 +135,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 		return
 	}
 	// get the cache key
-	ctx = executorParamContext(ctx, e, p)
+	ctx = executorParamContext(ctx, e.Executor, p)
 	// call the middleware
 	return e.middlewares.QueryContext(statement, e.queryContext)(ctx, query, args...)
 }

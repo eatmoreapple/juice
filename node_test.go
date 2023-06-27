@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -92,7 +108,7 @@ func TestForeachMapNode_Accept(t *testing.T) {
 func TestIfNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
 	node1, _ := NewTextNode("select * from user where id = #{id}")
-	node := IfNode{
+	node := &IfNode{
 		Nodes: []Node{node1},
 	}
 
@@ -103,7 +119,7 @@ func TestIfNode_Accept(t *testing.T) {
 
 	h := H{"id": 1}
 
-	query, args, err := node.Accept(drv.Translator(), newGenericParam(h, ""))
+	query, args, err := node.Accept(drv.Translator(), h.AsParam())
 	if err != nil {
 		t.Error(err)
 		return
@@ -212,7 +228,7 @@ func TestTrimNode_Accept(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	node := TrimNode{
+	node := &TrimNode{
 		Nodes: []Node{
 			ifNode,
 		},
@@ -221,7 +237,7 @@ func TestTrimNode_Accept(t *testing.T) {
 		SuffixOverrides: []string{","},
 	}
 	params := H{"id": 1, "name": "a"}
-	query, args, err := node.Accept(drv.Translator(), newGenericParam(params, ""))
+	query, args, err := node.Accept(drv.Translator(), params.AsParam())
 	if err != nil {
 		t.Error(err)
 		return

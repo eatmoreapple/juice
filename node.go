@@ -1,9 +1,23 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"reflect"
 	"regexp"
 	"strings"
@@ -102,17 +116,14 @@ func NewTextNode(str string) (Node, error) {
 }
 
 type ConditionNode struct {
-	testExpr ast.Expr
-	Nodes    []Node
+	expr  Expression
+	Nodes []Node
 }
 
 // Parse with given expression.
 func (c *ConditionNode) Parse(test string) (err error) {
-	c.testExpr, err = parser.ParseExpr(test)
-	if err != nil {
-		return &SyntaxError{err}
-	}
-	return nil
+	c.expr, err = DefaultEvaluator.Parse(test)
+	return err
 }
 
 // Accept accepts parameters and returns query and arguments.
@@ -144,7 +155,7 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 
 // Match returns true if test is matched.
 func (c *ConditionNode) Match(p Parameter) (bool, error) {
-	value, err := eval(c.testExpr, p)
+	value, err := c.expr.Eval(p)
 	if err != nil {
 		return false, err
 	}
