@@ -33,7 +33,7 @@ type Evaluator interface {
 	Parse(expr string) (Expression, error)
 }
 
-// EvalValue is an alias of EvalValue.
+// EvalValue is an alias of reflect.Value.
 // for semantic.
 type EvalValue = reflect.Value
 
@@ -87,12 +87,13 @@ func (s *SyntaxError) Unwrap() error {
 	return s.err
 }
 
-func Eval(expr string, params Parameter) (reflect.Value, error) {
-	exp, err := parser.ParseExpr(expr)
+// Eval is a shortcut of DefaultEvaluator.Parse(expr).Eval(params).
+func Eval(expr string, params Parameter) (EvalValue, error) {
+	expression, err := DefaultEvaluator.Parse(expr)
 	if err != nil {
-		return reflect.Value{}, &SyntaxError{err}
+		return reflect.Value{}, err
 	}
-	return eval(exp, params)
+	return expression.Eval(params)
 }
 
 func eval(exp ast.Expr, params Parameter) (reflect.Value, error) {
