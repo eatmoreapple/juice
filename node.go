@@ -501,18 +501,23 @@ func (s SQLNode) Accept(translator driver.Translator, p Parameter) (query string
 // IncludeNode is a node of include.
 // It includes another SQL.
 type IncludeNode struct {
-	RefId  string
-	mapper *Mapper
-	nodes  []Node
+	sqlNode Node
+	mapper  *Mapper
+	refId   string
 }
 
 // Accept accepts parameters and returns query and arguments.
-func (i IncludeNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	sqlNode, err := i.mapper.GetSQLNodeByID(i.RefId)
-	if err != nil {
-		return "", nil, fmt.Errorf("sql node %s not found", i.RefId)
+func (i *IncludeNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	if i.sqlNode == nil {
+		// lazy loading
+		// does it need to be thread safe?
+		sqlNode, err := i.mapper.GetSQLNodeByID(i.refId)
+		if err != nil {
+			return "", nil, err
+		}
+		i.sqlNode = sqlNode
 	}
-	return sqlNode.Accept(translator, p)
+	return i.sqlNode.Accept(translator, p)
 }
 
 // ChooseNode is a node of choose.
