@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -460,7 +476,12 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 		return nil, &nodeAttributeRequiredError{nodeName: "include", attrName: "refid"}
 	}
 
-	includeNode := &IncludeNode{RefId: ref, mapper: mapper}
+	// try to find sql statement by refid
+	// if not found, it means the sql statement has not been parsed yet,
+	// ignore it and lazy parse it when use
+	sqlNode, _ := mapper.GetSQLNodeByID(ref)
+
+	includeNode := &IncludeNode{sqlNode: sqlNode, mapper: mapper, refId: ref}
 
 	for {
 		token, err := decoder.Token()
@@ -471,6 +492,7 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 			return nil, err
 		}
 		switch token := token.(type) {
+		// TODO: PARSE PROPERTIES HERE
 		case xml.EndElement:
 			if token.Name.Local == "include" {
 				return includeNode, nil
