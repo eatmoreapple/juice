@@ -330,15 +330,6 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 		}
 	case reflect.Map:
 		result = unwarned.MapIndex(reflect.ValueOf(fieldOrTagOrMethodName))
-	case reflect.Slice, reflect.Array:
-		index, err := strconv.Atoi(fieldOrTagOrMethodName)
-		if err != nil {
-			break
-		}
-		if index < 0 || index >= unwarned.Len() {
-			return reflect.Value{}, errors.New("slice index out of range")
-		}
-		result = unwarned.Index(index)
 	}
 
 	// try to find method from the type
