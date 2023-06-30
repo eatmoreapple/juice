@@ -298,8 +298,8 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 
 	var result reflect.Value
 
-	if unwarned.Kind() == reflect.Struct {
-
+	switch unwarned.Kind() {
+	case reflect.Struct:
 		// findFromTag is a closure function that tries to find the field from the field tag
 		findFromTag := func() {
 			tp := unwarned.Type()
@@ -322,26 +322,29 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 				result = unwarned.FieldByName(fieldOrTagOrMethodName)
 			}
 
-			// it is a method?
-			if !result.IsValid() && unwarned.NumMethod() > 0 {
-				// use x directly, in case x is a pointer
-				result = x.MethodByName(fieldOrTagOrMethodName)
-			}
-
 			// not a method either, try to find from the field tag,
 			// try to find from the field tag
 			if !result.IsValid() {
-				// only fools would write uppercase tags
 				findFromTag()
 			}
 		}
-	} else {
-		// if the expression is not a struct
-		// try to find method from the type
-		if isExported && x.NumMethod() > 0 {
-			// use x directly, in case x is a pointer
-			result = x.MethodByName(fieldOrTagOrMethodName)
+	case reflect.Map:
+		result = unwarned.MapIndex(reflect.ValueOf(fieldOrTagOrMethodName))
+	case reflect.Slice, reflect.Array:
+		index, err := strconv.Atoi(fieldOrTagOrMethodName)
+		if err != nil {
+			break
 		}
+		if index < 0 || index >= unwarned.Len() {
+			return reflect.Value{}, errors.New("slice index out of range")
+		}
+		result = unwarned.Index(index)
+	}
+
+	// try to find method from the type
+	if isExported && x.NumMethod() > 0 {
+		// use x directly, in case x is a pointer
+		result = x.MethodByName(fieldOrTagOrMethodName)
 	}
 
 	// we failed to find the field
