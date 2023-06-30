@@ -350,7 +350,7 @@ func (f ForeachNode) acceptSlice(value reflect.Value, translator driver.Translat
 
 	for i := 0; i < sliceLength; i++ {
 
-		item := unwrapValue(value.Index(i)).Interface()
+		item := value.Index(i).Interface()
 
 		group[0] = H{f.Item: item, f.Index: i}.AsParam()
 
@@ -400,9 +400,9 @@ func (f ForeachNode) acceptMap(value reflect.Value, translator driver.Translator
 
 	for _, key := range keys {
 
-		item := unwrapValue(value.MapIndex(key)).Interface()
+		item := value.MapIndex(key).Interface()
 
-		group[0] = H{f.Item: item, f.Index: unwrapValue(key).Interface()}.AsParam()
+		group[0] = H{f.Item: item, f.Index: key.Interface()}.AsParam()
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, group)
