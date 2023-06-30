@@ -1,6 +1,7 @@
 ## Juice SQL Mapper Framework For Golang
 
-![Go Doc](https://pkg.go.dev/badge/github.com/eatmoreapple/juice)
+[![Go Doc](https://pkg.go.dev/badge/github.com/eatmoreapple/juice)](https://godoc.org/github.com/eatmoreapple/juice)
+[![Release](https://img.shields.io/github/v/release/eatmoreapple/juice.svg?style=flat-square)](https://github.com/eatmoreapple/juice/releases)
 ![Go Report Card](https://goreportcard.com/badge/github.com/eatmoreapple/juice)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
