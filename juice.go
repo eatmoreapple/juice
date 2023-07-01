@@ -68,7 +68,7 @@ func (e *Engine) Object(v any) Executor {
 	if err != nil {
 		return inValidExecutor(err)
 	}
-	return exe
+	return ctxInjectExecutor(exe)
 }
 
 // Tx returns a TxManager
