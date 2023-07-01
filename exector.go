@@ -127,7 +127,7 @@ func NewSessionCtxInjectorExecutorWrapper() ExecutorWrapper {
 
 // inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {
-	return &executor{err: err}
+	return &badExecutor{err}
 }
 
 var (
@@ -137,37 +137,59 @@ var (
 	}
 )
 
+var (
+	// ensure that the defaultExecutor implements the Executor interface.
+	_ Executor = (*badExecutor)(nil)
+
+	// ensure that the badExecutor implements the error interface.
+	_ error = (*badExecutor)(nil)
+)
+
+// badExecutor wraps the error who implements the Executor interface.
+type badExecutor struct{ error }
+
+// QueryContext implements the Executor interface.
+func (b badExecutor) QueryContext(_ context.Context, _ Param) (*sql.Rows, error) { return nil, b.error }
+
+// ExecContext implements the Executor interface.
+func (b badExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, error) { return nil, b.error }
+
+// Statement implements the Executor interface.
+func (b badExecutor) Statement() *Statement { return nil }
+
+// Session implements the Executor interface.
+func (b badExecutor) Session() Session { return nil }
+
+// isBadExecutor
+func isBadExecutor(e Executor) (*badExecutor, bool) {
+	i, ok := e.(*badExecutor)
+	return i, ok
+}
+
 // executor is an executor of SQL.
 type executor struct {
 	session   Session
 	statement *Statement
-	err       error
-}
-
-// build builds the query and args.
-func (e *executor) build(param Param) (query string, args []any, err error) {
-	if e.err != nil {
-		return "", nil, e.err
-	}
-	return e.Statement().Build(param)
 }
 
 // QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
-	query, args, err := e.build(param)
+	stmt := e.Statement()
+	query, args, err := stmt.Build(param)
 	if err != nil {
 		return nil, err
 	}
-	return e.Statement().QueryHandler()(ctx, query, args...)
+	return stmt.QueryHandler()(ctx, query, args...)
 }
 
 // ExecContext executes the query and returns the result.
 func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
-	query, args, err := e.build(param)
+	stmt := e.Statement()
+	query, args, err := stmt.Build(param)
 	if err != nil {
 		return nil, err
 	}
-	return e.Statement().ExecHandler()(ctx, query, args...)
+	return stmt.ExecHandler()(ctx, query, args...)
 }
 
 // Statement returns the statement.
@@ -177,10 +199,6 @@ func (e *executor) Statement() *Statement {
 
 func (e *executor) Session() Session {
 	return e.session
-}
-
-func (e *executor) IsValid() (bool, error) {
-	return e.err == nil, e.err
 }
 
 // GenericExecutor is a generic executor.
@@ -213,8 +231,8 @@ type genericExecutor[T any] struct {
 // QueryContext executes the query and returns the scanner.
 func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
 	// check the error of the executor
-	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
-		return result, exe.err
+	if exe, ok := isBadExecutor(e.Executor); ok {
+		return result, exe.error
 	}
 	statement := e.Statement()
 	// build the query and args
@@ -266,8 +284,8 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 // ExecContext executes the query and returns the result.
 func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
 	// check the error of the executor
-	if exe, ok := e.Executor.(*executor); ok && exe.err != nil {
-		return ret, exe.err
+	if exe, ok := isBadExecutor(e.Executor); ok {
+		return ret, exe.error
 	}
 	return e.Executor.ExecContext(ctx, p)
 }
