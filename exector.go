@@ -131,13 +131,6 @@ func inValidExecutor(err error) Executor {
 }
 
 var (
-	defaultInjectorExecutorGroup ExecutorWrapper = ExecutorWarpGroup{
-		NewSessionCtxInjectorExecutorWrapper(),
-		NewParamCtxInjectorExecutorWarpper(),
-	}
-)
-
-var (
 	// ensure that the defaultExecutor implements the Executor interface.
 	_ Executor = (*badExecutor)(nil)
 
