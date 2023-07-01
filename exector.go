@@ -40,6 +40,33 @@ type Executor interface {
 	Session() Session
 }
 
+// ExecutorWrapper is an interface for injecting the executor.
+type ExecutorWrapper interface {
+	// WarpExecutor injects the executor and returns the new executor.
+	WarpExecutor(Executor) Executor
+}
+
+// ExecutorWarpGroup is a group of executor injectors.
+// It implements the ExecutorWrapper interface.
+type ExecutorWarpGroup []ExecutorWrapper
+
+// WarpExecutor implements the ExecutorWrapper interface.
+// It wrapped the executor by the order of the group.
+func (eg ExecutorWarpGroup) WarpExecutor(e Executor) Executor {
+	for _, injector := range eg {
+		e = injector.WarpExecutor(e)
+	}
+	return e
+}
+
+// ExecutorWarpFunc is a function type that implements the ExecutorWrapper interface.
+type ExecutorWarpFunc func(Executor) Executor
+
+// WarpExecutor implements the ExecutorWrapper interface.
+func (f ExecutorWarpFunc) WarpExecutor(e Executor) Executor {
+	return f(e)
+}
+
 // ParamCtxInjectorExecutor is an executor that injects the param into the context.
 // Which ensures that the param can be used in the middleware.
 type ParamCtxInjectorExecutor struct {
@@ -60,6 +87,13 @@ func (e *ParamCtxInjectorExecutor) QueryContext(ctx context.Context, param Param
 func (e *ParamCtxInjectorExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
 	ctx = CtxWithParam(ctx, param)
 	return e.Executor.ExecContext(ctx, param)
+}
+
+// NewParamCtxInjectorExecutorWarpper returns a new ParamCtxInjectorExecutor.
+func NewParamCtxInjectorExecutorWarpper() ExecutorWrapper {
+	return ExecutorWarpFunc(func(e Executor) Executor {
+		return &ParamCtxInjectorExecutor{Executor: e}
+	})
 }
 
 // SessionCtxInjectorExecutor is an executor that injects the session into the context.
@@ -84,16 +118,24 @@ func (e *SessionCtxInjectorExecutor) ExecContext(ctx context.Context, param Para
 	return e.Executor.ExecContext(ctx, param)
 }
 
+// NewSessionCtxInjectorExecutorWrapper returns a new SessionCtxInjectorExecutor.
+func NewSessionCtxInjectorExecutorWrapper() ExecutorWrapper {
+	return ExecutorWarpFunc(func(e Executor) Executor {
+		return &SessionCtxInjectorExecutor{Executor: e}
+	})
+}
+
 // inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {
 	return &executor{err: err}
 }
 
-func ctxInjectExecutor(executor Executor) Executor {
-	sessionCtxInjectorExecutor := &SessionCtxInjectorExecutor{Executor: executor}
-	paramCtxInjectorExecutor := &ParamCtxInjectorExecutor{Executor: sessionCtxInjectorExecutor}
-	return paramCtxInjectorExecutor
-}
+var (
+	defaultInjectorExecutorGroup ExecutorWrapper = ExecutorWarpGroup{
+		NewSessionCtxInjectorExecutorWrapper(),
+		NewParamCtxInjectorExecutorWarpper(),
+	}
+)
 
 // executor is an executor of SQL.
 type executor struct {
