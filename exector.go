@@ -40,15 +40,59 @@ type Executor interface {
 	Session() Session
 }
 
+// ParamCtxInjectorExecutor is an executor that injects the param into the context.
+// Which ensures that the param can be used in the middleware.
+type ParamCtxInjectorExecutor struct {
+	Executor
+}
+
+// QueryContext executes a query that returns rows, typically a SELECT.
+// The param are the placeholder collection for this query.
+// The context is injected by the queryContext.
+func (e *ParamCtxInjectorExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
+	ctx = CtxWithParam(ctx, param)
+	return e.Executor.QueryContext(ctx, param)
+}
+
+// ExecContext executes a query without returning any rows.
+// The param are the placeholder collection for this query.
+// The context is injected by the execContext.
+func (e *ParamCtxInjectorExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
+	ctx = CtxWithParam(ctx, param)
+	return e.Executor.ExecContext(ctx, param)
+}
+
+// SessionCtxInjectorExecutor is an executor that injects the session into the context.
+// Which ensures that the session can be used in the middleware.
+type SessionCtxInjectorExecutor struct {
+	Executor
+}
+
+// QueryContext executes a query that returns rows, typically a SELECT.
+// The param are the placeholder collection for this query.
+// The context is injected by the sessionContext.
+func (e *SessionCtxInjectorExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
+	ctx = SessionWithContext(ctx, e.Executor.Session())
+	return e.Executor.QueryContext(ctx, param)
+}
+
+// ExecContext executes a query without returning any rows.
+// The param are the placeholder collection for this query.
+// The context is injected by the sessionContext.
+func (e *SessionCtxInjectorExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
+	ctx = SessionWithContext(ctx, e.Executor.Session())
+	return e.Executor.ExecContext(ctx, param)
+}
+
 // inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {
 	return &executor{err: err}
 }
 
-// executorParamContext returns a new context with the session and param.
-func executorParamContext(ctx context.Context, e Executor, param Param) context.Context {
-	ctx = SessionWithContext(ctx, e.Session())
-	return CtxWithParam(ctx, param)
+func ctxInjectExecutor(executor Executor) Executor {
+	sessionCtxInjectorExecutor := &SessionCtxInjectorExecutor{Executor: executor}
+	paramCtxInjectorExecutor := &ParamCtxInjectorExecutor{Executor: sessionCtxInjectorExecutor}
+	return paramCtxInjectorExecutor
 }
 
 // executor is an executor of SQL.
@@ -72,7 +116,6 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = executorParamContext(ctx, e, param)
 	return e.Statement().QueryHandler()(ctx, query, args...)
 }
 
@@ -82,7 +125,6 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	if err != nil {
 		return nil, err
 	}
-	ctx = executorParamContext(ctx, e, param)
 	return e.Statement().ExecHandler()(ctx, query, args...)
 }
 
@@ -93,6 +135,10 @@ func (e *executor) Statement() *Statement {
 
 func (e *executor) Session() Session {
 	return e.session
+}
+
+func (e *executor) IsValid() (bool, error) {
+	return e.err == nil, e.err
 }
 
 // GenericExecutor is a generic executor.
@@ -134,45 +180,45 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	if err != nil {
 		return
 	}
-	// get the cache key
-	ctx = executorParamContext(ctx, e.Executor, p)
 	// call the middleware
-	return e.middlewares.QueryContext(statement, e.queryContext)(ctx, query, args...)
+	return e.middlewares.QueryContext(statement, e.queryContext(p))(ctx, query, args...)
 }
 
-func (e *genericExecutor[T]) queryContext(ctx context.Context, query string, args ...any) (result T, err error) {
-	statement := e.Statement()
+func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
+	return func(ctx context.Context, query string, args ...any) (result T, err error) {
+		statement := e.Statement()
 
-	retMap, err := statement.ResultMap()
+		retMap, err := statement.ResultMap()
 
-	// ErrResultMapNotSet means the result map is not set, use the default result map.
-	if err != nil {
-		if !errors.Is(err, ErrResultMapNotSet) {
+		// ErrResultMapNotSet means the result map is not set, use the default result map.
+		if err != nil {
+			if !errors.Is(err, ErrResultMapNotSet) {
+				return
+			}
+		}
+
+		// try to query the database.
+		rows, err := e.Executor.QueryContext(ctx, param)
+		if err != nil {
 			return
 		}
-	}
+		defer func() { _ = rows.Close() }()
 
-	// try to query the database.
-	rows, err := statement.QueryHandler()(ctx, query, args...)
-	if err != nil {
+		// ptr is the pointer of the result, it is the destination of the binding.
+		var ptr any = &result
+
+		rv := reflect.ValueOf(result)
+
+		// if the result is a pointer, create a new instance of the element.
+		// you'd better not use a nil pointer as the result.
+		if rv.Kind() == reflect.Ptr {
+			result = reflect.New(rv.Type().Elem()).Interface().(T)
+			ptr = result
+		}
+
+		err = BindWithResultMap(rows, ptr, retMap)
 		return
 	}
-	defer func() { _ = rows.Close() }()
-
-	// ptr is the pointer of the result, it is the destination of the binding.
-	var ptr any = &result
-
-	rv := reflect.ValueOf(result)
-
-	// if the result is a pointer, create a new instance of the element.
-	// you'd better not use a nil pointer as the result.
-	if rv.Kind() == reflect.Ptr {
-		result = reflect.New(rv.Type().Elem()).Interface().(T)
-		ptr = result
-	}
-
-	err = BindWithResultMap(rows, ptr, retMap)
-	return
 }
 
 // ExecContext executes the query and returns the result.
