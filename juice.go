@@ -49,6 +49,10 @@ type Engine struct {
 	// like logging, tracing, etc.
 	middlewares MiddlewareGroup
 
+	// executorWrapper is the wrapper of the executor
+	// which is used to wrap the executor
+	executorWrapper ExecutorWrapper
+
 	// cacheFactory is the cache factory of the engine
 	cacheFactory func() cache.Cache
 }
@@ -68,7 +72,7 @@ func (e *Engine) Object(v any) Executor {
 	if err != nil {
 		return inValidExecutor(err)
 	}
-	return defaultInjectorExecutorGroup.WarpExecutor(exe)
+	return e.executorWrapper.WarpExecutor(exe)
 }
 
 // Tx returns a TxManager
@@ -150,29 +154,20 @@ func (e *Engine) SetLocker(locker RWLocker) {
 
 // init initializes the engine
 func (e *Engine) init() error {
-
 	// one the default environment from the configuration
 	env, err := e.configuration.Environments.DefaultEnv()
 	if err != nil {
 		return err
 	}
-
 	// try to one the driver from the configuration
 	drv, err := driver.Get(env.Driver)
 	if err != nil {
 		return err
 	}
 	e.driver = drv
-
 	// open the database connection
 	e.db, err = env.Connect(drv)
-
-	if err != nil {
-		return err
-	}
-	// set default cache factory
-	e.SetCacheFactory(func() cache.Cache { return cache.New() })
-	return nil
+	return err
 }
 
 // NewEngine creates a new Engine
@@ -183,8 +178,15 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	if err := engine.init(); err != nil {
 		return nil, err
 	}
+	// set default cache factory
+	engine.SetCacheFactory(func() cache.Cache { return cache.New() })
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
+	// set default executor wrapper
+	engine.executorWrapper = ExecutorWarpGroup{
+		NewSessionCtxInjectorExecutorWrapper(),
+		NewParamCtxInjectorExecutorWarpper(),
+	}
 	return engine, nil
 }
 
