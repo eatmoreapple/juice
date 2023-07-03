@@ -208,9 +208,18 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 		}
 		return value.Index(int(i)), nil
 	case reflect.Map:
+		// in this case, index must be assignable to the map's key type
+		// if value not exist, return the map's default value
 		v := value.MapIndex(index)
-		if !v.IsValid() {
-			return reflect.Value{}, errors.New("map index out of range")
+		if v.IsValid() {
+			return v, nil
+		}
+		// get map default value
+		if v.Kind() == reflect.Interface {
+			v = v.Elem()
+		}
+		if v.Kind() == reflect.Invalid {
+			v = reflect.Zero(value.Type().Elem())
 		}
 		return v, nil
 	default:
@@ -330,6 +339,8 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 		}
 	case reflect.Map:
 		result = unwarned.MapIndex(reflect.ValueOf(fieldOrTagOrMethodName))
+		// select expression does not support get default value from map
+		// it might be ambiguous with calling a method
 	}
 
 	// try to find method from the type
