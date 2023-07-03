@@ -699,3 +699,45 @@ func TestSelectorFunc(t *testing.T) {
 		return
 	}
 }
+
+func TestMapDefaultMap(t *testing.T) {
+	result, err := Eval("a.b", H{"a": H{"b": 1}}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Interface() != 1 {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`a["c"]`, H{"a": map[string]int{}}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Interface() != 0 {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`a["c"]`, H{"a": map[string]string{}}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Interface() != "" {
+		t.Error("eval error")
+		return
+	}
+
+	result, err = Eval(`a["c"]`, H{"a": map[string]float64{}}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Interface() != 0.0 {
+		t.Error("eval error")
+		return
+	}
+}
