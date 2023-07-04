@@ -242,6 +242,8 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	if numIn := fnType.NumIn(); numIn != len(exp.Args) {
 		return reflect.Value{}, fmt.Errorf("invalid number of arguments: expected %d, got %d", numIn, len(exp.Args))
 	}
+	// TODO dot dot dot support
+	// ...type
 	if fnType.NumOut() != 2 {
 		return reflect.Value{}, fmt.Errorf("invalid number of return values: expected 2, got %d", fn.Type().NumOut())
 	}
@@ -331,7 +333,6 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 				result = unwarned.FieldByName(fieldOrTagOrMethodName)
 			}
 
-			// not a method either, try to find from the field tag,
 			// try to find from the field tag
 			if !result.IsValid() {
 				findFromTag()
