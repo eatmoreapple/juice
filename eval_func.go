@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -9,11 +25,11 @@ import (
 
 // return the length of the string or array
 func length(v any) (int, error) {
-	switch v.(type) {
+	switch t := v.(type) {
 	case nil:
 		return 0, nil
 	case string:
-		return len(v.(string)), nil
+		return len(t), nil
 	default:
 		rv := reflect.Indirect(reflect.ValueOf(v))
 		switch rv.Kind() {
@@ -71,13 +87,13 @@ func strJoin(v any, sep string) (string, error) {
 
 // contains returns true if the value is in the array or string.
 func contains(s any, v any) (bool, error) {
-	switch s.(type) {
+	switch t := s.(type) {
 	case string:
 		value, ok := v.(string)
 		if !ok {
-			v = fmt.Sprintf("%v", v)
+			value = fmt.Sprintf("%v", v)
 		}
-		return strings.Contains(s.(string), value), nil
+		return strings.Contains(t, value), nil
 	default:
 		rv := reflect.Indirect(reflect.ValueOf(s))
 		switch rv.Kind() {
@@ -106,11 +122,6 @@ func slice(v any, start, count int) ([]any, error) {
 		return ret, nil
 	}
 	return nil, errors.New("slice: invalid argument type")
-}
-
-// title returns a copy of the string s with all Unicode letters that begin words mapped to their title case.
-func title(text string) (string, error) {
-	return strings.Title(text), nil
 }
 
 // lower returns a copy of the string s with all Unicode letters mapped to their lower case.
@@ -221,7 +232,6 @@ func init() {
 	MustRegisterEvalFunc("join", strJoin)
 	MustRegisterEvalFunc("contains", contains)
 	MustRegisterEvalFunc("slice", slice)
-	MustRegisterEvalFunc("title", title)
 	MustRegisterEvalFunc("lower", lower)
 	MustRegisterEvalFunc("upper", upper)
 	MustRegisterEvalFunc("trim", trim)

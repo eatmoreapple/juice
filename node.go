@@ -457,9 +457,7 @@ func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string
 	if query != "" {
 		query = "SET " + query
 	}
-	if strings.HasSuffix(query, ",") {
-		query = query[:len(query)-1]
-	}
+	query = strings.TrimSuffix(query, ",")
 	return query, args, nil
 }
 
