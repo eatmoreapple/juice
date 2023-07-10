@@ -19,6 +19,7 @@ package juice
 import (
 	"errors"
 	"fmt"
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -313,13 +314,9 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 	case reflect.Struct:
 		// findFromTag is a closure function that tries to find the field from the field tag
 		findFromTag := func() {
-			tp := unwarned.Type()
-			for i := 0; i < unwarned.NumField(); i++ {
-				field := tp.Field(i)
-				if field.Tag.Get(defaultParamKey) == fieldOrTagOrMethodName {
-					result = unwarned.Field(i)
-					break
-				}
+			find := reflectlite.From(unwarned).FindFieldFromTag(defaultParamKey, fieldOrTagOrMethodName)
+			if find.IsValid() {
+				result = find.Value
 			}
 		}
 
