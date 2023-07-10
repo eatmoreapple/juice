@@ -51,17 +51,30 @@ func (v Value) NilAble() bool {
 // IndirectType returns the type of the element if the type is a pointer type.
 // Otherwise, it returns the type directly.
 func (v Value) IndirectType() reflect.Type {
-	t := v.Type()
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t
+	return v.Unwrap().Type()
 }
 
 // IndirectKind returns the kind of the element if the type is a pointer type.
 // Otherwise, it returns the kind of the type directly.
 func (v Value) IndirectKind() reflect.Kind {
 	return v.IndirectType().Kind()
+}
+
+// FindFieldFromTag returns the field value by tag name and tag value.
+// It returns the zero Value if not found or the type is not struct.
+func (v Value) FindFieldFromTag(tagName, tagValue string) Value {
+	t := v.IndirectType()
+	// only struct can have tag
+	if t.Kind() != reflect.Struct {
+		return Value{}
+	}
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if tag := field.Tag.Get(tagName); tag == tagValue {
+			return From(v.Field(i))
+		}
+	}
+	return Value{}
 }
 
 // ValueOf returns a new Value initialized to the concrete value
