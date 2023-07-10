@@ -215,44 +215,37 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 		keyProperty := stmt.Attribute("keyProperty")
 
 		if len(keyProperty) == 0 {
-			ty := rv.Type()
-			// If the keyProperty is empty, try to find from the tag.
-			for i := 0; i < ty.NumField(); i++ {
-				if autoIncr := ty.Field(i).Tag.Get("autoincr"); autoIncr == "true" {
-					field = rv.Field(i)
-					break
-				}
-			}
+			// try to find the field by default behavior.
+			field = reflectlite.From(rv).FindFieldFromTag("autoincr", "true").Value
 		} else {
-			// try to find the field from the given struct.
-			isPublic := unicode.IsUpper(rune(keyProperty[0]))
-
 			keyProperties := strings.Split(keyProperty, ".")
+			// try to find the field from the given struct.
+			// if isPublic is true, then it means the following keyProperties are the field names.
+			// otherwise, the following keyProperties are the tag names.
+			isPublic := unicode.IsUpper(rune(keyProperty[0]))
 
 			loopValue := rv
 
 			for i := 0; i < len(keyProperties); i++ {
 
-				if ik := reflectlite.From(loopValue).IndirectKind(); ik != reflect.Struct {
+				value := reflectlite.From(loopValue)
+
+				if ik := value.IndirectKind(); ik != reflect.Struct {
 					return nil, fmt.Errorf("expect struct, but got %s", ik)
 				}
-
+				// if the keyProperty is public, find the field by name.
+				// otherwise, find the field by tag.
 				if isPublic {
-					loopValue = loopValue.FieldByName(keyProperties[i])
+					loopValue = value.FieldByName(keyProperties[i])
 				} else {
-					// try to find the field from the tag.
-					ty := loopValue.Type()
-					for j := 0; j < ty.NumField(); j++ {
-						if ty.Field(j).Tag.Get("param") == keyProperties[i] {
-							loopValue = loopValue.Field(j)
-							break
-						}
-					}
+					loopValue = value.FindFieldFromTag("column", keyProperties[i]).Value
 				}
-				if !loopValue.IsValid() || loopValue == rv {
+				// we can not find the field, return directly.
+				if !loopValue.IsValid() {
 					return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
 				}
 			}
+			// reset the field
 			field = loopValue
 		}
 
