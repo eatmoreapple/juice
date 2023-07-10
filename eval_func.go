@@ -87,13 +87,13 @@ func strJoin(v any, sep string) (string, error) {
 
 // contains returns true if the value is in the array or string.
 func contains(s any, v any) (bool, error) {
-	switch s.(type) {
+	switch t := s.(type) {
 	case string:
 		value, ok := v.(string)
 		if !ok {
-			v = fmt.Sprintf("%v", v)
+			value = fmt.Sprintf("%v", v)
 		}
-		return strings.Contains(s.(string), value), nil
+		return strings.Contains(t, value), nil
 	default:
 		rv := reflect.Indirect(reflect.ValueOf(s))
 		switch rv.Kind() {
