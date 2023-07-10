@@ -39,7 +39,11 @@ func CtxWithParam(ctx context.Context, param Param) context.Context {
 
 // ParamFromContext returns the parameter from the context.
 func ParamFromContext(ctx context.Context) Param {
-	return ctx.Value(paramCtxKey{}).(Param)
+	param, ok := ctx.Value(paramCtxKey{}).(Param)
+	if !ok {
+		return nil
+	}
+	return param
 }
 
 // defaultParamKey is the default key of the parameter.
