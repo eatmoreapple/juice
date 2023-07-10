@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -5,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/eatmoreapple/juice/juicecli/impl"
 	"github.com/eatmoreapple/juice/juicecli/internal/colorformat"
@@ -48,16 +65,19 @@ func Register(cmd Command) error {
 func Do() error {
 	switch {
 	case len(os.Args) == 1 || os.Args[1] == "--help" || os.Args[1] == "-h":
-		fmt.Printf("command line tool for generating code.\n\n")
-		fmt.Printf("Usage:\n")
-		fmt.Printf("  juice [command]\n\n")
-		fmt.Printf("Available Commands:\n")
+		var builder strings.Builder
+		builder.WriteString("Juice is a command line tool for generating code.\n\n")
+		builder.WriteString("Usage:\n")
+		builder.WriteString("  juice [command]\n\n")
+		builder.WriteString("Available Commands:\n")
 		for _, cmd := range commands {
-			fmt.Println(fmt.Sprintf("  %-10s %s", colorformat.Red(cmd.Name()), colorformat.Magenta(cmd.Description())))
+			builder.WriteString(fmt.Sprintf("  %-10s %s\n", colorformat.Red(cmd.Name()), colorformat.Magenta(cmd.Description())))
 		}
-		fmt.Printf("\nFlags:\n")
-		fmt.Println(colorformat.Cyan("  -h, --help\t"))
-		fmt.Println("\nUse \"juice [command] --help\" for more information about a command.")
+		builder.WriteString("\nFlags:\n")
+		builder.WriteString("  -h, --help\t")
+		builder.WriteString("help for juice\n")
+		builder.WriteString("\nUse \"juice [command] --help\" for more information about a command.")
+		fmt.Println(builder.String())
 		return nil
 	}
 	name := os.Args[1]
