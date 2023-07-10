@@ -41,10 +41,6 @@ type XMLParser struct {
 	ignoreEnv     bool
 }
 
-func (p XMLParser) IgnoreEnv(i bool) {
-	p.ignoreEnv = i
-}
-
 // Parse implements ConfigurationParser.
 func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 	decoder := xml.NewDecoder(reader)

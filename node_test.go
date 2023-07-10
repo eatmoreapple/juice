@@ -193,9 +193,6 @@ func TestWhereNode_Accept(t *testing.T) {
 		return
 	}
 
-	node1, _ = NewTextNode("id = #{id}")
-	node2, _ = NewTextNode("AND name = #{name}")
-
 	if query != "WHERE id = ? AND name = ?" {
 		t.Error("query error")
 		return
