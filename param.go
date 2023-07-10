@@ -39,7 +39,7 @@ func CtxWithParam(ctx context.Context, param Param) context.Context {
 
 // ParamFromContext returns the parameter from the context.
 func ParamFromContext(ctx context.Context) Param {
-	// nolint:ignore
+	//lint:ignore S1040 type assertion to the same type: ctx.Value(paramCtxKey{}) already has type Param
 	param, _ := ctx.Value(paramCtxKey{}).(Param)
 	return param
 }

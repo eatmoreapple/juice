@@ -124,11 +124,6 @@ func slice(v any, start, count int) ([]any, error) {
 	return nil, errors.New("slice: invalid argument type")
 }
 
-// title returns a copy of the string s with all Unicode letters that begin words mapped to their title case.
-func title(text string) (string, error) {
-	return strings.Title(text), nil
-}
-
 // lower returns a copy of the string s with all Unicode letters mapped to their lower case.
 func lower(text string) (string, error) {
 	return strings.ToLower(text), nil
@@ -237,7 +232,6 @@ func init() {
 	MustRegisterEvalFunc("join", strJoin)
 	MustRegisterEvalFunc("contains", contains)
 	MustRegisterEvalFunc("slice", slice)
-	MustRegisterEvalFunc("title", title)
 	MustRegisterEvalFunc("lower", lower)
 	MustRegisterEvalFunc("upper", upper)
 	MustRegisterEvalFunc("trim", trim)
