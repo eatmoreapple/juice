@@ -2,10 +2,12 @@ package juice
 
 import (
 	"context"
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Param is an alias of any type.
@@ -72,22 +74,18 @@ type structParameter struct {
 
 // Get implements Parameter.
 func (p structParameter) Get(name string) (reflect.Value, bool) {
-	// try to one the value from field tag first
-	tp := p.Type()
-	for i := 0; i < p.NumField(); i++ {
-		if tp.Field(i).Tag.Get(defaultParamKey) == name {
-			return unwrapValue(p.Field(i)), true
-		}
-	}
-	// if not found, try to one the value from field name
-	value := p.FieldByNameFunc(func(search string) bool {
-		// this might cause unexpected behavior
-		return strings.EqualFold(name, search)
-	})
-	if !value.IsValid() {
+	if len(name) == 0 {
 		return reflect.Value{}, false
 	}
-	return value, true
+	// if isPublic it means that the name is exported
+	isPublic := unicode.IsUpper(rune(name[0]))
+	if !isPublic {
+		// try to find the field by tag
+		value := reflectlite.From(p.Value).FindFieldFromTag(defaultParamKey, name)
+		return value.Value, value.IsValid()
+	}
+	value := p.FieldByName(name)
+	return value, value.IsValid()
 }
 
 // make sure that mapParameter implements Parameter.
