@@ -9,10 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eatmoreapple/juice/cache"
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 )
 
 // Middleware is a wrapper of QueryHandler and ExecHandler.
@@ -182,7 +185,7 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 		}
 
 		// try to get param from context
-		// FIXME: the param should be set to the context before the query is executed.
+		// ParamCtxInjectorExecutor is already set in middlewares, so the param should be in the context.
 		param := ParamFromContext(ctx)
 
 		if param == nil {
@@ -200,6 +203,8 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 		rv = reflect.Indirect(rv)
 
 		// If the useGeneratedKeys is set and true but the param is not a struct pointer.
+		// NOTE: batch insert does not support useGeneratedKeys yet.
+		// TODO: support batch insert useGeneratedKeys.
 		if rv.Kind() != reflect.Struct {
 			return nil, errors.New("useGeneratedKeys is true, but the param is not a struct pointer")
 		}
@@ -208,7 +213,7 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 
 		// keyProperty is the name of the field that will be set the generated key.
 		keyProperty := stmt.Attribute("keyProperty")
-		// The keyProperty is empty, return the result directly.
+
 		if len(keyProperty) == 0 {
 			ty := rv.Type()
 			// If the keyProperty is empty, try to find from the tag.
@@ -220,7 +225,35 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 			}
 		} else {
 			// try to find the field from the given struct.
-			field = rv.FieldByName(keyProperty)
+			isPublic := unicode.IsUpper(rune(keyProperty[0]))
+
+			keyProperties := strings.Split(keyProperty, ".")
+
+			loopValue := rv
+
+			for i := 0; i < len(keyProperties); i++ {
+
+				if ik := reflectlite.From(loopValue).IndirectKind(); ik != reflect.Struct {
+					return nil, fmt.Errorf("expect struct, but got %s", ik)
+				}
+
+				if isPublic {
+					loopValue = loopValue.FieldByName(keyProperties[i])
+				} else {
+					// try to find the field from the tag.
+					ty := loopValue.Type()
+					for j := 0; j < ty.NumField(); j++ {
+						if ty.Field(j).Tag.Get("param") == keyProperties[i] {
+							loopValue = loopValue.Field(j)
+							break
+						}
+					}
+				}
+				if !loopValue.IsValid() || loopValue == rv {
+					return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
+				}
+			}
+			field = loopValue
 		}
 
 		if !field.IsValid() {

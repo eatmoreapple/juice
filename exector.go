@@ -89,8 +89,8 @@ func (e *ParamCtxInjectorExecutor) ExecContext(ctx context.Context, param Param)
 	return e.Executor.ExecContext(ctx, param)
 }
 
-// NewParamCtxInjectorExecutorWarpper returns a new ParamCtxInjectorExecutor.
-func NewParamCtxInjectorExecutorWarpper() ExecutorWrapper {
+// NewParamCtxExecutorWrapper returns a new ParamCtxInjectorExecutor.
+func NewParamCtxExecutorWrapper() ExecutorWrapper {
 	return ExecutorWarpFunc(func(e Executor) Executor {
 		return &ParamCtxInjectorExecutor{Executor: e}
 	})
@@ -118,8 +118,8 @@ func (e *SessionCtxInjectorExecutor) ExecContext(ctx context.Context, param Para
 	return e.Executor.ExecContext(ctx, param)
 }
 
-// NewSessionCtxInjectorExecutorWrapper returns a new SessionCtxInjectorExecutor.
-func NewSessionCtxInjectorExecutorWrapper() ExecutorWrapper {
+// NewSessionCtxExecutorWrapper returns a new SessionCtxInjectorExecutor.
+func NewSessionCtxExecutorWrapper() ExecutorWrapper {
 	return ExecutorWarpFunc(func(e Executor) Executor {
 		return &SessionCtxInjectorExecutor{Executor: e}
 	})
