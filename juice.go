@@ -184,8 +184,8 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	engine.Use(&useGeneratedKeysMiddleware{})
 	// set default executor wrapper
 	engine.executorWrapper = ExecutorWarpGroup{
-		NewSessionCtxInjectorExecutorWrapper(),
-		NewParamCtxInjectorExecutorWarpper(),
+		NewSessionCtxExecutorWrapper(),
+		NewParamCtxExecutorWrapper(),
 	}
 	return engine, nil
 }
