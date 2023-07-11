@@ -18,14 +18,8 @@ package reflectlite
 
 import "reflect"
 
-type Value struct {
-	reflect.Value
-}
-
-// Unwrap returns the value of the element if the type is a pointer type.
-// Otherwise, it returns the value directly.
-func (v Value) Unwrap() reflect.Value {
-	value := v.Value
+// Unwrap returns the value of the element if the type is a pointer or interface type.
+func Unwrap(value reflect.Value) reflect.Value {
 	for {
 		switch {
 		case value.Kind() == reflect.Ptr:
@@ -39,8 +33,7 @@ func (v Value) Unwrap() reflect.Value {
 }
 
 // NilAble returns true if the type can be nil.
-// only chan, func, interface, map, ptr, slice can be nil.
-func (v Value) NilAble() bool {
+func NilAble(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 		return true
@@ -48,16 +41,39 @@ func (v Value) NilAble() bool {
 	return false
 }
 
+func IndirectType(v reflect.Value) reflect.Type {
+	return Unwrap(v).Type()
+}
+
+func IndirectKind(v reflect.Value) reflect.Kind {
+	return IndirectType(v).Kind()
+}
+
+type Value struct {
+	reflect.Value
+}
+
+// Unwrap returns the value of the element if the type is a pointer or interface type.
+func (v Value) Unwrap() Value {
+	value := Unwrap(v.Value)
+	return Value{value}
+}
+
+// NilAble returns true if the type can be nil.
+func (v Value) NilAble() bool {
+	return NilAble(v.Value)
+}
+
 // IndirectType returns the type of the element if the type is a pointer type.
 // Otherwise, it returns the type directly.
 func (v Value) IndirectType() reflect.Type {
-	return v.Unwrap().Type()
+	return IndirectType(v.Value)
 }
 
 // IndirectKind returns the kind of the element if the type is a pointer type.
 // Otherwise, it returns the kind of the type directly.
 func (v Value) IndirectKind() reflect.Kind {
-	return v.IndirectType().Kind()
+	return IndirectKind(v.Value)
 }
 
 // FindFieldFromTag returns the field value by tag name and tag value.

@@ -23,6 +23,14 @@ import (
 	"reflect"
 )
 
+// kindIndirect returns the type of the element of the pointer type.
+func kindIndirect(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
 type ResultMap interface {
 	ResultTo(rv reflect.Value, row *sql.Rows) error
 }
