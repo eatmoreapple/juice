@@ -215,15 +215,13 @@ func (p *Parser) parse() error {
 
 	generator := newGenerator(p.namespace, cfg, impl)
 
-	var output io.Writer
+	var output io.Writer = os.Stdout
 	if p.output != "" {
 		output, err = os.Create(p.output)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = output.(io.Closer).Close() }()
-	} else {
-		output = os.Stdout
 	}
 	_, err = generator.WriteTo(output)
 	return err
