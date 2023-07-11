@@ -59,7 +59,7 @@ type Engine struct {
 
 // executor represents a mapper executor with the given parameters
 func (e *Engine) executor(v any) (*executor, error) {
-	stat, err := e.GetConfiguration().Mappers.GetStatement(v)
+	stat, err := e.GetConfiguration().mappers.GetStatement(v)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (e *Engine) SetLocker(locker RWLocker) {
 // init initializes the engine
 func (e *Engine) init() error {
 	// one the default environment from the configuration
-	env, err := e.configuration.Environments.DefaultEnv()
+	env, err := e.configuration.environments.DefaultEnv()
 	if err != nil {
 		return err
 	}

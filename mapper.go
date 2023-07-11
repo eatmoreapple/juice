@@ -128,7 +128,7 @@ type Mappers struct {
 
 // GetStatementByID returns a statement by id.
 // If the statement is not found, an error is returned.
-func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
+func (m Mappers) GetStatementByID(id string) (*Statement, error) {
 	stmt, exists := m.statements[id]
 	if !exists {
 		return nil, fmt.Errorf("statement `%s` not found", id)
