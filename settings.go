@@ -1,6 +1,23 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
+	"encoding"
 	"strconv"
 )
 
@@ -9,7 +26,7 @@ import (
 // Settings won't be so large, so we don't need to use map.
 type Settings []*Setting
 
-// One returns the value of the key.
+// Get returns the value of the key.
 func (s Settings) Get(name string) StringValue {
 	for _, setting := range s {
 		if setting.Name == name {
@@ -54,4 +71,9 @@ func (s StringValue) String() string {
 func (s StringValue) Float64() float64 {
 	value, _ := strconv.ParseFloat(string(s), 64)
 	return value
+}
+
+// Unmarshaler unmarshals the value to given marshaller.
+func (s StringValue) Unmarshaler(marshaller encoding.TextUnmarshaler) error {
+	return marshaller.UnmarshalText([]byte(s))
 }
