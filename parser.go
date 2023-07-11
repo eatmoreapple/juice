@@ -63,19 +63,19 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				if err != nil {
 					return nil, err
 				}
-				p.configuration.Environments = *envs
+				p.configuration.environments = *envs
 			case "mappers":
 				var mappers = Mappers{cfg: &p.configuration}
 				if err := p.parseMappers(&mappers, token, decoder); err != nil {
 					return nil, err
 				}
-				p.configuration.Mappers = mappers
+				p.configuration.mappers = mappers
 			case "settings":
 				settings, err := p.parseSettings(decoder)
 				if err != nil {
 					return nil, err
 				}
-				p.configuration.Settings = *settings
+				p.configuration.settings = *settings
 			}
 		}
 	}

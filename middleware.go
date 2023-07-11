@@ -101,7 +101,7 @@ func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
 	if debug == "false" {
 		return false
 	}
-	if cfg := stmt.Configuration(); cfg.Settings.Get("debug") == "false" {
+	if cfg := stmt.Configuration(); cfg.settings.Get("debug") == "false" {
 		return false
 	}
 	return true
@@ -172,7 +172,7 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 	// If the useGeneratedKeys is not set or false, return the result directly.
 	useGeneratedKeys := stmt.Attribute("useGeneratedKeys") == "true" ||
 		// If the useGeneratedKeys is not set, but the global useGeneratedKeys is set and true.
-		stmt.Configuration().Settings.Get("useGeneratedKeys") == "true"
+		stmt.Configuration().settings.Get("useGeneratedKeys") == "true"
 
 	if !useGeneratedKeys {
 		return next

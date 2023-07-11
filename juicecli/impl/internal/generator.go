@@ -19,7 +19,7 @@ func (g *Generator) Generate() (io.Reader, error) {
 	for _, m := range g.impl.iface.Methods() {
 		method := m
 		key := fmt.Sprintf("%s.%s", g.namespace, method.Name())
-		statement, err := g.cfg.Mappers.GetStatementByID(key)
+		statement, err := g.cfg.Mappers().GetStatementByID(key)
 		if err != nil {
 			return nil, err
 		}

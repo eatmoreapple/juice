@@ -194,7 +194,7 @@ func (p *Parser) parse() error {
 
 	// set default impl name
 	if p.impl == "" {
-		implSuffix := cfg.Settings.Get("implSuffix")
+		implSuffix := cfg.Settings().Get("implSuffix")
 		if implSuffix == "" {
 			implSuffix = "Impl"
 		}
