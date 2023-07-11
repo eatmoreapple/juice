@@ -130,7 +130,7 @@ func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) 
 		return reflect.Value{}, err
 	}
 
-	value = unwrapValue(value)
+	value = reflectlite.Unwrap(value)
 
 	var low, high int
 
@@ -195,7 +195,7 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 	if err != nil {
 		return reflect.Value{}, err
 	}
-	value = unwrapValue(value)
+	value = reflectlite.Unwrap(value)
 
 	index, err := eval(exp.Index, params)
 	if err != nil {
@@ -255,7 +255,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 		if err != nil {
 			return reflect.Value{}, err
 		}
-		value = unwrapValue(value)
+		value = reflectlite.Unwrap(value)
 		// type conversion for function arguments
 		in := fnType.In(i)
 		if in.Kind() != value.Kind() {
@@ -303,7 +303,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 		return reflect.Value{}, err
 	}
 
-	unwarned := unwrapValue(x)
+	unwarned := reflectlite.Unwrap(x)
 
 	// check if the field name is exported
 	isExported := token.IsExported(fieldOrTagOrMethodName)
@@ -480,7 +480,7 @@ func eql(right, left reflect.Value) (reflect.Value, error) {
 		}
 
 		// if the invalid value is nil, the valid value is equal to nil
-		if isNilAble(valid) {
+		if reflectlite.NilAble(valid) {
 			// nil value
 			if valid.Equal(nilValue) {
 				return reflect.ValueOf(true), nil
@@ -496,7 +496,7 @@ func eql(right, left reflect.Value) (reflect.Value, error) {
 		return reflect.ValueOf(false), fmt.Errorf("invalid operation: %s == %s", right.Kind(), left.Kind())
 	}
 
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
 	// check if the values are comparable
 	switch right.Kind() {
@@ -544,7 +544,7 @@ func neq(right, left reflect.Value) (reflect.Value, error) {
 // lss returns true if right < left.
 func lss(right, left reflect.Value) (reflect.Value, error) {
 
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -583,7 +583,7 @@ func lss(right, left reflect.Value) (reflect.Value, error) {
 // leq returns true if right <= left.
 func leq(right, left reflect.Value) (reflect.Value, error) {
 
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -621,7 +621,7 @@ func leq(right, left reflect.Value) (reflect.Value, error) {
 
 // gtr returns true if right > left
 func gtr(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
 	value, err := leq(right, left)
 	if err != nil {
@@ -632,7 +632,7 @@ func gtr(right, left reflect.Value) (reflect.Value, error) {
 
 // geq returns true if right >= left.
 func geq(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	value, err := lss(right, left)
 	if err != nil {
 		return reflect.Value{}, err
@@ -642,7 +642,7 @@ func geq(right, left reflect.Value) (reflect.Value, error) {
 
 // land returns the logical and of the two values.
 func land(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
 		return reflect.ValueOf(right.Bool() && left.Bool()), nil
 	}
@@ -651,7 +651,7 @@ func land(right, left reflect.Value) (reflect.Value, error) {
 
 // lor returns the logical or of the two values.
 func lor(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
 		return reflect.ValueOf(right.Bool() || left.Bool()), nil
 	}
@@ -660,7 +660,7 @@ func lor(right, left reflect.Value) (reflect.Value, error) {
 
 // add returns the sum of the two values.
 func add(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch {
@@ -697,7 +697,7 @@ func add(right, left reflect.Value) (reflect.Value, error) {
 
 // sub returns the difference between right and left.
 func sub(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch {
@@ -729,7 +729,7 @@ func sub(right, left reflect.Value) (reflect.Value, error) {
 
 // mul returns the product of right and left.
 func mul(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch {
@@ -761,7 +761,7 @@ func mul(right, left reflect.Value) (reflect.Value, error) {
 
 // quo returns the quotient of right and left.
 func quo(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch {
@@ -794,7 +794,7 @@ func quo(right, left reflect.Value) (reflect.Value, error) {
 
 // rem returns the remainder of a division operation.
 func rem(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch {
@@ -826,7 +826,7 @@ func rparen(right, _ reflect.Value) (reflect.Value, error) {
 
 // not returns true if right is false.
 func not(_, left reflect.Value) (reflect.Value, error) {
-	left = unwrapValue(left)
+	left = reflectlite.Unwrap(left)
 	if left.Kind() == reflect.Bool {
 		return reflect.ValueOf(!left.Bool()), nil
 	}
@@ -843,7 +843,7 @@ func not(_, left reflect.Value) (reflect.Value, error) {
 //		 	1 + 1 == 2 & 1 + 1 == 3     // it will return an error, cause 2 & 1 are not bool value.
 //	     	(1 + 1 == 2) & (1 + 1 == 3) // this is ok.
 func and(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
 		return reflect.ValueOf(right.Bool() && left.Bool()), nil
 	}
@@ -852,7 +852,7 @@ func and(right, left reflect.Value) (reflect.Value, error) {
 
 // or returns true if either right or left is true.
 func or(right, left reflect.Value) (reflect.Value, error) {
-	right, left = unwrapValue(right), unwrapValue(left)
+	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
 		return reflect.ValueOf(right.Bool() || left.Bool()), nil
 	}

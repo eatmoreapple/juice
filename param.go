@@ -157,7 +157,7 @@ func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 	for _, item := range items {
 
 		// only unwrap when the value need to call Get method
-		value = unwrapValue(value)
+		value = reflectlite.Unwrap(value)
 
 		// match the value type
 		// only map, struct, slice and array can be wrapped as parameter
@@ -213,9 +213,9 @@ func newGenericParam(v any, wrapKey string) Parameter {
 	}
 	value := reflect.ValueOf(v)
 
-	tp := typeIndirect(value)
+	tp := reflectlite.IndirectType(value)
 
-	switch tp {
+	switch tp.Kind() {
 	case reflect.Map, reflect.Struct, reflect.Slice, reflect.Array:
 		// do nothing
 	default:
