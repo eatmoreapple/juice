@@ -75,7 +75,7 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				if err != nil {
 					return nil, err
 				}
-				p.configuration.settings = *settings
+				p.configuration.settings = settings
 			}
 		}
 	}
@@ -836,12 +836,19 @@ func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder, provider EnvVa
 	return p.parseEnvInt("maxIdleConnLifetime", decoder, provider)
 }
 
-func (p XMLParser) parseSettings(decoder *xml.Decoder) (*Settings, error) {
-	var setting Settings
+func (p XMLParser) parseSettings(decoder *xml.Decoder) (Settings, error) {
+	var setting []*Setting
 	if err := decoder.DecodeElement(&setting, nil); err != nil {
 		return nil, err
 	}
-	return &setting, nil
+	var settings = make(Settings, len(setting))
+	for _, s := range setting {
+		if _, ok := settings[s.Name]; ok {
+			return nil, fmt.Errorf("duplicate setting name: %s", s.Name)
+		}
+		settings[s.Name] = s.Value
+	}
+	return settings, nil
 }
 
 func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xml.StartElement) error {
