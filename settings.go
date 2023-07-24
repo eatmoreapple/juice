@@ -21,19 +21,12 @@ import (
 	"strconv"
 )
 
-// Settings is a slice of Setting.
-// It is used to store the settings for your application.
-// Settings won't be so large, so we don't need to use map.
-type Settings []*Setting
+// Settings is a collection of settings.
+type Settings map[string]StringValue
 
 // Get returns the value of the key.
 func (s Settings) Get(name string) StringValue {
-	for _, setting := range s {
-		if setting.Name == name {
-			return setting.Value
-		}
-	}
-	return emptyStringValue
+	return s[name]
 }
 
 // Setting is a setting element.
@@ -43,9 +36,6 @@ type Setting struct {
 	// The value of the setting.
 	Value StringValue `xml:"value,attr"`
 }
-
-// emptyStringValue defines an empty string value.
-const emptyStringValue = StringValue("")
 
 // StringValue is a string value which can be converted to other types.
 type StringValue string
@@ -59,6 +49,12 @@ func (s StringValue) Bool() bool {
 // Int64 returns the value as int64.
 func (s StringValue) Int64() int64 {
 	value, _ := strconv.ParseInt(string(s), 10, 64)
+	return value
+}
+
+// Uint64 returns the value as uint64.
+func (s StringValue) Uint64() uint64 {
+	value, _ := strconv.ParseUint(string(s), 10, 64)
 	return value
 }
 
