@@ -153,7 +153,7 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 					return nil, err
 				}
 			case "maxIdleConnNum":
-				env.MaxIdleConnNum, err = p.parseMaxIdleConnNum(decoder)
+				env.MaxIdleConnNum, err = p.parseMaxIdleConnNum(decoder, provider)
 				if err != nil {
 					return nil, err
 				}
@@ -792,8 +792,8 @@ func (p XMLParser) parseIntCharData(decoder *xml.Decoder, endElementName string)
 	return strconv.Atoi(charData)
 }
 
-func (p XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder) (int, error) {
-	return p.parseIntCharData(decoder, "maxIdleConnNum")
+func (p XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+	return p.parseEnvInt("maxIdleConnNum", decoder, provider)
 }
 
 func (p XMLParser) parseEnvString(key string, decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
