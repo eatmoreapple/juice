@@ -66,13 +66,18 @@ func (e *Engine) executor(v any) (*executor, error) {
 	return &executor{statement: stat, session: e.DB()}, nil
 }
 
+// warpExecutor wraps the executor, ensure enable the middlewares
+func (e *Engine) warpExecutor(executor Executor) Executor {
+	return e.executorWrapper.WarpExecutor(executor)
+}
+
 // Object implements the Manager interface
 func (e *Engine) Object(v any) Executor {
 	exe, err := e.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
 	}
-	return e.executorWrapper.WarpExecutor(exe)
+	return e.warpExecutor(exe)
 }
 
 // Tx returns a TxManager
