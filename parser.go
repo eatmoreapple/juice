@@ -784,14 +784,6 @@ func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (s
 	return "", &nodeUnclosedError{nodeName: endElementName}
 }
 
-func (p XMLParser) parseIntCharData(decoder *xml.Decoder, endElementName string) (int, error) {
-	charData, err := p.parseCharData(decoder, endElementName)
-	if err != nil {
-		return 0, err
-	}
-	return strconv.Atoi(charData)
-}
-
 func (p XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	return p.parseEnvInt("maxIdleConnNum", decoder, provider)
 }
