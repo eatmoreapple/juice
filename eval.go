@@ -64,13 +64,13 @@ func (e *exprKeyWordReplacePretreatment) PretreatmentExpr(expr string) (string, 
 var (
 	// andReplacePretreatment is an expression pretreatment that replaces "and" with "&&".
 	andReplacePretreatment = &exprKeyWordReplacePretreatment{
-		keyword: "and",
-		replace: "&&",
+		keyword: " and ", // must have space
+		replace: " && ",
 	}
 	// orReplacePretreatment is an expression pretreatment that replaces "or" with "||".
 	orReplacePretreatment = &exprKeyWordReplacePretreatment{
-		keyword: "or",
-		replace: "||",
+		keyword: " or ", // must have space
+		replace: " || ",
 	}
 )
 
