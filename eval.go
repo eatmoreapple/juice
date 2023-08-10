@@ -26,6 +26,52 @@ import (
 	"math/cmplx"
 	"reflect"
 	"strconv"
+	"strings"
+)
+
+// ExprPretreatment is an expression pretreatment.
+// It is used to pretreatment the expression before parsing.
+type ExprPretreatment interface {
+	PretreatmentExpr(expr string) (string, error)
+}
+
+// ExprPretreatmentChain is an expression pretreatment chain.
+type ExprPretreatmentChain []ExprPretreatment
+
+// PretreatmentExpr implements the ExprPretreatment interface.
+func (e ExprPretreatmentChain) PretreatmentExpr(expr string) (string, error) {
+	var err error
+	for _, pretreatment := range e {
+		expr, err = pretreatment.PretreatmentExpr(expr)
+		if err != nil {
+			return "", err
+		}
+	}
+	return expr, nil
+}
+
+// exprKeyWordReplacePretreatment is an expression pretreatment that replaces the keyword.
+type exprKeyWordReplacePretreatment struct {
+	keyword string
+	replace string
+}
+
+// PretreatmentExpr implements the ExprPretreatment interface.
+func (e *exprKeyWordReplacePretreatment) PretreatmentExpr(expr string) (string, error) {
+	return strings.Replace(expr, e.keyword, e.replace, -1), nil
+}
+
+var (
+	// andReplacePretreatment is an expression pretreatment that replaces "and" with "&&".
+	andReplacePretreatment = &exprKeyWordReplacePretreatment{
+		keyword: "and",
+		replace: "&&",
+	}
+	// orReplacePretreatment is an expression pretreatment that replaces "or" with "||".
+	orReplacePretreatment = &exprKeyWordReplacePretreatment{
+		keyword: "or",
+		replace: "||",
+	}
 )
 
 // Evaluator is an evaluator of the expression.
@@ -45,10 +91,18 @@ type Expression interface {
 }
 
 // goEvaluator is an evaluator of the expression who uses the go/ast package.
-type goEvaluator struct{}
+type goEvaluator struct {
+	pretreatment ExprPretreatment
+}
 
 // Parse parses the expression and returns the expression.
 func (e *goEvaluator) Parse(expr string) (Expression, error) {
+	// pretreatment the expression first.
+	expr, err := e.pretreatment.PretreatmentExpr(expr)
+	if err != nil {
+		return nil, err
+	}
+	// parse the expression with go/ast.
 	exp, err := parser.ParseExpr(expr)
 	if err != nil {
 		return nil, &SyntaxError{err}
@@ -69,7 +123,12 @@ func (e *goExpression) Eval(params Parameter) (EvalValue, error) {
 var (
 	// DefaultEvaluator is the default evaluator.
 	// Reset it to change the default behavior.
-	DefaultEvaluator Evaluator = &goEvaluator{}
+	DefaultEvaluator Evaluator = &goEvaluator{
+		pretreatment: ExprPretreatmentChain{
+			andReplacePretreatment,
+			orReplacePretreatment,
+		},
+	}
 )
 
 // SyntaxError represents a syntax error.
