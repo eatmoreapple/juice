@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -359,18 +360,18 @@ func (p XMLParser) parseMapperByHttpResponse(url string) (*Mapper, error) {
 	return p.parseMapperByReader(resp.Body)
 }
 
-func (p XMLParser) parseMapperByURL(url string) (*Mapper, error) {
+func (p XMLParser) parseMapperByURL(path string) (*Mapper, error) {
 	// prepare url schema
-	items := strings.Split(url, "://")
-	if len(items) != 2 {
-		return nil, fmt.Errorf("invalid url: %s", url)
+	u, err := url.Parse(path)
+	if err != nil {
+		return nil, err
 	}
-	schema := items[0]
+	schema := u.Scheme
 	switch schema {
 	case "file":
-		return p.parseMapperByResource(items[1])
+		return p.parseMapperByResource(u.Path)
 	case "http", "https":
-		return p.parseMapperByHttpResponse(url)
+		return p.parseMapperByHttpResponse(path)
 	default:
 		return nil, errors.New("invalid url schema")
 	}
