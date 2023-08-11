@@ -442,9 +442,6 @@ func (c collectionItemMapping) setCollection(rv reflect.Value) {
 	}
 }
 
-// discardIndex is the index of the discard column which will be ignored.
-const discardIndex = -1
-
 // ColumnDestination is a column destination which can be used to scan a row.
 type ColumnDestination interface {
 	// Destination returns the destination for the given reflect value and column.
@@ -454,9 +451,8 @@ type ColumnDestination interface {
 // rowDestination is a ColumnDestination which can be used to scan a row.
 type rowDestination struct {
 	// indexes stores the index of the column in the struct.
-	// if the index is discardIndex, the column will be ignored.
 	// this could not be used to for deep struct scan.
-	indexes []int
+	indexes [][]int
 
 	// checked is a flag to check if the dest has sql.RawBytes
 	checked bool
@@ -493,33 +489,57 @@ func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string
 		s.setIndexes(rv, columns)
 	}
 	dest := make([]any, len(columns))
-	for i, index := range s.indexes {
-		if index == discardIndex {
+	for i, indexes := range s.indexes {
+		if len(indexes) == 0 {
 			dest[i] = new(any)
 		} else {
-			dest[i] = rv.Field(index).Addr().Interface()
+			dest[i] = rv.FieldByIndex(indexes).Addr().Interface()
 		}
 	}
 	return dest, nil
 }
 
+// setIndexes sets the indexes for the given reflect value and columns.
 func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 	tp := rv.Type()
-	s.indexes = make([]int, len(columns))
+	s.indexes = make([][]int, len(columns))
+	s.findFromStruct(tp, columns, nil)
+}
 
-	// index is the index of the field in the struct
-	for i := range s.indexes {
-		s.indexes[i] = discardIndex
+// findFromStruct finds the index from the given struct type.
+func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk []int) {
+
+	// finished is a helper function to check if the indexes completed or not.
+	finished := func() bool {
+		for i := range columns {
+			if len(s.indexes[i]) == 0 {
+				return false
+			}
+		}
+		return true
 	}
+
+	// walk into the struct
 	for i := 0; i < tp.NumField(); i++ {
+		// if we find all the columns destination, we can stop.
+		if finished() {
+			break
+		}
 		field := tp.Field(i)
 		tag := field.Tag.Get("column")
-		if tag == "" || tag == "-" {
+		// if the tag is empty or "-", we can skip it.
+		if skip := tag == "" && !field.Anonymous || tag == "-"; skip {
 			continue
 		}
+		// if the field is anonymous and the type is struct, we can walk into it.
+		if deepScan := field.Anonymous && field.Type.Kind() == reflect.Struct && len(tag) == 0; deepScan {
+			s.findFromStruct(field.Type, columns, append(walk, i))
+			continue
+		}
+		// find the index of the column
 		for index, column := range columns {
 			if tag == column {
-				s.indexes[index] = i
+				s.indexes[index] = append(walk, field.Index...)
 				break
 			}
 		}
