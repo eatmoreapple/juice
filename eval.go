@@ -23,7 +23,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"math/cmplx"
 	"reflect"
 	"strconv"
 	"strings"
@@ -447,70 +446,6 @@ func evalBasicLit(exp *ast.BasicLit) (reflect.Value, error) {
 	}
 }
 
-func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error) {
-	lhs, err := eval(exp.X, params)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-
-	if lhs.Kind() == reflect.Func {
-		return evalFunc(lhs, exp, params), nil
-	}
-
-	rhs, err := eval(exp.Y, params)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-	var exprFunc func(lhs, rhs reflect.Value) (reflect.Value, error)
-	switch exp.Op {
-	case token.EQL:
-		exprFunc = eql
-	case token.NEQ:
-		exprFunc = neq
-	case token.LSS:
-		exprFunc = lss
-	case token.LEQ:
-		exprFunc = leq
-	case token.GTR:
-		exprFunc = gtr
-	case token.GEQ:
-		exprFunc = geq
-	case token.LAND:
-		exprFunc = land
-	case token.LOR:
-		exprFunc = lor
-	case token.ADD:
-		exprFunc = add
-	case token.SUB:
-		exprFunc = sub
-	case token.MUL:
-		exprFunc = mul
-	case token.QUO:
-		exprFunc = quo
-	case token.REM:
-		exprFunc = rem
-	case token.LPAREN:
-		exprFunc = lparen
-	case token.RPAREN:
-		exprFunc = rparen
-	case token.COMMENT:
-		exprFunc = comment
-	case token.NOT:
-		exprFunc = not
-	case token.AND:
-		exprFunc = and
-	case token.OR:
-		exprFunc = or
-	default:
-		return reflect.Value{}, errors.New("unsupported binary expression")
-	}
-	return exprFunc(lhs, rhs)
-}
-
-func comment(_ reflect.Value, _ reflect.Value) (reflect.Value, error) {
-	return reflect.ValueOf(true), nil
-}
-
 // evalFunc evaluates a function call expression.
 func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params Parameter) reflect.Value {
 	var args []reflect.Value
@@ -524,396 +459,61 @@ func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params Parameter) reflect.V
 	return fn.Call(args)[0]
 }
 
-// eql returns true if the left and right values are equal.
-func eql(right, left reflect.Value) (reflect.Value, error) {
-	// check if the values are valid
-	if !right.IsValid() || !left.IsValid() {
-
-		// if both values are invalid, they are equal
-		if !right.IsValid() && !left.IsValid() {
-			return reflect.ValueOf(true), nil
-		}
-		var valid = right
-		if !right.IsValid() {
-			valid = left
-		}
-
-		// if the invalid value is nil, the valid value is equal to nil
-		if reflectlite.NilAble(valid) {
-			// nil value
-			if valid.Equal(nilValue) {
-				return reflect.ValueOf(true), nil
-			}
-
-			// unwrap interface value
-			if valid.Kind() == reflect.Interface {
-				valid = valid.Elem()
-			}
-			// nil value but not nil type
-			return reflect.ValueOf(valid.IsNil()), nil
-		}
-		return reflect.ValueOf(false), fmt.Errorf("invalid operation: %s == %s", right.Kind(), left.Kind())
-	}
-
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-
-	// check if the values are comparable
-	switch right.Kind() {
-	case left.Kind():
-		// if they are same kind, use reflect.DeepEqual
-		value := reflect.DeepEqual(right.Interface(), left.Interface())
-		return reflect.ValueOf(value), nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() == left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) == left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() == uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() == left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() == left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() == left.Complex()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// neq returns the result of a != b.
-func neq(right, left reflect.Value) (reflect.Value, error) {
-	value, err := eql(right, left)
+// evalBinaryExpr evaluates a binary expression.
+func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error) {
+	lhs, err := eval(exp.X, params)
 	if err != nil {
 		return reflect.Value{}, err
 	}
-	return reflect.ValueOf(!value.Bool()), nil
-}
 
-// lss returns true if right < left.
-func lss(right, left reflect.Value) (reflect.Value, error) {
-
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() < left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) < left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() < uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() < left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() < left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() < left.String()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(cmplx.Abs(right.Complex()) < cmplx.Abs(left.Complex())), nil
-		}
+	if lhs.Kind() == reflect.Func {
+		return evalFunc(lhs, exp, params), nil
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
 
-// leq returns true if right <= left.
-func leq(right, left reflect.Value) (reflect.Value, error) {
+	next := func() (reflect.Value, error) { return eval(exp.Y, params) }
 
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() <= left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) <= left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() <= uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() <= left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() <= left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() <= left.String()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(cmplx.Abs(right.Complex()) <= cmplx.Abs(left.Complex())), nil
-		}
+	var binaryExprExecutor BinaryExprExecutor
+	switch exp.Op {
+	case token.EQL:
+		binaryExprExecutor = EQLExprExecutor{}
+	case token.NEQ:
+		binaryExprExecutor = NEQExprExecutor{}
+	case token.LSS:
+		binaryExprExecutor = LSSExprExecutor{}
+	case token.LEQ:
+		binaryExprExecutor = LEQExprExecutor{}
+	case token.GTR:
+		binaryExprExecutor = GTRExprExecutor{}
+	case token.GEQ:
+		binaryExprExecutor = GEQExprExecutor{}
+	case token.LAND:
+		binaryExprExecutor = LANDExprExecutor{}
+	case token.LOR:
+		binaryExprExecutor = LORExprExecutor{}
+	case token.ADD:
+		binaryExprExecutor = ADDExprExecutor{}
+	case token.SUB:
+		binaryExprExecutor = SUBExprExecutor{}
+	case token.MUL:
+		binaryExprExecutor = MULExprExecutor{}
+	case token.QUO:
+		binaryExprExecutor = QUOExprExecutor{}
+	case token.REM:
+		binaryExprExecutor = REMExprExecutor{}
+	case token.LPAREN:
+		binaryExprExecutor = LPARENExprExecutor{}
+	case token.RPAREN:
+		binaryExprExecutor = RPARENExprExecutor{}
+	case token.COMMENT:
+		binaryExprExecutor = COMMENTExprExecutor{}
+	case token.NOT:
+		binaryExprExecutor = NOTExprExecutor{}
+	case token.AND:
+		binaryExprExecutor = ANDExprExecutor{}
+	case token.OR:
+		binaryExprExecutor = ORExprExecutor{}
+	default:
+		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// gtr returns true if right > left
-func gtr(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-
-	value, err := leq(right, left)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-	return reflect.ValueOf(!value.Bool()), nil
-}
-
-// geq returns true if right >= left.
-func geq(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	value, err := lss(right, left)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-	return reflect.ValueOf(!value.Bool()), nil
-}
-
-// land returns the logical and of the two values.
-func land(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
-		return reflect.ValueOf(right.Bool() && left.Bool()), nil
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported land expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// lor returns the logical or of the two values.
-func lor(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	if right.Kind() == reflect.Bool && left.Kind() == reflect.Bool {
-		return reflect.ValueOf(right.Bool() || left.Bool()), nil
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported lor expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// add returns the sum of the two values.
-func add(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() + left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) + left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() + uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() + left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() + left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() + left.String()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() + left.Complex()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// sub returns the difference between right and left.
-func sub(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() - left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) - left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() - uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() - left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() - left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() - left.Complex()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// mul returns the product of right and left.
-func mul(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() * left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) * left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() * uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() * left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() * left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() * left.Complex()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// quo returns the quotient of right and left.
-func quo(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() / left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) / left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() / uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() / left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() / left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() / left.Complex()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-
-}
-
-// rem returns the remainder of a division operation.
-func rem(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() % left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) % left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() % uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() % left.Uint()), nil
-		}
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// land returns true if both right and left are true.
-func lparen(_, left reflect.Value) (reflect.Value, error) {
-	return left, nil
-}
-
-// land returns true if both right and left are true.
-func rparen(right, _ reflect.Value) (reflect.Value, error) {
-	return right, nil
-}
-
-// not returns true if right is false.
-func not(_, left reflect.Value) (reflect.Value, error) {
-	left = reflectlite.Unwrap(left)
-	if left.Kind() == reflect.Bool {
-		return reflect.ValueOf(!left.Bool()), nil
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported not expression: %v", left.Kind())
-}
-
-// and returns true if both right and left are true.
-// what's the difference between and land?
-// land will evaluate left if right is false.
-// but not and.
-// for example:
-//
-//			1 + 1 == 2 && 1 + 1 == 3    // false
-//		 	1 + 1 == 2 & 1 + 1 == 3     // it will return an error, cause 2 & 1 are not bool value.
-//	     	(1 + 1 == 2) & (1 + 1 == 3) // this is ok.
-func and(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
-		return reflect.ValueOf(right.Bool() && left.Bool()), nil
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported and expression: %v, %v", right.Kind(), left.Kind())
-}
-
-// or returns true if either right or left is true.
-func or(right, left reflect.Value) (reflect.Value, error) {
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	if right.Kind() == reflect.Bool && left.Kind() == right.Kind() {
-		return reflect.ValueOf(right.Bool() || left.Bool()), nil
-	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported or expression: %v, %v", right.Kind(), left.Kind())
+	return binaryExprExecutor.Exec(lhs, next)
 }
