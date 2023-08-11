@@ -510,7 +510,14 @@ func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk []int) {
 
 	// finished is a helper function to check if the indexes completed or not.
-	finished := func() bool { return len(s.indexes[len(s.indexes)-1]) > 0 }
+	finished := func() bool {
+		for i := range columns {
+			if len(s.indexes[i]) == 0 {
+				return false
+			}
+		}
+		return true
+	}
 
 	// walk into the struct
 	for i := 0; i < tp.NumField(); i++ {
@@ -521,7 +528,7 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 		field := tp.Field(i)
 		tag := field.Tag.Get("column")
 		// if the tag is empty or "-", we can skip it.
-		if skip := (tag == "" || tag == "-") && !field.Anonymous; skip {
+		if skip := tag == "" && !field.Anonymous || tag == "-"; skip {
 			continue
 		}
 		// if the field is anonymous and the type is struct, we can walk into it.
