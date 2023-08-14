@@ -52,20 +52,32 @@ var _ Node = (*TextNode)(nil)
 // TextNode is used to replace parameters with placeholders.
 // pureTextNode is used to avoid unnecessary parameter replacement.
 type TextNode struct {
-	value  string
-	params [][]string
+	value            string
+	placeholder      [][]string // for example, #{id}
+	textSubstitution [][]string // for example, ${id}
 }
 
 // Accept accepts parameters and returns query and arguments.
 // Accept implements Node interface.
 func (c *TextNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	// If there is no parameter, return the value as it is.
-	if len(c.params) == 0 {
+	if len(c.placeholder) == 0 && len(c.textSubstitution) == 0 {
 		return c.value, nil, nil
 	}
 	// Otherwise, replace the parameter with a placeholder.
-	query = c.value
-	for _, param := range c.params {
+	query, args, err = c.replaceHolder(c.value, args, translator, p)
+	if err != nil {
+		return "", nil, err
+	}
+	query, err = c.replaceTextSubstitution(query, p)
+	if err != nil {
+		return "", nil, err
+	}
+	return query, args, nil
+}
+
+func (c *TextNode) replaceHolder(query string, args []interface{}, translator driver.Translator, p Parameter) (string, []any, error) {
+	for _, param := range c.placeholder {
 		if len(param) != 2 {
 			return "", nil, fmt.Errorf("invalid parameter %v", param)
 		}
@@ -82,27 +94,31 @@ func (c *TextNode) Accept(translator driver.Translator, p Parameter) (query stri
 	return query, args, nil
 }
 
+// replaceTextSubstitution replaces text substitution.
+func (c *TextNode) replaceTextSubstitution(query string, p Parameter) (string, error) {
+	for _, sub := range c.textSubstitution {
+		if len(sub) != 2 {
+			return "", fmt.Errorf("invalid text substitution %v", sub)
+		}
+		matched, name := sub[0], sub[1]
+		value, exists := p.Get(name)
+		if !exists {
+			return "", fmt.Errorf("parameter %s not found", name)
+		}
+		query = strings.Replace(query, matched, reflectValueToString(value), 1)
+	}
+	return query, nil
+}
+
 // build builds TextNode.
 func (c *TextNode) build() error {
-	var braceCount int
-	var s = c.value
-	for i := 0; i < len(s); i++ {
-		if s[i] == '#' && i+1 < len(s) && s[i+1] == '{' {
-			braceCount++
-			i++
-		} else if s[i] == '}' {
-			if braceCount <= 0 {
-				return fmt.Errorf("juice: invalid text node: %s", s)
-			}
-			braceCount--
-		}
+	placeholder := paramRegex.FindAllStringSubmatch(c.value, -1)
+	if len(placeholder) > 0 {
+		c.placeholder = placeholder
 	}
-	if braceCount != 0 {
-		return fmt.Errorf("juice: invalid text node: %s", s)
-	}
-	params := paramRegex.FindAllStringSubmatch(s, -1)
-	if len(params) > 0 {
-		c.params = params
+	textSubstitution := formatRegexp.FindAllStringSubmatch(c.value, -1)
+	if len(textSubstitution) > 0 {
+		c.textSubstitution = textSubstitution
 	}
 	return nil
 }
@@ -136,7 +152,7 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 	if matched {
 		var builder = getBuilder()
 		defer putBuilder(builder)
-		for _, node := range c.Nodes {
+		for i, node := range c.Nodes {
 			q, a, err := node.Accept(translator, p)
 			if err != nil {
 				return "", nil, err
@@ -146,6 +162,9 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 			}
 			if len(a) > 0 {
 				args = append(args, a...)
+			}
+			if i < len(c.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+				builder.WriteString(" ")
 			}
 		}
 		return builder.String(), args, nil
@@ -258,6 +277,9 @@ func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query strin
 		}
 		if len(a) > 0 {
 			args = append(args, a...)
+		}
+		if i < len(t.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+			builder.WriteString(" ")
 		}
 	}
 	query = builder.String()
