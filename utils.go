@@ -2,6 +2,7 @@ package juice
 
 import (
 	"fmt"
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -21,6 +22,7 @@ func runtimeFuncName(rv reflect.Value) string {
 
 // reflectValueToString converts reflect.Value to string
 func reflectValueToString(v reflect.Value) string {
+	v = reflectlite.Unwrap(v)
 	switch t := v.Interface().(type) {
 	case nil:
 		return ""
