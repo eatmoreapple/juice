@@ -473,10 +473,21 @@ func (s *rowDestination) Destination(rv reflect.Value, columns []string) ([]any,
 	return dest, nil
 }
 
-func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]any, error) {
-	// if there is only one column, we can use the value directly.
-	if len(columns) == 1 {
+func (s *rowDestination) destinationForOneColumn(rv reflect.Value, columns []string) ([]any, error) {
+	// if type is time.Time or implements sql.Scanner, we can scan it directly
+	if rv.Type() == timeType || rv.Type().Implements(scannerType) {
 		return []any{rv.Addr().Interface()}, nil
+	}
+	if rv.Kind() == reflect.Struct {
+		return s.destinationForStruct(rv, columns)
+	}
+	// default behavior
+	return []any{rv.Addr().Interface()}, nil
+}
+
+func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]any, error) {
+	if len(columns) == 1 {
+		return s.destinationForOneColumn(rv, columns)
 	}
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)

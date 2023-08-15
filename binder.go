@@ -20,12 +20,16 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+	"time"
 )
 
 var (
 	// scannerType is the reflect.Type of sql.Scanner
 	// nolint:unused
 	scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+
+	// timeType is the reflect.Type of time.Time
+	timeType = reflect.TypeOf((*time.Time)(nil)).Elem()
 )
 
 // Bind sql.Rows to given entity with default mapper
