@@ -226,24 +226,25 @@ func (w WhereNode) Accept(translator driver.Translator, p Parameter) (query stri
 		}
 	}
 	query = builder.String()
-	if query != "" {
-		if strings.HasPrefix(query, "and") || strings.HasPrefix(query, "AND") {
-			query = query[3:]
-		} else if strings.HasPrefix(query, "or") || strings.HasPrefix(query, "OR") {
-			query = query[2:]
-		}
-		query = strings.TrimSpace(query)
+
+	if query == "" {
+		return
 	}
+	if strings.HasPrefix(query, "and") || strings.HasPrefix(query, "AND") {
+		query = query[3:]
+	} else if strings.HasPrefix(query, "or") || strings.HasPrefix(query, "OR") {
+		query = query[2:]
+	}
+	query = strings.TrimSpace(query)
 
 	if !(strings.HasPrefix(query, "where") || strings.HasPrefix(query, "WHERE")) {
-		if !strings.HasPrefix(query[5:], " ") {
+		if !strings.HasPrefix(query, " ") {
 			query = "WHERE " + query
 		} else {
 			query = "WHERE" + query
 		}
 	}
-
-	return query, args, nil
+	return
 }
 
 var _ Node = (*TrimNode)(nil)
