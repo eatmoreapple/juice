@@ -66,25 +66,33 @@ func (m *Mapper) Prefix() string {
 	return m.Attribute("prefix")
 }
 
-// name is the name of the mapper. which is the unique key of the mapper.
-func (m *Mapper) name() string {
-	var builder strings.Builder
-	if prefix := m.mappers.Prefix(); prefix != "" {
-		builder.WriteString(prefix)
-		builder.WriteString(".")
-	}
-	if prefix := m.Prefix(); prefix != "" {
-		builder.WriteString(prefix)
-		builder.WriteString(".")
-	}
-	builder.WriteString(m.Namespace())
-	return builder.String()
-}
-
 func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
+	// first, try to get sql node from current namespace.
 	node, exists := m.sqlNodes[id]
 	if !exists {
-		return nil, errors.New("sql node not found")
+		// if not exists, try to get sql node from other namespace.
+		return m.getSQLNodeFromNamespace(id)
+	}
+	return node, nil
+}
+
+// getSQLNodeFromNamespace gets sql node from other namespace.
+func (m *Mapper) getSQLNodeFromNamespace(id string) (Node, error) {
+	if m.mappers == nil {
+		return nil, errors.New("mappers is nil")
+	}
+	items := strings.Split(id, ".")
+	if len(items) == 1 {
+		return nil, &sqlNodeNotFoundError{id}
+	}
+	namespace, pk := strings.Join(items[:len(items)-1], "."), items[len(items)-1]
+	mapper, exists := m.mappers.GetMapperByNamespace(namespace)
+	if !exists {
+		return nil, &sqlNodeNotFoundError{id}
+	}
+	node, exists := mapper.sqlNodes[pk]
+	if !exists {
+		return nil, &sqlNodeNotFoundError{id}
 	}
 	return node, nil
 }
@@ -121,15 +129,43 @@ func (m *Mapper) checkResultMap() error {
 
 // Mappers is a map of mappers.
 type Mappers struct {
-	statements map[string]*Statement
-	cfg        *Configuration
-	attrs      map[string]string
+	mappers map[string]*Mapper
+	attrs   map[string]string
+	cfg     *Configuration
+}
+
+func (m *Mappers) setMapper(key string, mapper *Mapper) error {
+	if _, exists := m.mappers[key]; exists {
+		return fmt.Errorf("mapper %s already exists", key)
+	}
+	if m.mappers == nil {
+		m.mappers = make(map[string]*Mapper)
+	}
+	m.mappers[key] = mapper
+	mapper.mappers = m
+	return nil
+}
+
+func (m *Mappers) GetMapperByNamespace(namespace string) (*Mapper, bool) {
+	mapper, exists := m.mappers[namespace]
+	return mapper, exists
 }
 
 // GetStatementByID returns a statement by id.
 // If the statement is not found, an error is returned.
-func (m Mappers) GetStatementByID(id string) (*Statement, error) {
-	stmt, exists := m.statements[id]
+func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
+	items := strings.Split(id, ".")
+	if len(items) == 1 {
+		return nil, fmt.Errorf("invalid statement id: %s", id)
+	}
+	// get the namespace and pk
+	// main.UserMapper.SelectUser => main.UserMapper, SelectUser
+	namespace, pk := strings.Join(items[:len(items)-1], "."), items[len(items)-1]
+	mapper, exists := m.mappers[namespace]
+	if !exists {
+		return nil, fmt.Errorf("mapper `%s` not found", namespace)
+	}
+	stmt, exists := mapper.statements[pk]
 	if !exists {
 		return nil, fmt.Errorf("statement `%s` not found", id)
 	}
@@ -168,20 +204,6 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 // Configuration represents a configuration of juice.
 func (m *Mappers) Configuration() *Configuration {
 	return m.cfg
-}
-
-// setStatementByID sets a statement by id.
-func (m *Mappers) setStatementByID(id string, stmt *Statement) error {
-	if m.statements == nil {
-		m.statements = make(map[string]*Statement)
-	}
-	if _, exists := m.statements[id]; exists {
-		return fmt.Errorf("statement %s already exists", id)
-	}
-	m.statements[id] = stmt
-	// set the unique name into this statement
-	stmt.name = id
-	return nil
 }
 
 // setAttribute sets an attribute.

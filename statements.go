@@ -16,6 +16,7 @@ type Statement struct {
 	Nodes  []Node
 	attrs  map[string]string
 	name   string
+	id     string
 }
 
 func (s *Statement) Attribute(key string) string {
@@ -34,15 +35,31 @@ func (s *Statement) setAttribute(key, value string) {
 }
 
 func (s *Statement) ID() string {
-	return s.Attribute("id")
+	return s.id
 }
 
 func (s *Statement) Namespace() string {
 	return s.mapper.Namespace()
 }
 
+func (s *Statement) lazyName() string {
+	var builder = getBuilder()
+	defer putBuilder(builder)
+	if prefix := s.mapper.mappers.Prefix(); prefix != "" {
+		builder.WriteString(prefix)
+		builder.WriteString(".")
+	}
+	builder.WriteString(s.mapper.namespace)
+	builder.WriteString(".")
+	builder.WriteString(s.id)
+	return builder.String()
+}
+
 // Name is a unique key of the whole statement.
 func (s *Statement) Name() string {
+	if s.name == "" {
+		s.name = s.lazyName()
+	}
 	return s.name
 }
 

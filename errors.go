@@ -27,6 +27,8 @@ var (
 
 	// ErrResultMapNotSet is an error that is returned when the result map is not set.
 	ErrResultMapNotSet = errors.New("resultMap not set")
+
+	ErrSqlNodeNotFound = errors.New("sql node not found")
 )
 
 // nodeUnclosedError is an error that is returned when the node is not closed.
@@ -60,6 +62,16 @@ type nodeAttributeConflictError struct {
 // Error returns the error message.
 func (e *nodeAttributeConflictError) Error() string {
 	return fmt.Sprintf("node %s has conflicting attribute %s", e.nodeName, e.attrName)
+}
+
+// sqlNodeNotFoundError is an error that is returned when the sql node is not found.
+type sqlNodeNotFoundError struct {
+	nodeName string
+}
+
+// Error returns the error message.
+func (e *sqlNodeNotFoundError) Error() string {
+	return "sql node " + e.nodeName + " not found"
 }
 
 // unreachable is a function that is used to mark unreachable code.
