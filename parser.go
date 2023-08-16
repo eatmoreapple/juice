@@ -43,7 +43,7 @@ type XMLParser struct {
 }
 
 // Parse implements ConfigurationParser.
-func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
+func (p *XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 	decoder := xml.NewDecoder(reader)
 	for {
 		token, err := decoder.Token()
@@ -66,8 +66,8 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				}
 				p.configuration.environments = *envs
 			case "mappers":
-				var mappers = &Mappers{cfg: &p.configuration}
-				if err := p.parseMappers(mappers, token, decoder); err != nil {
+				mappers, err := p.parseMappers(token, decoder)
+				if err != nil {
 					return nil, err
 				}
 				p.configuration.mappers = mappers
@@ -83,7 +83,7 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 	return &p.configuration, nil
 }
 
-func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElement) (*Environments, error) {
+func (p *XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElement) (*Environments, error) {
 	var envs Environments
 	for _, attr := range token.Attr {
 		envs.setAttr(attr.Name.Local, attr.Value)
@@ -123,7 +123,7 @@ func (p XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElemen
 	return nil, &nodeUnclosedError{nodeName: "environments"}
 }
 
-func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement) (*Environment, error) {
+func (p *XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement) (*Environment, error) {
 	var env = &Environment{}
 	for _, attr := range token.Attr {
 		env.setAttr(attr.Name.Local, attr.Value)
@@ -183,7 +183,9 @@ func (p XMLParser) parseEnvironment(decoder *xml.Decoder, token xml.StartElement
 	return nil, &nodeUnclosedError{nodeName: "environment"}
 }
 
-func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decoder *xml.Decoder) error {
+func (p *XMLParser) parseMappers(start xml.StartElement, decoder *xml.Decoder) (*Mappers, error) {
+	var mappers = &Mappers{cfg: &p.configuration}
+
 	for _, attr := range start.Attr {
 		mappers.setAttribute(attr.Name.Local, attr.Value)
 	}
@@ -193,7 +195,7 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 			if err == io.EOF {
 				break
 			}
-			return err
+			return nil, err
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
@@ -201,26 +203,26 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 			if token.Name.Local == "mapper" {
 				mapper, err := p.parseMapper(decoder, token)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				// check result map
 				if err = mapper.checkResultMap(); err != nil {
-					return err
+					return nil, err
 				}
 				if err = mappers.setMapper(mapper.namespace, mapper); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mappers" {
-				return nil
+				return mappers, nil
 			}
 		}
 	}
-	return &nodeUnclosedError{nodeName: "mappers"}
+	return nil, &nodeUnclosedError{nodeName: "mappers"}
 }
 
-func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*Mapper, error) {
+func (p *XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*Mapper, error) {
 	mapper := &Mapper{}
 	for _, attr := range token.Attr {
 		mapper.setAttribute(attr.Name.Local, attr.Value)
@@ -309,7 +311,7 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 	return mapper, nil
 }
 
-func (p XMLParser) parseMapperByReader(reader io.Reader) (mapper *Mapper, err error) {
+func (p *XMLParser) parseMapperByReader(reader io.Reader) (mapper *Mapper, err error) {
 	decoder := xml.NewDecoder(reader)
 	for {
 		token, err := decoder.Token()
@@ -332,7 +334,7 @@ func (p XMLParser) parseMapperByReader(reader io.Reader) (mapper *Mapper, err er
 	return mapper, err
 }
 
-func (p XMLParser) parseMapperByResource(resource string) (*Mapper, error) {
+func (p *XMLParser) parseMapperByResource(resource string) (*Mapper, error) {
 	var (
 		reader io.ReadCloser
 		err    error
@@ -345,7 +347,7 @@ func (p XMLParser) parseMapperByResource(resource string) (*Mapper, error) {
 	return p.parseMapperByReader(reader)
 }
 
-func (p XMLParser) parseMapperByHttpResponse(url string) (*Mapper, error) {
+func (p *XMLParser) parseMapperByHttpResponse(url string) (*Mapper, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -354,7 +356,7 @@ func (p XMLParser) parseMapperByHttpResponse(url string) (*Mapper, error) {
 	return p.parseMapperByReader(resp.Body)
 }
 
-func (p XMLParser) parseMapperByURL(path string) (*Mapper, error) {
+func (p *XMLParser) parseMapperByURL(path string) (*Mapper, error) {
 	// prepare url schema
 	u, err := url.Parse(path)
 	if err != nil {
@@ -371,7 +373,7 @@ func (p XMLParser) parseMapperByURL(path string) (*Mapper, error) {
 	}
 }
 
-func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
+func (p *XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
 		stmt.setAttribute(attr.Name.Local, attr.Value)
 	}
@@ -437,7 +439,7 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 	return nil
 }
 
-func (p XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	switch token.Name.Local {
 	case "if":
 		return p.parseIf(mapper, decoder, token)
@@ -457,7 +459,7 @@ func (p XMLParser) parseTags(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 	return nil, fmt.Errorf("unknown tag: %s", token.Name.Local)
 }
 
-func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	var ref string
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -495,7 +497,7 @@ func (p XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml.
 	return nil, &nodeUnclosedError{nodeName: "include"}
 }
 
-func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	setNode := &SetNode{}
 	for {
 		token, err := decoder.Token()
@@ -530,7 +532,7 @@ func (p XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error) 
 	return nil, &nodeUnclosedError{nodeName: "set"}
 }
 
-func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	ifNode := &IfNode{}
 	var test string
 	for _, attr := range token.Attr {
@@ -580,7 +582,7 @@ func (p XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.Start
 	return nil, &nodeUnclosedError{nodeName: "if"}
 }
 
-func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	whereNode := &WhereNode{}
 	for {
 		token, err := decoder.Token()
@@ -615,7 +617,7 @@ func (p XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, error
 	return nil, &nodeUnclosedError{nodeName: "where"}
 }
 
-func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	trimNode := &TrimNode{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -661,7 +663,7 @@ func (p XMLParser) parseTrim(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 	return nil, &nodeUnclosedError{nodeName: "trim"}
 }
 
-func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	foreachNode := &ForeachNode{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -720,7 +722,7 @@ func (p XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml.
 	return nil, &nodeUnclosedError{nodeName: "foreach"}
 }
 
-func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	chooseNode := &ChooseNode{}
 	for {
 		token, err := decoder.Token()
@@ -759,7 +761,7 @@ func (p XMLParser) parseChoose(mapper *Mapper, decoder *xml.Decoder) (Node, erro
 	return nil, &nodeUnclosedError{nodeName: "choose"}
 }
 
-func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (string, error) {
+func (p *XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (string, error) {
 	var charData string
 	for {
 		token, err := decoder.Token()
@@ -781,11 +783,11 @@ func (p XMLParser) parseCharData(decoder *xml.Decoder, endElementName string) (s
 	return "", &nodeUnclosedError{nodeName: endElementName}
 }
 
-func (p XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+func (p *XMLParser) parseMaxIdleConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	return p.parseEnvInt("maxIdleConnNum", decoder, provider)
 }
 
-func (p XMLParser) parseEnvString(key string, decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+func (p *XMLParser) parseEnvString(key string, decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
 	value, err := p.parseCharData(decoder, key)
 	if err != nil {
 		return "", err
@@ -793,7 +795,7 @@ func (p XMLParser) parseEnvString(key string, decoder *xml.Decoder, provider Env
 	return provider.Get(value)
 }
 
-func (p XMLParser) parseEnvInt(key string, decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+func (p *XMLParser) parseEnvInt(key string, decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	value, err := p.parseCharData(decoder, key)
 	if err != nil {
 		return 0, err
@@ -805,27 +807,27 @@ func (p XMLParser) parseEnvInt(key string, decoder *xml.Decoder, provider EnvVal
 	return strconv.Atoi(str)
 }
 
-func (p XMLParser) parseDataSource(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+func (p *XMLParser) parseDataSource(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
 	return p.parseEnvString("dataSource", decoder, provider)
 }
 
-func (p XMLParser) parseDriver(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
+func (p *XMLParser) parseDriver(decoder *xml.Decoder, provider EnvValueProvider) (string, error) {
 	return p.parseEnvString("driver", decoder, provider)
 }
 
-func (p XMLParser) parseMaxOpenConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+func (p *XMLParser) parseMaxOpenConnNum(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	return p.parseEnvInt("maxOpenConnNum", decoder, provider)
 }
 
-func (p XMLParser) parseMaxConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+func (p *XMLParser) parseMaxConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	return p.parseEnvInt("maxConnLifetime", decoder, provider)
 }
 
-func (p XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
+func (p *XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder, provider EnvValueProvider) (int, error) {
 	return p.parseEnvInt("maxIdleConnLifetime", decoder, provider)
 }
 
-func (p XMLParser) parseSettings(decoder *xml.Decoder) (Settings, error) {
+func (p *XMLParser) parseSettings(decoder *xml.Decoder) (Settings, error) {
 	var setting []*Setting
 	if err := decoder.DecodeElement(&setting, nil); err != nil {
 		return nil, err
@@ -840,7 +842,7 @@ func (p XMLParser) parseSettings(decoder *xml.Decoder) (Settings, error) {
 	return settings, nil
 }
 
-func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xml.StartElement) error {
+func (p *XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
 			sqlNode.id = attr.Value
@@ -883,7 +885,7 @@ func (p XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token xm
 	return &nodeUnclosedError{nodeName: "sql"}
 }
 
-func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
+func (p *XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.StartElement) (Node, error) {
 	whenNode := &WhenNode{}
 	var test string
 	for _, attr := range token.Attr {
@@ -933,7 +935,7 @@ func (p XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.Sta
 	return nil, &nodeUnclosedError{nodeName: "when"}
 }
 
-func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, error) {
 	otherwiseNode := &OtherwiseNode{}
 	for {
 		token, err := decoder.Token()
@@ -968,7 +970,7 @@ func (p XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, e
 	return nil, &nodeUnclosedError{nodeName: "otherwise"}
 }
 
-func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapNode, error) {
+func (p *XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) (*resultMapNode, error) {
 	resultMap := &resultMapNode{}
 	for _, attr := range token.Attr {
 		if attr.Name.Local == "id" {
@@ -1024,7 +1026,7 @@ func (p XMLParser) parseResultMap(decoder *xml.Decoder, token xml.StartElement) 
 	return nil, &nodeUnclosedError{nodeName: "resultMap"}
 }
 
-func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, endTag string) (*resultNode, error) {
+func (p *XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, endTag string) (*resultNode, error) {
 	result := &resultNode{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -1058,7 +1060,7 @@ func (p XMLParser) parseResult(token xml.StartElement, decoder *xml.Decoder, end
 	return nil, &nodeUnclosedError{nodeName: endTag}
 }
 
-func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement) (*association, error) {
+func (p *XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement) (*association, error) {
 	association := &association{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -1102,7 +1104,7 @@ func (p XMLParser) parseAssociation(decoder *xml.Decoder, token xml.StartElement
 	return nil, &nodeUnclosedError{nodeName: "association"}
 }
 
-func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, token xml.StartElement) (*collection, error) {
+func (p *XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, token xml.StartElement) (*collection, error) {
 	coll := &collection{}
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -1150,7 +1152,7 @@ func (p XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, t
 	return nil, &nodeUnclosedError{nodeName: "collection"}
 }
 
-func (p XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
 	var node = make(ValuesNode, 0)
 	for {
 		token, err := decoder.Token()
@@ -1179,7 +1181,7 @@ func (p XMLParser) parseValuesNode(decoder *xml.Decoder) (Node, error) {
 	return nil, &nodeUnclosedError{nodeName: "values"}
 }
 
-func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) (*valueItem, error) {
+func (p *XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) (*valueItem, error) {
 	var ve valueItem
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
@@ -1216,7 +1218,7 @@ func (p XMLParser) parseValueNode(token xml.StartElement, decoder *xml.Decoder) 
 }
 
 // parseAliasNode parses the alias node
-func (p XMLParser) parseAliasNode(decoder *xml.Decoder) (Node, error) {
+func (p *XMLParser) parseAliasNode(decoder *xml.Decoder) (Node, error) {
 	var node = make(SelectFieldAliasNode, 0)
 	for {
 		token, err := decoder.Token()
@@ -1246,7 +1248,7 @@ func (p XMLParser) parseAliasNode(decoder *xml.Decoder) (Node, error) {
 }
 
 // parseFieldAlias parses the field alias node
-func (p XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder) (*selectFieldAliasItem, error) {
+func (p *XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder) (*selectFieldAliasItem, error) {
 	var item selectFieldAliasItem
 	for _, attr := range token.Attr {
 		switch attr.Name.Local {
