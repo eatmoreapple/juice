@@ -207,15 +207,9 @@ func (p XMLParser) parseMappers(mappers *Mappers, start xml.StartElement, decode
 				if err = mapper.checkResultMap(); err != nil {
 					return err
 				}
-				mapper.mappers = mappers
-				for _, stmt := range mapper.statements {
-					key := fmt.Sprintf("%s.%s", mapper.name(), stmt.ID())
-					if err = mappers.setStatementByID(key, stmt); err != nil {
-						return err
-					}
+				if err = mappers.setMapper(mapper.namespace, mapper); err != nil {
+					return err
 				}
-				// release memory
-				mapper.statements = nil
 			}
 		case xml.EndElement:
 			if token.Name.Local == "mappers" {
@@ -233,27 +227,27 @@ func (p XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*M
 	}
 
 	resource := mapper.Attribute("resource")
-	url := mapper.Attribute("url")
+	_url := mapper.Attribute("url")
 	namespace := mapper.Attribute("namespace")
 
 	// check conflict
 	// resource, url, namespace only one can be set
 	// namespace is required if resource and url are not set
 	switch {
-	case resource != "" && url != "":
+	case resource != "" && _url != "":
 		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "resource|url"}
 	case resource != "" && namespace != "":
 		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "resource|namespace"}
-	case url != "" && namespace != "":
+	case _url != "" && namespace != "":
 		return nil, &nodeAttributeConflictError{nodeName: "mapper", attrName: "url|namespace"}
-	case resource == "" && url == "" && namespace == "":
+	case resource == "" && _url == "" && namespace == "":
 		return nil, &nodeAttributeRequiredError{nodeName: "mapper", attrName: "resource|url|namespace"}
 	}
 	if resource != "" {
 		return p.parseMapperByResource(resource)
 	}
-	if url != "" {
-		return p.parseMapperByURL(url)
+	if _url != "" {
+		return p.parseMapperByURL(_url)
 	}
 	if namespace == "" {
 		return nil, &nodeAttributeRequiredError{nodeName: "mapper", attrName: "namespace"}
@@ -381,8 +375,10 @@ func (p XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token x
 	for _, attr := range token.Attr {
 		stmt.setAttribute(attr.Name.Local, attr.Value)
 	}
-	if stmt.ID() == "" {
+	if id := stmt.Attribute("id"); id == "" {
 		return fmt.Errorf("%s statement id is required", stmt.Action())
+	} else {
+		stmt.id = id
 	}
 	for {
 		token, err := decoder.Token()
