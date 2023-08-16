@@ -66,8 +66,8 @@ func (p XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				}
 				p.configuration.environments = *envs
 			case "mappers":
-				var mappers = Mappers{cfg: &p.configuration}
-				if err := p.parseMappers(&mappers, token, decoder); err != nil {
+				var mappers = &Mappers{cfg: &p.configuration}
+				if err := p.parseMappers(mappers, token, decoder); err != nil {
 					return nil, err
 				}
 				p.configuration.mappers = mappers

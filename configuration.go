@@ -22,7 +22,7 @@ type Configuration struct {
 	environments Environments
 
 	// mappers is a map of mappers.
-	mappers Mappers
+	mappers *Mappers
 
 	// settings is a map of settings.
 	settings Settings
@@ -37,7 +37,7 @@ func (c Configuration) Environments() Environments {
 }
 
 // Mappers returns the mappers.
-func (c Configuration) Mappers() Mappers {
+func (c Configuration) Mappers() *Mappers {
 	return c.mappers
 }
 
