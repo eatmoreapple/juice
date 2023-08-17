@@ -61,15 +61,23 @@ func (e *exprKeyWordReplacePretreatment) PretreatmentExpr(expr string) (string, 
 }
 
 var (
+	// FIXME: use a better way to replace the keyword.
+
 	// andReplacePretreatment is an expression pretreatment that replaces "and" with "&&".
-	andReplacePretreatment = &exprKeyWordReplacePretreatment{
+	andReplacePretreatment ExprPretreatment = &exprKeyWordReplacePretreatment{
 		keyword: " and ", // must have space
 		replace: " && ",
 	}
 	// orReplacePretreatment is an expression pretreatment that replaces "or" with "||".
-	orReplacePretreatment = &exprKeyWordReplacePretreatment{
+	orReplacePretreatment ExprPretreatment = &exprKeyWordReplacePretreatment{
 		keyword: " or ", // must have space
 		replace: " || ",
+	}
+
+	// exprPretreatmentChain is an expression pretreatment chain.
+	exprPretreatmentChain ExprPretreatment = ExprPretreatmentChain{
+		andReplacePretreatment,
+		orReplacePretreatment,
 	}
 )
 
@@ -122,32 +130,14 @@ func (e *goExpression) Eval(params Parameter) (EvalValue, error) {
 var (
 	// DefaultEvaluator is the default evaluator.
 	// Reset it to change the default behavior.
-	DefaultEvaluator Evaluator = &goEvaluator{
-		pretreatment: ExprPretreatmentChain{
-			andReplacePretreatment,
-			orReplacePretreatment,
-		},
-	}
+	DefaultEvaluator Evaluator = &goEvaluator{pretreatment: exprPretreatmentChain}
 )
-
-// SyntaxError represents a syntax error.
-// The error occurs when parsing the expression.
-type SyntaxError struct {
-	err error
-}
-
-// Error returns the error message.
-func (s *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %v", s.err)
-}
-
-// Unwrap returns the underlying error.
-func (s *SyntaxError) Unwrap() error {
-	return s.err
-}
 
 // Eval is a shortcut of DefaultEvaluator.Parse(expr).Eval(params).
 func Eval(expr string, params Parameter) (EvalValue, error) {
+	if DefaultEvaluator == nil {
+		return reflect.Value{}, errors.New("evaluator is nil")
+	}
 	expression, err := DefaultEvaluator.Parse(expr)
 	if err != nil {
 		return reflect.Value{}, err
@@ -339,7 +329,7 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 			return reflect.Value{}, errRet.Interface().(error)
 		}
 		// this should never happen, but just in case
-		// should i mark it unreachable?
+		// should I mark it unreachable?
 		return reflect.Value{}, errors.New("cannot convert return value to error")
 	}
 	return rets[0], nil
