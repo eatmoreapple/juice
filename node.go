@@ -476,9 +476,12 @@ func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string
 			builder.WriteString(" ")
 		}
 	}
-	query = builder.String()
 	if query != "" {
 		query = "SET " + query
+	}
+	// trim space and comma
+	for strings.HasSuffix(query, " ") {
+		query = strings.TrimSuffix(query, " ")
 	}
 	query = strings.TrimSuffix(query, ",")
 	return query, args, nil
