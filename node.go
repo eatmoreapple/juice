@@ -476,6 +476,7 @@ func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string
 			builder.WriteString(" ")
 		}
 	}
+	query = builder.String()
 	if query != "" {
 		query = "SET " + query
 	}
