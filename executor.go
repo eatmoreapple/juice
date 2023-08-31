@@ -40,30 +40,30 @@ type Executor interface {
 	Session() Session
 }
 
-// ExecutorWrapper is an interface for injecting the executor.
-type ExecutorWrapper interface {
-	// WarpExecutor injects the executor and returns the new executor.
-	WarpExecutor(Executor) Executor
+// ExecutorAdapter is an interface for injecting the executor.
+type ExecutorAdapter interface {
+	// AdapterExecutor injects the executor and returns the new executor.
+	AdapterExecutor(Executor) Executor
 }
 
-// ExecutorWarpGroup is a group of executor injectors.
-// It implements the ExecutorWrapper interface.
-type ExecutorWarpGroup []ExecutorWrapper
+// ExecutorAdapterGroup is a group of executor injectors.
+// It implements the ExecutorAdapter interface.
+type ExecutorAdapterGroup []ExecutorAdapter
 
-// WarpExecutor implements the ExecutorWrapper interface.
+// AdapterExecutor implements the ExecutorAdapter interface.
 // It wrapped the executor by the order of the group.
-func (eg ExecutorWarpGroup) WarpExecutor(e Executor) Executor {
-	for _, injector := range eg {
-		e = injector.WarpExecutor(e)
+func (eg ExecutorAdapterGroup) AdapterExecutor(e Executor) Executor {
+	for _, adapter := range eg {
+		e = adapter.AdapterExecutor(e)
 	}
 	return e
 }
 
-// ExecutorWarpFunc is a function type that implements the ExecutorWrapper interface.
-type ExecutorWarpFunc func(Executor) Executor
+// AdapterExecutorFunc is a function type that implements the ExecutorAdapter interface.
+type AdapterExecutorFunc func(Executor) Executor
 
-// WarpExecutor implements the ExecutorWrapper interface.
-func (f ExecutorWarpFunc) WarpExecutor(e Executor) Executor {
+// AdapterExecutor implements the ExecutorAdapter interface.
+func (f AdapterExecutorFunc) AdapterExecutor(e Executor) Executor {
 	return f(e)
 }
 
@@ -89,9 +89,9 @@ func (e *ParamCtxInjectorExecutor) ExecContext(ctx context.Context, param Param)
 	return e.Executor.ExecContext(ctx, param)
 }
 
-// NewParamCtxExecutorWrapper returns a new ParamCtxInjectorExecutor.
-func NewParamCtxExecutorWrapper() ExecutorWrapper {
-	return ExecutorWarpFunc(func(e Executor) Executor {
+// NewParamCtxExecutorAdapter returns a new ParamCtxInjectorExecutor.
+func NewParamCtxExecutorAdapter() ExecutorAdapter {
+	return AdapterExecutorFunc(func(e Executor) Executor {
 		return &ParamCtxInjectorExecutor{Executor: e}
 	})
 }
@@ -118,12 +118,19 @@ func (e *SessionCtxInjectorExecutor) ExecContext(ctx context.Context, param Para
 	return e.Executor.ExecContext(ctx, param)
 }
 
-// NewSessionCtxExecutorWrapper returns a new SessionCtxInjectorExecutor.
-func NewSessionCtxExecutorWrapper() ExecutorWrapper {
-	return ExecutorWarpFunc(func(e Executor) Executor {
+// NewSessionCtxInjectorExecutorAdapter returns a new SessionCtxInjectorExecutor.
+func NewSessionCtxInjectorExecutorAdapter() ExecutorAdapter {
+	return AdapterExecutorFunc(func(e Executor) Executor {
 		return &SessionCtxInjectorExecutor{Executor: e}
 	})
 }
+
+var (
+	defaultExecutorAdapter ExecutorAdapter = ExecutorAdapterGroup{
+		NewParamCtxExecutorAdapter(),
+		NewSessionCtxInjectorExecutorAdapter(),
+	}
+)
 
 // inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {

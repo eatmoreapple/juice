@@ -49,9 +49,9 @@ type Engine struct {
 	// like logging, tracing, etc.
 	middlewares MiddlewareGroup
 
-	// executorWrapper is the wrapper of the executor
+	// executorAdapter is the wrapper of the executor
 	// which is used to wrap the executor
-	executorWrapper ExecutorWrapper
+	executorAdapter ExecutorAdapter
 
 	// cacheFactory is the cache factory of the engine
 	cacheFactory func() cache.Cache
@@ -68,7 +68,7 @@ func (e *Engine) executor(v any) (*executor, error) {
 
 // warpExecutor wraps the executor, ensure enable the middlewares
 func (e *Engine) warpExecutor(executor Executor) Executor {
-	return e.executorWrapper.WarpExecutor(executor)
+	return e.executorAdapter.AdapterExecutor(executor)
 }
 
 // Object implements the Manager interface
@@ -188,10 +188,7 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
 	// set default executor wrapper
-	engine.executorWrapper = ExecutorWarpGroup{
-		NewSessionCtxExecutorWrapper(),
-		NewParamCtxExecutorWrapper(),
-	}
+	engine.executorAdapter = defaultExecutorAdapter
 	return engine, nil
 }
 
