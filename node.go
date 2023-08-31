@@ -34,6 +34,31 @@ type Node interface {
 	Accept(translator driver.Translator, p Parameter) (query string, args []any, err error)
 }
 
+// NodeGroup wraps multiple nodes.
+type NodeGroup []Node
+
+// Accept accepts parameters and returns query and arguments.
+func (g NodeGroup) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	var builder = getBuilder()
+	defer putBuilder(builder)
+	for i, node := range g {
+		q, a, err := node.Accept(translator, p)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(q) > 0 {
+			builder.WriteString(q)
+		}
+		if len(a) > 0 {
+			args = append(args, a...)
+		}
+		if i < len(g)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
+			builder.WriteString(" ")
+		}
+	}
+	return builder.String(), args, nil
+}
+
 // pureTextNode is a node of pure text.
 var _ Node = (*pureTextNode)(nil)
 
@@ -133,7 +158,7 @@ func NewTextNode(str string) (Node, error) {
 
 type ConditionNode struct {
 	expr  Expression
-	Nodes []Node
+	Nodes NodeGroup
 }
 
 // Parse with given expression.
@@ -150,24 +175,7 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 		return "", nil, err
 	}
 	if matched {
-		var builder = getBuilder()
-		defer putBuilder(builder)
-		for i, node := range c.Nodes {
-			q, a, err := node.Accept(translator, p)
-			if err != nil {
-				return "", nil, err
-			}
-			if len(q) > 0 {
-				builder.WriteString(q)
-			}
-			if len(a) > 0 {
-				args = append(args, a...)
-			}
-			if i < len(c.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-				builder.WriteString(" ")
-			}
-		}
-		return builder.String(), args, nil
+		return c.Nodes.Accept(translator, p)
 	}
 	return "", nil, nil
 }
@@ -492,7 +500,7 @@ func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string
 // SQLNode defines a SQL query.
 type SQLNode struct {
 	id     string
-	nodes  []Node
+	nodes  NodeGroup
 	mapper *Mapper
 }
 
@@ -503,24 +511,7 @@ func (s SQLNode) ID() string {
 
 // Accept accepts parameters and returns query and arguments.
 func (s SQLNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
-	for i, node := range s.nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(s.nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
-	}
-	return builder.String(), args, nil
+	return s.nodes.Accept(translator, p)
 }
 
 // IncludeNode is a node of include.
@@ -582,29 +573,12 @@ type WhenNode = ConditionNode
 // OtherwiseNode like else node, but it can not be used alone.
 // If all WhenNode is false, the query of OtherwiseNode will be returned.
 type OtherwiseNode struct {
-	Nodes []Node
+	Nodes NodeGroup
 }
 
 // Accept accepts parameters and returns query and arguments.
 func (o OtherwiseNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
-	for i, node := range o.Nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(o.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
-	}
-	return builder.String(), args, nil
+	return o.Nodes.Accept(translator, p)
 }
 
 // valueItem is a element of ValuesNode.
