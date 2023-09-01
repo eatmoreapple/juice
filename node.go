@@ -163,7 +163,7 @@ type ConditionNode struct {
 
 // Parse with given expression.
 func (c *ConditionNode) Parse(test string) (err error) {
-	c.expr, err = DefaultEvaluator.Parse(test)
+	c.expr, err = DefaultExprCompiler.Compile(test)
 	return err
 }
 
@@ -182,7 +182,7 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 
 // Match returns true if test is matched.
 func (c *ConditionNode) Match(p Parameter) (bool, error) {
-	value, err := c.expr.Eval(p)
+	value, err := c.expr.Execute(p)
 	if err != nil {
 		return false, err
 	}

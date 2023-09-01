@@ -81,10 +81,10 @@ var (
 	}
 )
 
-// Evaluator is an evaluator of the expression.
-type Evaluator interface {
-	// Parse parses the expression and returns the expression.
-	Parse(expr string) (Expression, error)
+// ExprCompiler is an evaluator of the expression.
+type ExprCompiler interface {
+	// Compile compiles the expression and returns the expression.
+	Compile(expr string) (Expression, error)
 }
 
 // EvalValue is an alias of reflect.Value.
@@ -93,17 +93,17 @@ type EvalValue = reflect.Value
 
 // Expression is an expression which can be evaluated to a value.
 type Expression interface {
-	// Eval evaluates the expression and returns the value.
-	Eval(params Parameter) (EvalValue, error)
+	// Execute evaluates the expression and returns the value.
+	Execute(params Parameter) (EvalValue, error)
 }
 
-// goEvaluator is an evaluator of the expression who uses the go/ast package.
-type goEvaluator struct {
+// goExprCompiler is an evaluator of the expression who uses the go/ast package.
+type goExprCompiler struct {
 	pretreatment ExprPretreatment
 }
 
-// Parse parses the expression and returns the expression.
-func (e *goEvaluator) Parse(expr string) (Expression, error) {
+// Compile compiles the expression and returns the expression.
+func (e *goExprCompiler) Compile(expr string) (Expression, error) {
 	// pretreatment the expression first.
 	expr, err := e.pretreatment.PretreatmentExpr(expr)
 	if err != nil {
@@ -122,27 +122,29 @@ type goExpression struct {
 	ast.Expr
 }
 
-// Eval evaluates the expression and returns the value.
-func (e *goExpression) Eval(params Parameter) (EvalValue, error) {
+// Execute evaluates the expression and returns the value.
+func (e *goExpression) Execute(params Parameter) (EvalValue, error) {
 	return eval(e.Expr, params)
 }
 
 var (
-	// DefaultEvaluator is the default evaluator.
+	// DefaultExprCompiler is the default evaluator.
 	// Reset it to change the default behavior.
-	DefaultEvaluator Evaluator = &goEvaluator{pretreatment: exprPretreatmentChain}
+	DefaultExprCompiler ExprCompiler = &goExprCompiler{pretreatment: exprPretreatmentChain}
 )
 
-// Eval is a shortcut of DefaultEvaluator.Parse(expr).Eval(params).
+// Eval is a shortcut of DefaultEvaluator.Compiler(expr).Execute(params).
 func Eval(expr string, params Parameter) (EvalValue, error) {
-	if DefaultEvaluator == nil {
+	// cache the compiler, incase the DefaultExprCompiler is changed by other goroutine.
+	compiler := DefaultExprCompiler
+	if compiler == nil {
 		return reflect.Value{}, errors.New("evaluator is nil")
 	}
-	expression, err := DefaultEvaluator.Parse(expr)
+	expression, err := compiler.Compile(expr)
 	if err != nil {
 		return reflect.Value{}, err
 	}
-	return expression.Eval(params)
+	return expression.Execute(params)
 }
 
 func eval(exp ast.Expr, params Parameter) (reflect.Value, error) {
