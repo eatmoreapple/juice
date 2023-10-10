@@ -19,6 +19,7 @@ package juice
 import (
 	"errors"
 	"fmt"
+	"github.com/eatmoreapple/juice/expr"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"go/ast"
 	"go/parser"
@@ -105,12 +106,12 @@ type goExprCompiler struct {
 // Compile compiles the expression and returns the expression.
 func (e *goExprCompiler) Compile(expr string) (Expression, error) {
 	// pretreatment the expression first.
-	expr, err := e.pretreatment.PretreatmentExpr(expr)
+	expr_, err := e.pretreatment.PretreatmentExpr(expr)
 	if err != nil {
 		return nil, err
 	}
 	// parse the expression with go/ast.
-	exp, err := parser.ParseExpr(expr)
+	exp, err := parser.ParseExpr(expr_)
 	if err != nil {
 		return nil, &SyntaxError{err}
 	}
@@ -464,46 +465,46 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error
 
 	next := func() (reflect.Value, error) { return eval(exp.Y, params) }
 
-	var binaryExprExecutor BinaryExprExecutor
+	var binaryExprExecutor expr.BinaryExprExecutor
 	switch exp.Op {
 	case token.EQL:
-		binaryExprExecutor = EQLExprExecutor{}
+		binaryExprExecutor = expr.EQLExprExecutor{}
 	case token.NEQ:
-		binaryExprExecutor = NEQExprExecutor{}
+		binaryExprExecutor = expr.NEQExprExecutor{}
 	case token.LSS:
-		binaryExprExecutor = LSSExprExecutor{}
+		binaryExprExecutor = expr.LSSExprExecutor{}
 	case token.LEQ:
-		binaryExprExecutor = LEQExprExecutor{}
+		binaryExprExecutor = expr.LEQExprExecutor{}
 	case token.GTR:
-		binaryExprExecutor = GTRExprExecutor{}
+		binaryExprExecutor = expr.GTRExprExecutor{}
 	case token.GEQ:
-		binaryExprExecutor = GEQExprExecutor{}
+		binaryExprExecutor = expr.GEQExprExecutor{}
 	case token.LAND:
-		binaryExprExecutor = LANDExprExecutor{}
+		binaryExprExecutor = expr.LANDExprExecutor{}
 	case token.LOR:
-		binaryExprExecutor = LORExprExecutor{}
+		binaryExprExecutor = expr.LORExprExecutor{}
 	case token.ADD:
-		binaryExprExecutor = ADDExprExecutor{}
+		binaryExprExecutor = expr.ADDExprExecutor{}
 	case token.SUB:
-		binaryExprExecutor = SUBExprExecutor{}
+		binaryExprExecutor = expr.SUBExprExecutor{}
 	case token.MUL:
-		binaryExprExecutor = MULExprExecutor{}
+		binaryExprExecutor = expr.MULExprExecutor{}
 	case token.QUO:
-		binaryExprExecutor = QUOExprExecutor{}
+		binaryExprExecutor = expr.QUOExprExecutor{}
 	case token.REM:
-		binaryExprExecutor = REMExprExecutor{}
+		binaryExprExecutor = expr.REMExprExecutor{}
 	case token.LPAREN:
-		binaryExprExecutor = LPARENExprExecutor{}
+		binaryExprExecutor = expr.LPARENExprExecutor{}
 	case token.RPAREN:
-		binaryExprExecutor = RPARENExprExecutor{}
+		binaryExprExecutor = expr.RPARENExprExecutor{}
 	case token.COMMENT:
-		binaryExprExecutor = COMMENTExprExecutor{}
+		binaryExprExecutor = expr.COMMENTExprExecutor{}
 	case token.NOT:
-		binaryExprExecutor = NOTExprExecutor{}
+		binaryExprExecutor = expr.NOTExprExecutor{}
 	case token.AND:
-		binaryExprExecutor = ANDExprExecutor{}
+		binaryExprExecutor = expr.ANDExprExecutor{}
 	case token.OR:
-		binaryExprExecutor = ORExprExecutor{}
+		binaryExprExecutor = expr.ORExprExecutor{}
 	default:
 		return reflect.Value{}, errors.New("unsupported binary expression")
 	}
