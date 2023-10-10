@@ -1,4 +1,4 @@
-package juice
+package expr
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"math/cmplx"
 	"reflect"
 )
+
+var nilValue = reflect.ValueOf(nil)
 
 // BinaryExprExecutor is the interface for binary expression executor
 type BinaryExprExecutor interface {
