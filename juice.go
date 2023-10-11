@@ -52,9 +52,6 @@ type Engine struct {
 	// executorAdapter is the wrapper of the executor
 	// which is used to wrap the executor
 	executorAdapter ExecutorAdapter
-
-	// cacheFactory is the cache factory of the engine
-	cacheFactory func() cache.Cache
 }
 
 // executor represents a mapper executor with the given parameters
@@ -99,7 +96,7 @@ func (e *Engine) CacheTx() TxCacheManager {
 // ContextCacheTx returns a TxCacheManager with the given context.
 func (e *Engine) ContextCacheTx(ctx context.Context, opt *sql.TxOptions) TxCacheManager {
 	tx := e.ContextTx(ctx, opt)
-	return NewTxCacheManager(tx, e.cacheFactory())
+	return NewTxCacheManager(tx, cache.InMemoryScopeCache())
 }
 
 // GetConfiguration returns the configuration of the engine
@@ -140,14 +137,6 @@ func (e *Engine) Close() error {
 	return nil
 }
 
-// SetCacheFactory sets the cache factory of the engine.
-func (e *Engine) SetCacheFactory(factory func() cache.Cache) {
-	if factory == nil {
-		panic("cache factory is nil")
-	}
-	e.cacheFactory = factory
-}
-
 // SetLocker sets the locker of the engine
 // it is not goroutine safe, so it should be called before the engine is used
 func (e *Engine) SetLocker(locker RWLocker) {
@@ -183,8 +172,6 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	if err := engine.init(); err != nil {
 		return nil, err
 	}
-	// set default cache factory
-	engine.SetCacheFactory(func() cache.Cache { return cache.New() })
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
 	// set default executor wrapper

@@ -306,14 +306,14 @@ func (m GenericMiddlewareGroup[T]) ExecContext(stmt *Statement, next ExecHandler
 // ensure GenericMiddlewareGroup implements GenericMiddleware
 var _ GenericMiddleware[any] = (*CacheMiddleware[any])(nil) // compile time check
 
-// cacheKeyFunc defines the function which is used to generate the cache key.
+// cacheKeyFunc defines the function which is used to generate the scopeCache key.
 type cacheKeyFunc func(stmt *Statement, query string, args []any) (string, error)
 
-// CacheKeyFunc is the function which is used to generate the cache key.
+// CacheKeyFunc is the function which is used to generate the scopeCache key.
 // default is the md5 of the query and args.
 // reset the CacheKeyFunc variable to change the default behavior.
 var CacheKeyFunc cacheKeyFunc = func(stmt *Statement, query string, args []any) (string, error) {
-	// only same statement same query same args can get the same cache key
+	// only same statement same query same args can get the same scopeCache key
 	writer := md5.New()
 	writer.Write([]byte(stmt.ID() + query))
 	if len(args) > 0 {
@@ -328,40 +328,29 @@ var CacheKeyFunc cacheKeyFunc = func(stmt *Statement, query string, args []any) 
 
 // CacheMiddleware is a middleware that caches the result of the sql query.
 type CacheMiddleware[T any] struct {
-	cache cache.Cache
+	scopeCache cache.ScopeCache
 }
 
 // QueryContext implements Middleware.
 func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
-	// If the cache is nil or the useCache is false, return the result directly.
-	if c.cache == nil || stmt.Attribute("useCache") == "false" {
+	// If the scopeCache is nil or the useCache is false, return the result directly.
+	if c.scopeCache == nil || stmt.Attribute("useCache") == "false" {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (result T, err error) {
-		// ptr is the pointer of the result, it is the destination of the binding.
-		var ptr any = &result
-
-		rv := reflect.ValueOf(result)
-
-		// if the result is a pointer, create a new instance of the element.
-		// you'd better not use a nil pointer as the result.
-		if rv.Kind() == reflect.Ptr {
-			result = reflect.New(rv.Type().Elem()).Interface().(T)
-			ptr = result
-		}
-
 		// cached this function incase the CacheKeyFunc is changed by other goroutines.
 		keyFunc := CacheKeyFunc
 
 		// check the keyFunc variable
 		if keyFunc == nil {
-			return result, errors.New("CacheKeyFunc is nil")
+			err = errors.New("CacheKeyFunc is nil")
+			return
 		}
 
-		// cacheKey is the key which is used to get the result and put the result to the cache.
+		// cacheKey is the key which is used to get the result and put the result to the scopeCache.
 		var cacheKey string
 
-		// CacheKeyFunc is the function which is used to generate the cache key.
+		// CacheKeyFunc is the function which is used to generate the scopeCache key.
 		// default is the md5 of the query and args.
 		// reset the CacheKeyFunc variable to change the default behavior.
 		cacheKey, err = keyFunc(stmt, query, args)
@@ -369,13 +358,20 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 			return
 		}
 
-		// try to get the result from the cache
-		// if the result is found, return it directly.
-		if err = c.cache.Get(ctx, cacheKey, ptr); err == nil {
+		// try to get the result from the scopeCache
+		instance, err := c.scopeCache.Get(ctx, cacheKey)
+		if err == nil {
+			// try to convert the instance to the result type.
+			var ok bool
+			result, ok = instance.(T)
+			// with wrong type, return error
+			if !ok {
+				return result, fmt.Errorf("the type of the cached instance is %T, but the result type is %T", instance, result)
+			}
 			return
 		}
 
-		// ErrCacheNotFound means the cache is not found,
+		// ErrCacheNotFound means the scopeCache is not found,
 		// we should continue to query the database.
 		if !errors.Is(err, cache.ErrCacheNotFound) {
 			return
@@ -386,22 +382,22 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 		if err != nil {
 			return
 		}
-		err = c.cache.Set(ctx, cacheKey, result)
+		err = c.scopeCache.Set(ctx, cacheKey, result)
 		return
 	}
 }
 
 // ExecContext implements Middleware.
 func (c *CacheMiddleware[T]) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
-	// if the cache is enabled and flushCache is not disabled in this statement.
-	if stmt.Attribute("flushCache") == "false" || c.cache == nil {
+	// if the scopeCache is enabled and flushCache is not disabled in this statement.
+	if stmt.Attribute("flushCache") == "false" || c.scopeCache == nil {
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
 		// call the next handler
 		result, err := next(ctx, query, args...)
 		if err == nil {
-			err = c.cache.Flush(ctx)
+			err = c.scopeCache.Flush(ctx)
 		}
 		return result, err
 	}
