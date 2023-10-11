@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"sync"
 )
@@ -10,57 +9,53 @@ import (
 // ErrCacheNotFound is the error that cache not found.
 var ErrCacheNotFound = errors.New("juice: cache not found")
 
-type Cache interface {
+// ScopeCache is an interface for transactional cache.
+type ScopeCache interface {
 	// Set sets the value for the key.
 	Set(ctx context.Context, key string, value any) error
 
 	// Get gets the value for the key.
-	// If the value does not exist, it returns ErrCacheNotFound.
-	Get(ctx context.Context, key string, dst any) error
+	// If the value does not exist, it should return ErrCacheNotFound.
+	Get(ctx context.Context, key string) (any, error)
 
 	// Flush flushes all the cache.
+	// It will be called after Commit() or Rollback().
 	Flush(ctx context.Context) error
 }
 
-type memoryCache struct {
-	data map[string][]byte
+type inMemoryScopeCache struct {
+	data map[string]any
 	mu   sync.RWMutex
 }
 
-func (m *memoryCache) Set(_ context.Context, key string, value any) error {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
+func (m *inMemoryScopeCache) Set(_ context.Context, key string, value any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.data == nil {
-		m.data = make(map[string][]byte)
+		m.data = make(map[string]any)
 	}
-	m.data[key] = data
+	m.data[key] = value
 	return nil
 }
 
-func (m *memoryCache) Get(_ context.Context, key string, dst any) error {
+func (m *inMemoryScopeCache) Get(_ context.Context, key string) (any, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	data, ok := m.data[key]
 	if !ok {
-		return ErrCacheNotFound
+		return nil, ErrCacheNotFound
 	}
-	return json.Unmarshal(data, dst)
+	return data, nil
 }
 
-func (m *memoryCache) Flush(_ context.Context) error {
+func (m *inMemoryScopeCache) Flush(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for k := range m.data {
-		delete(m.data, k)
-	}
+	clear(m.data)
 	return nil
 }
 
-// New returns a memery cache.
-func New() Cache {
-	return new(memoryCache)
+// InMemoryScopeCache returns an ScopeCache instance.
+func InMemoryScopeCache() ScopeCache {
+	return new(inMemoryScopeCache)
 }

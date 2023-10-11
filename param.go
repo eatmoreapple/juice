@@ -186,9 +186,9 @@ func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 }
 
 // Get implements Parameter.
-// It will cache the value of the parameter for better performance.
+// It will scopeCache the value of the parameter for better performance.
 func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
-	// try to get the value from cache first
+	// try to get the value from scopeCache first
 	value, exists = g.cache[name]
 	if exists {
 		return value, exists
@@ -199,7 +199,7 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 		if g.cache == nil {
 			g.cache = make(map[string]reflect.Value)
 		}
-		// cache the value
+		// scopeCache the value
 		g.cache[name] = value
 	}
 	return value, exists

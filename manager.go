@@ -44,15 +44,15 @@ func NewGenericManager[T any](manager Manager) GenericManager[T] {
 // genericManager implements the GenericManager interface.
 type genericManager[T any] struct {
 	Manager
-	cache cache.Cache
+	cache cache.ScopeCache
 }
 
 // Object implements the GenericManager interface.
 func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
 	exe := &genericExecutor[T]{Executor: s.Manager.Object(v)}
-	// add the cache middleware if the cache is not nil
+	// add the scopeCache middleware if the scopeCache is not nil
 	if s.cache != nil {
-		exe.Use(&CacheMiddleware[T]{cache: s.cache})
+		exe.Use(&CacheMiddleware[T]{scopeCache: s.cache})
 	}
 	return exe
 }
@@ -103,18 +103,18 @@ func (t *txManager) Rollback() error {
 	return t.tx.Rollback()
 }
 
-// TxCacheManager defines a transactional cache manager whose cache can be accessed.
+// TxCacheManager defines a transactional scopeCache manager whose scopeCache can be accessed.
 // All queries in the transaction will be cached.
-// cache.Flush() will be called after Commit() or Rollback().
+// scopeCache.Flush() will be called after Commit() or Rollback().
 type TxCacheManager interface {
 	TxManager
-	Cache() cache.Cache
+	Cache() cache.ScopeCache
 }
 
 // txCacheManager implements the TxCacheManager interface.
 type txCacheManager struct {
 	manager TxManager
-	cache   cache.Cache
+	cache   cache.ScopeCache
 }
 
 // Object implements the Manager interface.
@@ -122,25 +122,25 @@ func (t *txCacheManager) Object(v any) Executor {
 	return t.manager.Object(v)
 }
 
-// Commit commits the transaction and flushes the cache.
+// Commit commits the transaction and flushes the scopeCache.
 func (t *txCacheManager) Commit() error {
 	defer func() { _ = t.cache.Flush(context.Background()) }()
 	return t.manager.Commit()
 }
 
-// Rollback rollbacks the transaction and flushes the cache.
+// Rollback rollbacks the transaction and flushes the scopeCache.
 func (t *txCacheManager) Rollback() error {
 	defer func() { _ = t.cache.Flush(context.Background()) }()
 	return t.manager.Rollback()
 }
 
-// Cache returns the cache of the TxCacheManager.
-func (t *txCacheManager) Cache() cache.Cache {
+// Cache returns the scopeCache of the TxCacheManager.
+func (t *txCacheManager) Cache() cache.ScopeCache {
 	return t.cache
 }
 
 // NewTxCacheManager returns a new TxCacheManager.
-func NewTxCacheManager(manager TxManager, cache cache.Cache) TxCacheManager {
+func NewTxCacheManager(manager TxManager, cache cache.ScopeCache) TxCacheManager {
 	return &txCacheManager{manager: manager, cache: cache}
 }
 
