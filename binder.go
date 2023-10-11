@@ -33,16 +33,20 @@ var (
 )
 
 // Bind sql.Rows to given entity with default mapper
-func Bind(rows *sql.Rows, v any) error {
-	return BindWithResultMap(rows, v, nil)
+func Bind[T any](rows *sql.Rows) (result T, err error) {
+	return BindWithResultMap[T](rows, nil)
 }
 
-// BindWithResultMap bind sql.Rows to given entity with given ResultMap
-// bind cover sql.Rows to given entity
-// dest can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
-// rows won't be closed when the function returns.
-func BindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
+func bindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
+	if v == nil {
+		return errors.New("destination can not be nil")
+	}
+	if rows == nil {
+		return errors.New("rows can not be nil")
+	}
+	// get reflect.Value of v
 	rv := reflect.ValueOf(v)
+
 	if rv.Kind() != reflect.Ptr {
 		return errors.New("v must be a pointer")
 	}
@@ -55,4 +59,26 @@ func BindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
 		}
 	}
 	return resultMap.ResultTo(rv, rows)
+}
+
+// BindWithResultMap bind sql.Rows to given entity with given ResultMap
+// bind cover sql.Rows to given entity
+// dest can be a pointer to a struct, a pointer to a slice of struct, or a pointer to a slice of any type.
+// rows won't be closed when the function returns.
+func BindWithResultMap[T any](rows *sql.Rows, resultMap ResultMap) (result T, err error) {
+	// ptr is the pointer of the result, it is the destination of the binding.
+	var ptr any = &result
+
+	rv := reflect.ValueOf(result)
+	// if the result is a pointer, create a new instance of the element.
+	// you'd better not use a nil pointer as the result.
+	// for example:
+	//     BindWithResultMap[*int](rows, nil) bad
+	//     BindWithResultMap[int](rows, nil) good
+	if rv.Kind() == reflect.Ptr {
+		result = reflect.New(rv.Type().Elem()).Interface().(T)
+		ptr = result
+	}
+	err = bindWithResultMap(rows, ptr, resultMap)
+	return
 }

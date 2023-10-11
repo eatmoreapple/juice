@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"reflect"
 )
 
 // Executor is an executor of SQL.
@@ -253,31 +252,18 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 		// ErrResultMapNotSet means the result map is not set, use the default result map.
 		if err != nil {
 			if !errors.Is(err, ErrResultMapNotSet) {
-				return
+				return result, err
 			}
 		}
 
 		// try to query the database.
 		rows, err := e.Executor.QueryContext(ctx, param)
 		if err != nil {
-			return
+			return result, err
 		}
 		defer func() { _ = rows.Close() }()
 
-		// ptr is the pointer of the result, it is the destination of the binding.
-		var ptr any = &result
-
-		rv := reflect.ValueOf(result)
-
-		// if the result is a pointer, create a new instance of the element.
-		// you'd better not use a nil pointer as the result.
-		if rv.Kind() == reflect.Ptr {
-			result = reflect.New(rv.Type().Elem()).Interface().(T)
-			ptr = result
-		}
-
-		err = BindWithResultMap(rows, ptr, retMap)
-		return
+		return BindWithResultMap[T](rows, retMap)
 	}
 }
 
