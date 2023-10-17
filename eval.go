@@ -465,48 +465,9 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error
 
 	next := func() (reflect.Value, error) { return eval(exp.Y, params) }
 
-	var binaryExprExecutor expr.BinaryExprExecutor
-	switch exp.Op {
-	case token.EQL:
-		binaryExprExecutor = expr.EQLExprExecutor{}
-	case token.NEQ:
-		binaryExprExecutor = expr.NEQExprExecutor{}
-	case token.LSS:
-		binaryExprExecutor = expr.LSSExprExecutor{}
-	case token.LEQ:
-		binaryExprExecutor = expr.LEQExprExecutor{}
-	case token.GTR:
-		binaryExprExecutor = expr.GTRExprExecutor{}
-	case token.GEQ:
-		binaryExprExecutor = expr.GEQExprExecutor{}
-	case token.LAND:
-		binaryExprExecutor = expr.LANDExprExecutor{}
-	case token.LOR:
-		binaryExprExecutor = expr.LORExprExecutor{}
-	case token.ADD:
-		binaryExprExecutor = expr.ADDExprExecutor{}
-	case token.SUB:
-		binaryExprExecutor = expr.SUBExprExecutor{}
-	case token.MUL:
-		binaryExprExecutor = expr.MULExprExecutor{}
-	case token.QUO:
-		binaryExprExecutor = expr.QUOExprExecutor{}
-	case token.REM:
-		binaryExprExecutor = expr.REMExprExecutor{}
-	case token.LPAREN:
-		binaryExprExecutor = expr.LPARENExprExecutor{}
-	case token.RPAREN:
-		binaryExprExecutor = expr.RPARENExprExecutor{}
-	case token.COMMENT:
-		binaryExprExecutor = expr.COMMENTExprExecutor{}
-	case token.NOT:
-		binaryExprExecutor = expr.NOTExprExecutor{}
-	case token.AND:
-		binaryExprExecutor = expr.ANDExprExecutor{}
-	case token.OR:
-		binaryExprExecutor = expr.ORExprExecutor{}
-	default:
-		return reflect.Value{}, errors.New("unsupported binary expression")
+	binaryExprExecutor, err := expr.FromToken(exp.Op)
+	if err != nil {
+		return reflect.Value{}, err
 	}
 	return binaryExprExecutor.Exec(lhs, next)
 }
