@@ -9,7 +9,13 @@ import (
 	"reflect"
 )
 
-var nilValue = reflect.ValueOf(nil)
+var (
+	// nilValue represents the nil value
+	nilValue = reflect.ValueOf(nil)
+
+	// invalidValue represents the invalid value
+	invalidValue = reflect.Value{}
+)
 
 // BinaryExprExecutor is the interface for binary expression executor
 type BinaryExprExecutor interface {
@@ -28,7 +34,7 @@ type EQLExprExecutor struct{}
 func (EQLExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	// check if the values are valid
 	if !right.IsValid() || !left.IsValid() {
@@ -56,7 +62,7 @@ func (EQLExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			// nil value but not nil type
 			return reflect.ValueOf(valid.IsNil()), nil
 		}
-		return reflect.ValueOf(false), fmt.Errorf("invalid operation: %s == %s", right.Kind(), left.Kind())
+		return invalidValue, fmt.Errorf("invalid operation: %s == %s", right.Kind(), left.Kind())
 	}
 
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
@@ -92,7 +98,7 @@ func (EQLExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Complex() == left.Complex()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // NEQExprExecutor is the executor for !=
@@ -104,7 +110,7 @@ func (NEQExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 	exe := EQLExprExecutor{}
 	value, err := exe.Exec(right, next)
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	return reflect.ValueOf(!value.Bool()), nil
 }
@@ -117,7 +123,7 @@ type LSSExprExecutor struct{}
 func (LSSExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
@@ -152,7 +158,7 @@ func (LSSExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(cmplx.Abs(right.Complex()) < cmplx.Abs(left.Complex())), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // LEQExprExecutor is the executor for <=
@@ -163,7 +169,7 @@ type LEQExprExecutor struct{}
 func (LEQExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
@@ -198,7 +204,7 @@ func (LEQExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(cmplx.Abs(right.Complex()) <= cmplx.Abs(left.Complex())), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // GTRExprExecutor is the executor for >
@@ -210,7 +216,7 @@ func (GTRExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 	exe := LEQExprExecutor{}
 	value, err := exe.Exec(right, next)
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	return reflect.ValueOf(!value.Bool()), nil
 }
@@ -224,7 +230,7 @@ func (GEQExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 	exe := LSSExprExecutor{}
 	value, err := exe.Exec(right, next)
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	return reflect.ValueOf(!value.Bool()), nil
 }
@@ -237,18 +243,18 @@ type LANDExprExecutor struct{}
 func (LANDExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right = reflectlite.Unwrap(right)
 	if right.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported expression: %v", right.Kind())
+		return invalidValue, fmt.Errorf("unsupported expression: %v", right.Kind())
 	}
 	if !right.Bool() {
 		return right, nil
 	}
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	left = reflectlite.Unwrap(left)
 	if left.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported expression: %v", left.Kind())
+		return invalidValue, fmt.Errorf("unsupported expression: %v", left.Kind())
 	}
 	return left, nil
 }
@@ -261,18 +267,18 @@ type LORExprExecutor struct{}
 func (LORExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right = reflectlite.Unwrap(right)
 	if right.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported expression: %v", right.Kind())
+		return invalidValue, fmt.Errorf("unsupported expression: %v", right.Kind())
 	}
 	if right.Bool() {
 		return right, nil
 	}
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	left = reflectlite.Unwrap(left)
 	if left.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported expression: %v", left.Kind())
+		return invalidValue, fmt.Errorf("unsupported expression: %v", left.Kind())
 	}
 	return left, nil
 }
@@ -285,7 +291,7 @@ type ADDExprExecutor struct{}
 func (ADDExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
@@ -319,7 +325,7 @@ func (ADDExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Complex() + left.Complex()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // SUBExprExecutor is the executor for -
@@ -330,7 +336,7 @@ type SUBExprExecutor struct{}
 func (SUBExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
@@ -359,7 +365,7 @@ func (SUBExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Complex() - left.Complex()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // MULExprExecutor is the executor for *
@@ -370,7 +376,7 @@ type MULExprExecutor struct{}
 func (MULExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
@@ -399,7 +405,7 @@ func (MULExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Complex() * left.Complex()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // QUOExprExecutor is the executor for /
@@ -410,7 +416,7 @@ type QUOExprExecutor struct{}
 func (QUOExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
@@ -439,7 +445,7 @@ func (QUOExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Complex() / left.Complex()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // REMExprExecutor is the executor for %
@@ -450,7 +456,7 @@ type REMExprExecutor struct{}
 func (REMExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch right.Kind() {
@@ -469,7 +475,7 @@ func (REMExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, err
 			return reflect.ValueOf(right.Uint() % left.Uint()), nil
 		}
 	}
-	return reflect.ValueOf(false), fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
 }
 
 // LPARENExprExecutor is the executor for (
@@ -505,7 +511,7 @@ type NOTExprExecutor struct{}
 func (NOTExprExecutor) Exec(_ reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	return reflect.ValueOf(!right.Bool()), nil
 }
@@ -518,18 +524,18 @@ type ANDExprExecutor struct{}
 func (ANDExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right = reflectlite.Unwrap(right)
 	if right.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported and expression: %v", right.Kind())
+		return invalidValue, fmt.Errorf("unsupported and expression: %v", right.Kind())
 	}
 	if !right.Bool() {
 		return right, nil
 	}
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	left = reflectlite.Unwrap(left)
 	if left.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported and expression: %v", left.Kind())
+		return invalidValue, fmt.Errorf("unsupported and expression: %v", left.Kind())
 	}
 	return left, nil
 }
@@ -542,18 +548,18 @@ type ORExprExecutor struct{}
 func (ORExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right = reflectlite.Unwrap(right)
 	if right.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported or expression: %v", right.Kind())
+		return invalidValue, fmt.Errorf("unsupported or expression: %v", right.Kind())
 	}
 	if right.Bool() {
 		return right, nil
 	}
 	left, err := next()
 	if err != nil {
-		return reflect.Value{}, err
+		return invalidValue, err
 	}
 	left = reflectlite.Unwrap(left)
 	if left.Kind() != reflect.Bool {
-		return reflect.Value{}, fmt.Errorf("unsupported or expression: %v", left.Kind())
+		return invalidValue, fmt.Errorf("unsupported or expression: %v", left.Kind())
 	}
 	return left, nil
 }
