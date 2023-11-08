@@ -47,24 +47,16 @@ type BinaryExprExecutor interface {
 	Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error)
 }
 
-type ComparerExprExecutor struct {
-	Comparer
+type OperatorExecutor struct {
+	Operator
 }
 
-func (c ComparerExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
+func (c OperatorExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
 	right, err := next()
 	if err != nil {
 		return invalidValue, err
 	}
-	ok, err := c.Compare(left, right)
-	if err != nil {
-		return invalidValue, err
-	}
-	if ok {
-		return trueValue, nil
-	} else {
-		return falseValue, nil
-	}
+	return c.Operator.Operate(left, right)
 }
 
 // EQLExprExecutor is the executor for ==
@@ -73,8 +65,8 @@ type EQLExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (EQLExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer EqualComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Eq}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -84,8 +76,8 @@ type NEQExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (NEQExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer NotEqualComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Ne}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -95,8 +87,8 @@ type LSSExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (LSSExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer LessThanComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Lt}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -106,8 +98,8 @@ type LEQExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (LEQExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer LessThanOrEqualComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Le}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -117,8 +109,8 @@ type GTRExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (GTRExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer GreaterThanComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Gt}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -128,8 +120,8 @@ type GEQExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (GEQExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	var comparer GreaterThanOrEqualComparer
-	executor := ComparerExprExecutor{Comparer: comparer}
+	var operator = GenericOperator{OperatorExpr: Ge}
+	executor := OperatorExecutor{Operator: operator}
 	return executor.Exec(left, next)
 }
 
@@ -186,44 +178,10 @@ type ADDExprExecutor struct{}
 
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
-func (ADDExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	left, err := next()
-	if err != nil {
-		return invalidValue, err
-	}
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() + left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) + left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() + uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() + left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() + left.Float()), nil
-		}
-	case reflect.String:
-		switch left.Kind() {
-		case reflect.String:
-			return reflect.ValueOf(right.String() + left.String()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() + left.Complex()), nil
-		}
-	}
-	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+func (ADDExprExecutor) Exec(left reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
+	var operator = GenericOperator{OperatorExpr: Add}
+	executor := OperatorExecutor{Operator: operator}
+	return executor.Exec(left, next)
 }
 
 // SUBExprExecutor is the executor for -
@@ -232,38 +190,9 @@ type SUBExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (SUBExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	left, err := next()
-	if err != nil {
-		return invalidValue, err
-	}
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() - left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) - left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() - uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() - left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() - left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() - left.Complex()), nil
-		}
-	}
-	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	var operator = GenericOperator{OperatorExpr: Sub}
+	executor := OperatorExecutor{Operator: operator}
+	return executor.Exec(right, next)
 }
 
 // MULExprExecutor is the executor for *
@@ -272,38 +201,9 @@ type MULExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (MULExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	left, err := next()
-	if err != nil {
-		return invalidValue, err
-	}
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() * left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) * left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() * uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() * left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() * left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() * left.Complex()), nil
-		}
-	}
-	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	var operator = GenericOperator{OperatorExpr: Mul}
+	executor := OperatorExecutor{Operator: operator}
+	return executor.Exec(right, next)
 }
 
 // QUOExprExecutor is the executor for /
@@ -312,38 +212,9 @@ type QUOExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (QUOExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	left, err := next()
-	if err != nil {
-		return invalidValue, err
-	}
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() / left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) / left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() / uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() / left.Uint()), nil
-		}
-	case reflect.Float32, reflect.Float64:
-		switch left.Kind() {
-		case reflect.Float32, reflect.Float64:
-			return reflect.ValueOf(right.Float() / left.Float()), nil
-		}
-	case reflect.Complex64, reflect.Complex128:
-		switch left.Kind() {
-		case reflect.Complex64, reflect.Complex128:
-			return reflect.ValueOf(right.Complex() / left.Complex()), nil
-		}
-	}
-	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	var operator = GenericOperator{OperatorExpr: Quo}
+	executor := OperatorExecutor{Operator: operator}
+	return executor.Exec(right, next)
 }
 
 // REMExprExecutor is the executor for %
@@ -352,28 +223,9 @@ type REMExprExecutor struct{}
 // Exec execute the binary expression
 // implement BinaryExprExecutor interface
 func (REMExprExecutor) Exec(right reflect.Value, next func() (reflect.Value, error)) (reflect.Value, error) {
-	left, err := next()
-	if err != nil {
-		return invalidValue, err
-	}
-	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
-	switch right.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Int() % left.Int()), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(uint64(right.Int()) % left.Uint()), nil
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch {
-		case reflect.Int <= left.Kind() && left.Kind() <= reflect.Int64:
-			return reflect.ValueOf(right.Uint() % uint64(left.Int())), nil
-		case reflect.Uint <= left.Kind() && left.Kind() <= reflect.Uint64:
-			return reflect.ValueOf(right.Uint() % left.Uint()), nil
-		}
-	}
-	return invalidValue, fmt.Errorf("unsupported expression: %v, %v", right.Kind(), left.Kind())
+	var operator = GenericOperator{OperatorExpr: Rem}
+	executor := OperatorExecutor{Operator: operator}
+	return executor.Exec(right, next)
 }
 
 // LPARENExprExecutor is the executor for (
