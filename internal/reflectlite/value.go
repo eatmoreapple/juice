@@ -35,7 +35,7 @@ func Unwrap(value reflect.Value) reflect.Value {
 // NilAble returns true if the type can be nil.
 func NilAble(v reflect.Value) bool {
 	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer, reflect.Invalid:
 		return true
 	}
 	return false

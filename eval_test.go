@@ -594,6 +594,61 @@ func TestExprNilEQ(t *testing.T) {
 	}
 }
 
+func TestExprNilNEQ(t *testing.T) {
+	result, err := Eval("a != nil", H{"a": nil}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+	var a *int
+	result, err = Eval("a != nil", H{"a": a}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	var entity struct {
+		A *int `param:"a"`
+	}
+	result, err = Eval("a != nil", newGenericParam(entity, ""))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	var a2 = new(int)
+	result, err = Eval("a != nil", H{"a": a2}.AsParam())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !result.Bool() {
+		t.Error("eval error")
+		return
+	}
+
+	var a3 = 1
+	_, err = Eval("a != nil", H{"a": a3}.AsParam())
+	if err == nil {
+		t.Error(err)
+		return
+	} else {
+		t.Log(err)
+	}
+}
+
 func TestSelector(t *testing.T) {
 	var entity struct {
 		A int `param:"a"`
