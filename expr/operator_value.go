@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package expr
 
 import (
@@ -322,38 +338,25 @@ type InvalidTypeOperator struct {
 }
 
 // Operate implements Operator interface.
-func (o InvalidTypeOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
+func (o InvalidTypeOperator) Operate(left, right reflect.Value) (result reflect.Value, err error) {
 	if !right.IsValid() || !left.IsValid() {
-
-		// if both values are invalid, they are equal
-		if !right.IsValid() && !left.IsValid() {
-			return trueValue, nil
-		}
-		var valid = right
-		if !right.IsValid() {
-			valid = left
-		}
-
-		// if the invalid value is nil, the valid value is equal to nil
-		if reflectlite.NilAble(valid) {
-			// nil value
-			if valid.Equal(nilValue) {
-				return trueValue, nil
+		// fixme: find a better way to handle nil values
+		defer func() {
+			if r := recover(); r != nil {
+				// ignore panic
+				left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
+				err = NewOperationError(left, right, o.OperatorExpr.String())
 			}
-
-			// unwrap interface value
-			if valid.Kind() == reflect.Interface {
-				valid = valid.Elem()
-			}
-			// nil value but not nil type
-			switch o.OperatorExpr {
-			case Eq:
-				return reflect.ValueOf(valid.IsNil()), nil
-			case Ne:
-				return reflect.ValueOf(!valid.IsNil()), nil
-			}
+		}()
+		ok := bothNil(left, right)
+		switch o.OperatorExpr {
+		case Eq:
+			return reflect.ValueOf(ok), nil
+		case Ne:
+			return reflect.ValueOf(!ok), nil
 		}
 	}
+	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	return invalidValue, NewOperationError(left, right, o.OperatorExpr.String())
 }
 
@@ -366,23 +369,23 @@ type GenericOperator struct {
 func (o GenericOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	var operator Operator
 	if !right.IsValid() || !left.IsValid() {
-		operator = InvalidTypeOperator{o.OperatorExpr}
+		operator = InvalidTypeOperator{OperatorExpr: o.OperatorExpr}
 		return operator.Operate(left, right)
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch {
 	case isInt(left):
-		operator = IntOperator{o.OperatorExpr}
+		operator = IntOperator{OperatorExpr: o.OperatorExpr}
 	case isUint(left):
-		operator = UintOperator{o.OperatorExpr}
+		operator = UintOperator{OperatorExpr: o.OperatorExpr}
 	case isFloat(left):
-		operator = FloatOperator{o.OperatorExpr}
+		operator = FloatOperator{OperatorExpr: o.OperatorExpr}
 	case isString(left):
-		operator = StringOperator{o.OperatorExpr}
+		operator = StringOperator{OperatorExpr: o.OperatorExpr}
 	case isBool(left):
-		operator = BoolOperator{o.OperatorExpr}
+		operator = BoolOperator{OperatorExpr: o.OperatorExpr}
 	case isComplex(left):
-		operator = ComplexOperator{o.OperatorExpr}
+		operator = ComplexOperator{OperatorExpr: o.OperatorExpr}
 	default:
 		return invalidValue, NewOperationError(left, right, o.OperatorExpr.String())
 	}

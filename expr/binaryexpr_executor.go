@@ -30,12 +30,6 @@ var (
 
 	// invalidValue represents the invalid value
 	invalidValue = reflect.Value{}
-
-	// trueValue represents the true value
-	trueValue = reflect.ValueOf(true)
-
-	// falseValue represents the false value
-	falseValue = reflect.ValueOf(false)
 )
 
 // BinaryExprExecutor is the interface for binary expression executor
