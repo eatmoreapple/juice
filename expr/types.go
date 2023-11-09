@@ -30,6 +30,18 @@ func isInt(r reflect.Value) bool {
 	}
 }
 
+func isAllInt(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isInt(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func isUint(r reflect.Value) bool {
 	switch r.Kind() {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -37,6 +49,18 @@ func isUint(r reflect.Value) bool {
 	default:
 		return false
 	}
+}
+
+func isAllUint(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isUint(r) {
+			return false
+		}
+	}
+	return true
 }
 
 func isFloat(r reflect.Value) bool {
@@ -48,6 +72,18 @@ func isFloat(r reflect.Value) bool {
 	}
 }
 
+func isAllFloat(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isFloat(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func isComplex(r reflect.Value) bool {
 	switch r.Kind() {
 	case reflect.Complex64, reflect.Complex128:
@@ -57,12 +93,48 @@ func isComplex(r reflect.Value) bool {
 	}
 }
 
+func isAllComplex(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isComplex(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func isString(r reflect.Value) bool {
 	return r.Kind() == reflect.String
 }
 
+func isAllString(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isString(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func isBool(r reflect.Value) bool {
 	return r.Kind() == reflect.Bool
+}
+
+func isAllBool(rs ...reflect.Value) bool {
+	if len(rs) == 0 {
+		return false
+	}
+	for _, r := range rs {
+		if !isBool(r) {
+			return false
+		}
+	}
+	return true
 }
 
 func bothNil(left, right reflect.Value) bool {
