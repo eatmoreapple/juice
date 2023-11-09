@@ -374,17 +374,17 @@ func (o GenericOperator) Operate(left, right reflect.Value) (reflect.Value, erro
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 	switch {
-	case isInt(left):
+	case isInt(left) && isInt(right):
 		operator = IntOperator{OperatorExpr: o.OperatorExpr}
-	case isUint(left):
+	case isUint(left) && isUint(right):
 		operator = UintOperator{OperatorExpr: o.OperatorExpr}
-	case isFloat(left):
+	case isFloat(left) && isFloat(right):
 		operator = FloatOperator{OperatorExpr: o.OperatorExpr}
-	case isString(left):
+	case isString(left) && isString(right):
 		operator = StringOperator{OperatorExpr: o.OperatorExpr}
-	case isBool(left):
+	case isBool(left) && isBool(right):
 		operator = BoolOperator{OperatorExpr: o.OperatorExpr}
-	case isComplex(left):
+	case isComplex(left) && isComplex(right):
 		operator = ComplexOperator{OperatorExpr: o.OperatorExpr}
 	default:
 		return invalidValue, NewOperationError(left, right, o.OperatorExpr.String())
