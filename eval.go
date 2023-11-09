@@ -458,16 +458,17 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error
 	if err != nil {
 		return reflect.Value{}, err
 	}
-
 	if lhs.Kind() == reflect.Func {
 		return evalFunc(lhs, exp, params), nil
 	}
-
-	next := func() (reflect.Value, error) { return eval(exp.Y, params) }
-
 	binaryExprExecutor, err := expr.FromToken(exp.Op)
 	if err != nil {
 		return reflect.Value{}, err
 	}
-	return binaryExprExecutor.Exec(lhs, next)
+
+	x := func() (reflect.Value, error) { return lhs, nil }
+
+	// for lazy evaluation
+	y := func() (reflect.Value, error) { return eval(exp.Y, params) }
+	return binaryExprExecutor.Exec(x, y)
 }
