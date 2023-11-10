@@ -22,6 +22,7 @@ import (
 )
 
 // OperatorExpr represents an operator expression.
+// It is an integer type that represents different types of operators.
 type OperatorExpr int
 
 const (
@@ -42,6 +43,7 @@ const (
 	Ge                       // >=
 )
 
+// String method returns the string representation of the operator.
 func (e OperatorExpr) String() string {
 	switch e {
 	case Add:
@@ -80,22 +82,25 @@ func (e OperatorExpr) String() string {
 }
 
 // OperationError represents an operation error between two values.
+// It contains the left and right values that caused the error, and the operator that was being applied.
 type OperationError struct {
 	left, right reflect.Value
 	operator    string
 }
 
-// Error implements errors interface.
+// Error method implements the error interface. It returns a string describing the error.
 func (c OperationError) Error() string {
 	return "invalid operation " + c.operator + " for " + c.left.Kind().String() + " and " + c.right.Kind().String()
 }
 
 // NewOperationError creates a new OperationError.
+// It takes the left and right values that caused the error, and the operator that was being applied.
 func NewOperationError(left, right reflect.Value, operator string) error {
 	return &OperationError{left: left, right: right, operator: operator}
 }
 
 // Operator defines an interface for operators.
+// It has a single method, Operate, which performs an operation between two values.
 type Operator interface {
 
 	// Operate performs an operation between two values.
@@ -103,11 +108,13 @@ type Operator interface {
 }
 
 // IntOperator represents an integer operator.
+// It embeds OperatorExpr to inherit its methods.
 type IntOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for IntOperator.
+// It performs the operation represented by the operator on the two integer values.
 func (o IntOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isInt(left) || !isInt(right) {
@@ -150,11 +157,13 @@ func (o IntOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 }
 
 // UintOperator represents an unsigned integer operator.
+// It embeds OperatorExpr to inherit its methods.
 type UintOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for UintOperator.
+// It performs the operation represented by the operator on the two unsigned integer values.
 func (o UintOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isUint(left) || !isUint(right) {
@@ -197,11 +206,13 @@ func (o UintOperator) Operate(left, right reflect.Value) (reflect.Value, error) 
 }
 
 // FloatOperator represents a float operator.
+// It embeds OperatorExpr to inherit its methods.
 type FloatOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for FloatOperator.
+// It performs the operation represented by the operator on the two float values.
 func (o FloatOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isFloat(left) || !isFloat(right) {
@@ -244,11 +255,13 @@ func (o FloatOperator) Operate(left, right reflect.Value) (reflect.Value, error)
 }
 
 // StringOperator represents a string operator.
+// It embeds OperatorExpr to inherit its methods.
 type StringOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for StringOperator.
+// It performs the operation represented by the operator on the two string values.
 func (o StringOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isString(left) || !isString(right) {
@@ -275,11 +288,13 @@ func (o StringOperator) Operate(left, right reflect.Value) (reflect.Value, error
 }
 
 // BoolOperator represents a boolean operator.
+// It embeds OperatorExpr to inherit its methods.
 type BoolOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for BoolOperator.
+// It performs the operation represented by the operator on the two boolean values.
 func (o BoolOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isBool(left) || !isBool(right) {
@@ -304,11 +319,13 @@ func (o BoolOperator) Operate(left, right reflect.Value) (reflect.Value, error) 
 }
 
 // ComplexOperator represents a complex operator.
+// It embeds OperatorExpr to inherit its methods.
 type ComplexOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for ComplexOperator.
+// It performs the operation represented by the operator on the two complex values.
 func (o ComplexOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
 	if !isComplex(left) || !isComplex(right) {
@@ -333,11 +350,13 @@ func (o ComplexOperator) Operate(left, right reflect.Value) (reflect.Value, erro
 }
 
 // InvalidTypeOperator represents a type operator.
+// It embeds OperatorExpr to inherit its methods.
 type InvalidTypeOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for InvalidTypeOperator.
+// It performs the operation represented by the operator on the two values, which are of invalid type.
 func (o InvalidTypeOperator) Operate(left, right reflect.Value) (result reflect.Value, err error) {
 	if !right.IsValid() || !left.IsValid() {
 		// fixme: find a better way to handle nil values
@@ -361,11 +380,13 @@ func (o InvalidTypeOperator) Operate(left, right reflect.Value) (result reflect.
 }
 
 // GenericOperator represents a generic operator.
+// It embeds OperatorExpr to inherit its methods.
 type GenericOperator struct {
 	OperatorExpr
 }
 
-// Operate implements Operator interface.
+// Operate method implements the Operator interface for GenericOperator.
+// It performs the operation represented by the operator on the two values, which can be of any type.
 func (o GenericOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	var operator Operator
 	if !right.IsValid() || !left.IsValid() {
