@@ -369,24 +369,24 @@ type GenericOperator struct {
 func (o GenericOperator) Operate(left, right reflect.Value) (reflect.Value, error) {
 	var operator Operator
 	if !right.IsValid() || !left.IsValid() {
-		operator = InvalidTypeOperator{OperatorExpr: o.OperatorExpr}
+		operator = InvalidTypeOperator(o)
 		return operator.Operate(left, right)
 	}
 	right, left = reflectlite.Unwrap(right), reflectlite.Unwrap(left)
 
 	switch {
 	case isAllInt(left, right):
-		operator = IntOperator{OperatorExpr: o.OperatorExpr}
+		operator = IntOperator(o)
 	case isAllUint(left, right):
-		operator = UintOperator{OperatorExpr: o.OperatorExpr}
+		operator = UintOperator(o)
 	case isAllFloat(left, right):
-		operator = FloatOperator{OperatorExpr: o.OperatorExpr}
+		operator = FloatOperator(o)
 	case isAllString(left, right):
-		operator = StringOperator{OperatorExpr: o.OperatorExpr}
+		operator = StringOperator(o)
 	case isAllBool(left, right):
-		operator = BoolOperator{OperatorExpr: o.OperatorExpr}
+		operator = BoolOperator(o)
 	case isAllComplex(left, right):
-		operator = ComplexOperator{OperatorExpr: o.OperatorExpr}
+		operator = ComplexOperator(o)
 	default:
 		return invalidValue, NewOperationError(left, right, o.OperatorExpr.String())
 	}
