@@ -44,19 +44,8 @@ type RowResultMap struct{}
 // ResultTo implements ResultMapper interface.
 func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Ptr {
-		return errors.New("result must be a pointer")
+		return ErrPointerRequired
 	}
-
-	for rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-	}
-
-	re := rv.Type()
-
-	for re.Kind() == reflect.Ptr {
-		re = re.Elem()
-	}
-
 	// if it has any row data
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
@@ -69,6 +58,8 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
+
+	rv = reflect.Indirect(rv)
 
 	var cd ColumnDestination = &rowDestination{}
 
