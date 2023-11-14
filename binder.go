@@ -18,7 +18,6 @@ package juice
 
 import (
 	"database/sql"
-	"errors"
 	"reflect"
 	"time"
 )
@@ -39,16 +38,16 @@ func Bind[T any](rows *sql.Rows) (result T, err error) {
 
 func bindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
 	if v == nil {
-		return errors.New("destination can not be nil")
+		return ErrNilDestination
 	}
 	if rows == nil {
-		return errors.New("rows can not be nil")
+		return ErrNilRows
 	}
 	// get reflect.Value of v
 	rv := reflect.ValueOf(v)
 
 	if rv.Kind() != reflect.Ptr {
-		return errors.New("v must be a pointer")
+		return ErrPointerRequired
 	}
 	// get default mapper
 	if resultMap == nil {

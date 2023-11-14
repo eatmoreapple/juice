@@ -28,7 +28,18 @@ var (
 	// ErrResultMapNotSet is an error that is returned when the result map is not set.
 	ErrResultMapNotSet = errors.New("resultMap not set")
 
+	// ErrSqlNodeNotFound is an error that is returned when the sql node is not found.
+	// nolint:unused
 	ErrSqlNodeNotFound = errors.New("sql node not found")
+
+	// ErrNilDestination is an error that is returned when the destination is nil.
+	ErrNilDestination = errors.New("destination can not be nil")
+
+	// ErrNilRows is an error that is returned when the rows is nil.
+	ErrNilRows = errors.New("rows can not be nil")
+
+	// ErrPointerRequired is an error that is returned when the destination is not a pointer.
+	ErrPointerRequired = errors.New("destination must be a pointer")
 )
 
 // nodeUnclosedError is an error that is returned when the node is not closed.
