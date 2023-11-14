@@ -110,9 +110,6 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	// if it's a pointer, get the element type of pointer
 	isPtr := el.Kind() == reflect.Ptr
 
-	// make a new slice of element type
-	ret := reflect.MakeSlice(rv.Type(), 0, 0)
-
 	// get the element type of pointer
 	el = kindIndirect(el)
 
@@ -147,11 +144,6 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 			return err
 		}
 
-		// has error, return it
-		if err = rows.Err(); err != nil {
-			return err
-		}
-
 		// append the element to
 		if isPtr {
 			values = append(values, nrv)
@@ -159,6 +151,14 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 			values = append(values, nel)
 		}
 	}
+
+	// has error, return it
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// make a new slice of element type
+	ret := reflect.MakeSlice(rv.Type(), 0, len(values))
 
 	// set result to given entity
 	rv.Set(reflect.Append(ret, values...))
