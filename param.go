@@ -163,16 +163,15 @@ func (g *genericParameter) get(name string) (value reflect.Value, exists bool) {
 		// only map, struct, slice and array can be wrapped as parameter
 		switch value.Kind() {
 		case reflect.Map:
-			// if the map key is not a string type
+			// if the map key is not a string type, then return false
 			if value.Type().Key().Kind() != reflect.String {
-				// TODO panic or return false?
-				panic("the map key must be string type")
+				return reflect.Value{}, false
 			}
-			param = mapParameter{value}
+			param = mapParameter{Value: value}
 		case reflect.Struct:
-			param = structParameter{value}
+			param = structParameter{Value: value}
 		case reflect.Slice, reflect.Array:
-			param = sliceParameter{value}
+			param = sliceParameter{Value: value}
 		default:
 			// otherwise, return false
 			return reflect.Value{}, false
