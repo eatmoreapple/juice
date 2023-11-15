@@ -5,15 +5,30 @@
 ![Go Report Card](https://goreportcard.com/badge/github.com/eatmoreapple/juice)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
-This is a SQL mapper framework for Golang. It is inspired by MyBatis.
+Juice is a SQL mapper framework for Golang, inspired by MyBatis. It is simple, lightweight, and easy to use and extend.
+This document provides a brief introduction to Juice and its usage.
 
-Juice is a simple and lightweight framework. It is easy to use and easy to extend.
+- [Installation](#installation)
+- [Example](#example)
+- [API Documentation](#api-documentation)
+- [License](#license)
+- [Support Me](#support-me)
+
+### Installation
+
+To install Juice, use the following command:
+
+```shell
+go get github.com/eatmoreapple/juice
+```
 
 ### Example
 
 ```shell
-vim config.xml
+touch config.xml
 ```
+
+add the following content to config.xml
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -27,7 +42,7 @@ vim config.xml
             <driver>mysql</driver>
         </environment>
     </environments>
-    
+
     <mappers>
         <mapper resource="mappers.xml"/>
     </mappers>
@@ -35,8 +50,10 @@ vim config.xml
 ```
 
 ```shell
-vim mappers.xml
+touch mappers.xml
 ```
+
+add the following content to mappers.xml
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
@@ -53,8 +70,10 @@ vim mappers.xml
 ```
 
 ```shell
-vim main.go
+touch main.go
 ```
+
+add the following content to main.go
 
 ```go
 package main
@@ -95,8 +114,11 @@ func main() {
 }
 ```
 
+```shell
+go run main.go
+```
 
-### Document
+### API Documentation
 
 [Read the document](https://juice-doc.readthedocs.io/en/latest/index.html)
 
