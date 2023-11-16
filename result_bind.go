@@ -6,8 +6,30 @@ import (
 	"reflect"
 )
 
+// binderRouterDuplicateKeyError is a custom error type that is used when a duplicate key is found in a BinderRouter.
+type binderRouterDuplicateKeyError struct {
+	key string
+}
+
+// Error method for binderRouterDuplicateKeyError. It returns a string that represents the error message.
+func (b *binderRouterDuplicateKeyError) Error() string {
+	return "duplicate key " + b.key
+}
+
 // BinderRouter is a map that associates a string key to any value.
 type BinderRouter map[string]any
+
+// Update add other BinderRouter into current
+func updateBinderRouter(current, other BinderRouter) error {
+	for key, value := range other {
+		_, ok := current[key]
+		if ok {
+			return &binderRouterDuplicateKeyError{key: key}
+		}
+		current[key] = value
+	}
+	return nil
+}
 
 // ResultBinder is an interface that defines a single method BindTo.
 // This method takes a reflect.Value and returns a BinderRouter and an error.
@@ -28,11 +50,8 @@ func (r ResultBinderGroup) BindTo(v reflect.Value) (BinderRouter, error) {
 		if err != nil {
 			return nil, err
 		}
-		for key := range router {
-			if _, ok := result[key]; ok {
-				return nil, fmt.Errorf("duplicate key %s", key)
-			}
-			result[key] = router[key]
+		if err = updateBinderRouter(result, router); err != nil {
+			return nil, err
 		}
 	}
 	return result, nil
@@ -109,11 +128,8 @@ func (a *associationResultBinder) BindTo(v reflect.Value) (BinderRouter, error) 
 		if err != nil {
 			return nil, err
 		}
-		for key := range router {
-			if _, ok := result[key]; ok {
-				return nil, fmt.Errorf("duplicate key %s", key)
-			}
-			result[key] = router[key]
+		if err = updateBinderRouter(result, router); err != nil {
+			return nil, err
 		}
 	}
 	return result, nil
@@ -178,11 +194,8 @@ func (c *collectionResultBinder) BindTo(v reflect.Value) (BinderRouter, error) {
 		if err != nil {
 			return nil, err
 		}
-		for key := range router {
-			if _, ok := result[key]; ok {
-				return nil, fmt.Errorf("duplicate key %s", key)
-			}
-			result[key] = router[key]
+		if err = updateBinderRouter(result, router); err != nil {
+			return nil, err
 		}
 	}
 	field.Set(reflect.Append(field, instance))
