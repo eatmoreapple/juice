@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -115,12 +131,16 @@ func (a *associationResultBinder) BindTo(v reflect.Value) (BinderRouter, error) 
 	if !field.IsValid() {
 		return nil, fmt.Errorf("property %s not found", a.property)
 	}
-	if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+	if field.Kind() == reflect.Ptr {
+		if field.Elem().Kind() != reflect.Struct {
+			return nil, fmt.Errorf("pointer type only support struct pointer")
+		}
 		field.Set(reflect.New(field.Type()))
 		field = field.Elem()
 	} else if field.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("property %s must be a struct", a.property)
 	}
+
 	var result = make(BinderRouter)
 
 	for _, binder := range a.binders {
