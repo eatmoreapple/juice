@@ -164,11 +164,7 @@ func (r *resultMapNode) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	return r.resultToStruct(rv, rows)
 }
 
-func (r *resultMapNode) binderToStruct(rv reflect.Value, rows *sql.Rows) error {
-	columns, err := rows.Columns()
-	if err != nil {
-		return err
-	}
+func (r *resultMapNode) binderToStruct(rv reflect.Value, columns []string, rows *sql.Rows) error {
 	items, err := r.binders.BindTo(rv.Addr())
 	if err != nil {
 		return err
@@ -190,8 +186,12 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Struct {
 		return errors.New("slice element must be a struct")
 	}
+	columns, err := rows.Columns()
+	if err != nil {
+		return err
+	}
 	for rows.Next() {
-		if err := r.binderToStruct(rv, rows); err != nil {
+		if err := r.binderToStruct(rv, columns, rows); err != nil {
 			return err
 		}
 	}
@@ -202,11 +202,15 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 }
 
 func (r *resultMapNode) getValuesFromRows(rows *sql.Rows, el reflect.Type, isPtr bool) ([]reflect.Value, error) {
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
 	values := make([]reflect.Value, 0)
 	for rows.Next() {
 		instance := reflect.New(el)
 		value := instance.Elem()
-		if err := r.binderToStruct(value, rows); err != nil {
+		if err = r.binderToStruct(value, columns, rows); err != nil {
 			return nil, err
 		}
 		if !isPtr {
