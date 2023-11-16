@@ -328,6 +328,15 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 		return true
 	}
 
+	// columnIndex is a map to store the index of the column.
+	columnIndex := func() map[string]int {
+		m := make(map[string]int)
+		for i, column := range columns {
+			m[column] = i
+		}
+		return m
+	}()
+
 	// walk into the struct
 	for i := 0; i < tp.NumField(); i++ {
 		// if we find all the columns destination, we can stop.
@@ -346,12 +355,12 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 			continue
 		}
 		// find the index of the column
-		for index, column := range columns {
-			if tag == column {
-				s.indexes[index] = append(walk, field.Index...)
-				break
-			}
+		index, ok := columnIndex[tag]
+		if !ok {
+			continue
 		}
+		// set the index
+		s.indexes[index] = append(walk, field.Index...)
 	}
 }
 
