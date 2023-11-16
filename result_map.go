@@ -208,12 +208,55 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 	return nil
 }
 
+func (r *resultMapNode) getValuesFromRows(rows *sql.Rows, el reflect.Type, isPtr bool) ([]reflect.Value, error) {
+	binder := ResultBinderGroup(r.binders)
+	values := make([]reflect.Value, 0)
+	for rows.Next() {
+		instance := reflect.New(el)
+		value := instance.Elem()
+		if err := r.binderToStruct(binder, value, rows); err != nil {
+			return nil, err
+		}
+		if !isPtr {
+			instance = value
+		}
+		values = append(values, instance)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func (r *resultMapNode) appendValuesWithPrimaryKey(ret reflect.Value, values []reflect.Value) reflect.Value {
+	for _, value := range values {
+		directValue := reflect.Indirect(value)
+		pk := directValue.FieldByName(r.pk.property)
+		var found bool
+		for i := 0; i < ret.Len(); i++ {
+			current := reflect.Indirect(ret.Index(i))
+			field := current.FieldByName(r.pk.property)
+			if found = reflect.Indirect(field).Interface() == reflect.Indirect(pk).Interface(); found {
+				for _, item := range r.collectionGroup {
+					loop := current.FieldByName(item.property)
+					loop = reflect.AppendSlice(loop, directValue.FieldByName(item.property))
+					current.FieldByName(item.property).Set(loop)
+				}
+				break
+			}
+		}
+		if !found {
+			ret = reflect.Append(ret, value)
+		}
+	}
+	return ret
+}
+
 // resultToSlice scans rows to slice with given entity
 func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Slice {
 		return errors.New("slice element must be a struct")
 	}
-	rv = reflect.Indirect(rv)
 	el := rv.Type().Elem()
 	isPtr := el.Kind() == reflect.Ptr
 	if isPtr {
@@ -222,21 +265,27 @@ func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 	if el.Kind() != reflect.Struct {
 		return errors.New("slice element must be a struct")
 	}
-	binder := ResultBinderGroup(r.binders)
-	for rows.Next() {
-		instance := reflect.New(el)
-		value := instance.Elem()
-		if err := r.binderToStruct(binder, value, rows); err != nil {
-			return err
+	if r.pk != nil {
+		// check if the primary key is in the columns
+		pk, ok := el.FieldByName(r.pk.property)
+		if !ok {
+			return fmt.Errorf("property %s not found", r.pk.property)
 		}
-		if !isPtr {
-			instance = value
+		if !pk.Type.Comparable() {
+			return fmt.Errorf("property %s must be comparable", r.pk.property)
 		}
-		rv.Set(reflect.Append(rv, instance))
 	}
-	if err := rows.Err(); err != nil {
+	values, err := r.getValuesFromRows(rows, el, isPtr)
+	if err != nil {
 		return err
 	}
+	ret := reflect.MakeSlice(rv.Type(), 0, len(values))
+	if r.pk != nil {
+		ret = r.appendValuesWithPrimaryKey(ret, values)
+	} else {
+		ret = reflect.Append(ret, values...)
+	}
+	rv.Set(ret)
 	return nil
 }
 
