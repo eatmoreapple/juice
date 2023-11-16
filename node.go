@@ -664,7 +664,7 @@ type resultMapNode struct {
 	results         resultGroup
 	associations    associationGroup
 	collectionGroup collectionGroup
-	binders         []ResultBinder
+	binders         ResultBinder
 }
 
 func (r *resultMapNode) Pk() *resultNode {
@@ -678,18 +678,20 @@ func (r *resultMapNode) ID() string {
 
 // init initializes resultMapNode
 func (r *resultMapNode) init() error {
+	var binderGroup ResultBinderGroup
 	if r.pk != nil {
-		r.binders = append(r.binders, fromResultNode(*r.pk))
+		binderGroup = append(binderGroup, fromResultNode(*r.pk))
 	}
-	for _, result := range r.results {
-		r.binders = append(r.binders, fromResultNode(*result))
+	if len(r.results) > 0 {
+		binderGroup = append(binderGroup, fromResultNodeGroup(r.results)...)
 	}
-	for _, association := range r.associations {
-		r.binders = append(r.binders, fromAssociation(*association))
+	if len(r.associations) > 0 {
+		binderGroup = append(binderGroup, fromAssociationGroup(r.associations)...)
 	}
-	for _, collect := range r.collectionGroup {
-		r.binders = append(r.binders, fromCollection(*collect))
+	if len(r.collectionGroup) > 0 {
+		binderGroup = append(binderGroup, fromCollectionGroup(r.collectionGroup)...)
 	}
+	r.binders = binderGroup
 	return nil
 }
 

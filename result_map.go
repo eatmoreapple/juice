@@ -23,20 +23,12 @@ import (
 	"reflect"
 )
 
-// kindIndirect returns the type of the element of the pointer type.
-func kindIndirect(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t
-}
+// ErrTooManyRows is returned when the result set has too many rows but excepted only one row.
+var ErrTooManyRows = errors.New("juice: too many rows in result set")
 
 type ResultMap interface {
 	ResultTo(rv reflect.Value, row *sql.Rows) error
 }
-
-// ErrTooManyRows is returned when the result set has too many rows but excepted only one row.
-var ErrTooManyRows = errors.New("juice: too many rows in result set")
 
 // RowResultMap is a ResultMap that maps a rowDestination to a non-slice type.
 type RowResultMap struct{}
@@ -102,7 +94,9 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	isPtr := el.Kind() == reflect.Ptr
 
 	// get the element type of pointer
-	el = kindIndirect(el)
+	if el.Kind() == reflect.Ptr {
+		el = el.Elem()
+	}
 
 	// get columns from rows
 	columns, err := rows.Columns()
@@ -160,31 +154,38 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 // ResultTo implements ResultMapper interface.
 func (r *resultMapNode) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Ptr {
-		return errors.New("result must be a pointer")
+		return ErrPointerRequired
 	}
 	rv = reflect.Indirect(rv)
-	if reflect.Indirect(rv).Kind() == reflect.Slice {
+
+	if rv.Kind() == reflect.Slice {
 		return r.resultToSlice(rv, rows)
 	}
 	return r.resultToStruct(rv, rows)
 }
 
-func (r *resultMapNode) binderToStruct(binder ResultBinder, rv reflect.Value, rows *sql.Rows) error {
+func (r *resultMapNode) binderToStruct(rv reflect.Value, rows *sql.Rows) error {
 	columns, err := rows.Columns()
 	if err != nil {
 		return err
 	}
-	items, err := binder.BindTo(rv.Addr())
+	items, err := r.binders.BindTo(rv.Addr())
 	if err != nil {
 		return err
 	}
 	dest := make([]any, len(columns))
-	for i, column := range columns {
-		for _, item := range items {
-			if item.Column == column {
-				dest[i] = item.Addr
-				break
-			}
+
+	columnMap := func() map[string]int {
+		var m = make(map[string]int)
+		for i, column := range columns {
+			m[column] = i
+		}
+		return m
+	}()
+
+	for _, item := range items {
+		if index, ok := columnMap[item.Column]; ok {
+			dest[index] = item.Addr
 		}
 	}
 	return rows.Scan(dest...)
@@ -196,9 +197,8 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Struct {
 		return errors.New("slice element must be a struct")
 	}
-	binder := ResultBinderGroup(r.binders)
 	for rows.Next() {
-		if err := r.binderToStruct(binder, rv, rows); err != nil {
+		if err := r.binderToStruct(rv, rows); err != nil {
 			return err
 		}
 	}
@@ -209,12 +209,11 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 }
 
 func (r *resultMapNode) getValuesFromRows(rows *sql.Rows, el reflect.Type, isPtr bool) ([]reflect.Value, error) {
-	binder := ResultBinderGroup(r.binders)
 	values := make([]reflect.Value, 0)
 	for rows.Next() {
 		instance := reflect.New(el)
 		value := instance.Elem()
-		if err := r.binderToStruct(binder, value, rows); err != nil {
+		if err := r.binderToStruct(value, rows); err != nil {
 			return nil, err
 		}
 		if !isPtr {
@@ -238,9 +237,10 @@ func (r *resultMapNode) appendValuesWithPrimaryKey(ret reflect.Value, values []r
 			field := current.FieldByName(r.pk.property)
 			if found = reflect.Indirect(field).Interface() == reflect.Indirect(pk).Interface(); found {
 				for _, item := range r.collectionGroup {
-					loop := current.FieldByName(item.property)
+					loopField := current.FieldByName(item.property)
+					loop := loopField
 					loop = reflect.AppendSlice(loop, directValue.FieldByName(item.property))
-					current.FieldByName(item.property).Set(loop)
+					loopField.Set(loop)
 				}
 				break
 			}
@@ -470,6 +470,14 @@ func fromResultNode(r resultNode) ResultBinder {
 	return &propertyResultBinder{column: r.column, property: r.property}
 }
 
+func fromResultNodeGroup(rs resultGroup) ResultBinderGroup {
+	group := make(ResultBinderGroup, 0, len(rs))
+	for _, r := range rs {
+		group = append(group, fromResultNode(*r))
+	}
+	return group
+}
+
 type associationResultBinder struct {
 	binders  []ResultBinder
 	property string
@@ -515,6 +523,14 @@ func fromAssociation(association association) ResultBinder {
 	return &associationResultBinder{binders: binders, property: association.property}
 }
 
+func fromAssociationGroup(list associationGroup) ResultBinderGroup {
+	group := make(ResultBinderGroup, 0, len(list))
+	for _, a := range list {
+		group = append(group, fromAssociation(*a))
+	}
+	return group
+}
+
 type collectionResultBinder struct {
 	binders  []ResultBinder
 	property string
@@ -536,10 +552,7 @@ func (c *collectionResultBinder) BindTo(v reflect.Value) ([]BinderItem, error) {
 		return nil, fmt.Errorf("property %s must be a slice", c.property)
 	}
 	elem := field.Type().Elem()
-	if !(elem.Kind() == reflect.Ptr) {
-		return nil, fmt.Errorf("property %s must be a slice of pointer", c.property)
-	}
-	if elem.Elem().Kind() == reflect.Ptr {
+	if elem.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("property %s must be a slice of pointer", c.property)
 	}
 
@@ -566,4 +579,12 @@ func fromCollection(collection collection) ResultBinder {
 		binders = append(binders, fromAssociation(*association))
 	}
 	return &collectionResultBinder{binders: binders, property: collection.property}
+}
+
+func fromCollectionGroup(list collectionGroup) ResultBinderGroup {
+	group := make(ResultBinderGroup, 0, len(list))
+	for _, c := range list {
+		group = append(group, fromCollection(*c))
+	}
+	return group
 }
