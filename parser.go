@@ -1140,11 +1140,7 @@ func (p *XMLParser) parseCollection(parent primaryResult, decoder *xml.Decoder, 
 				coll.associationGroup = append(coll.associationGroup, association)
 			}
 		case xml.EndElement:
-			coll.parent = parent
 			if token.Name.Local == "collection" {
-				if err = coll.init(); err != nil {
-					return nil, err
-				}
 				return coll, nil
 			}
 		}
