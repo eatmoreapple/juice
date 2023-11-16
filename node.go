@@ -664,7 +664,11 @@ type resultMapNode struct {
 	results         resultGroup
 	associations    associationGroup
 	collectionGroup collectionGroup
-	mapping         map[string][]string
+	binders         []ResultBinder
+}
+
+func (r *resultMapNode) Pk() *resultNode {
+	return r.pk
 }
 
 // ID returns id of resultMapNode.
@@ -674,66 +678,19 @@ func (r *resultMapNode) ID() string {
 
 // init initializes resultMapNode
 func (r *resultMapNode) init() error {
-	// add results to mapping
-	m, err := r.results.mapping()
-	if err != nil {
-		return err
+	if r.pk != nil {
+		r.binders = append(r.binders, fromResultNode(*r.pk))
 	}
-
-	if err = r.updateMapping(m); err != nil {
-		return err
+	for _, result := range r.results {
+		r.binders = append(r.binders, fromResultNode(*result))
 	}
-
-	// add associations to mapping
-	m, err = r.associations.mapping()
-	if err != nil {
-		return err
+	for _, association := range r.associations {
+		r.binders = append(r.binders, fromAssociation(*association))
 	}
-
-	if err = r.updateMapping(m); err != nil {
-		return err
-	}
-	if r.HasPk() {
-		m = map[string][]string{r.pk.column: {r.pk.property}}
-		if err = r.updateMapping(m); err != nil {
-			return err
-		}
-	}
-
-	// check if collectionGroup is valid
-	if r.HasCollection() && !r.HasPk() {
-		return fmt.Errorf("resultNode map %s has collection but no primary key", r.ID())
-	}
-
-	// release memory
-	r.results = nil
-	r.associations = nil
-	return nil
-}
-
-func (r *resultMapNode) updateMapping(mp map[string][]string) error {
-	if r.mapping == nil {
-		r.mapping = make(map[string][]string)
-	}
-	for k, v := range mp {
-		if _, ok := r.mapping[k]; ok {
-			return fmt.Errorf("field mapping %s is unbiguous", k)
-		}
-		r.mapping[k] = v
+	for _, collect := range r.collectionGroup {
+		r.binders = append(r.binders, fromCollection(*collect))
 	}
 	return nil
-}
-
-func (r *resultMapNode) HasPk() bool {
-	return r.pk != nil
-}
-
-func (r *resultMapNode) Pk() *resultNode {
-	return r.pk
-}
-
-func (r *resultMapNode) HasCollection() bool {
-	return len(r.collectionGroup) > 0
 }
 
 // resultNode defines a resultNode mapping.
@@ -747,14 +704,13 @@ type resultNode struct {
 // resultGroup defines a group of resultNode mappings.
 type resultGroup []*resultNode
 
-// mapping returns a mapping of column to property.
-func (r resultGroup) mapping() (map[string][]string, error) {
-	m := make(map[string][]string)
+func (r resultGroup) Columns() (map[string]struct{}, error) {
+	m := make(map[string]struct{})
 	for _, v := range r {
 		if _, ok := m[v.column]; ok {
 			return nil, fmt.Errorf("field mapping %s is unbiguous", v.column)
 		}
-		m[v.column] = append(m[v.column], v.property)
+		m[v.column] = struct{}{}
 	}
 	return m, nil
 }
@@ -766,106 +722,97 @@ type association struct {
 	associations associationGroup
 }
 
-// mapping returns a mapping of column to property.
-func (a association) mapping() (map[string][]string, error) {
-	m := make(map[string][]string)
-
-	// add results to mapping
-	for _, v := range a.results {
-
-		// check if there is any duplicate column
-		if _, ok := m[v.column]; ok {
-			return nil, fmt.Errorf("field mapping %s is unbiguous", v.column)
-		}
-		m[v.column] = append(m[v.column], a.property, v.property)
+func (a association) Columns() (map[string]struct{}, error) {
+	columns := make(map[string]struct{})
+	resultGroupColumns, err := a.results.Columns()
+	if err != nil {
+		return nil, err
 	}
-
-	// add associations to mapping
-	for _, v := range a.associations {
-		mm, err := v.mapping()
-		if err != nil {
-			return nil, err
+	for k, v := range resultGroupColumns {
+		if _, ok := columns[k]; ok {
+			return nil, fmt.Errorf("field mapping %s is unbiguous", k)
 		}
-
-		// check if there is any duplicate column
-		for k, v := range mm {
-			if _, ok := m[k]; ok {
-				return nil, fmt.Errorf("field mapping %s is unbiguous", k)
-			}
-			m[k] = append(m[k], append([]string{a.property}, v...)...)
-		}
+		columns[k] = v
 	}
-	return m, nil
+	associationGroupColumns, err := a.associations.Columns()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range associationGroupColumns {
+		if _, ok := columns[k]; ok {
+			return nil, fmt.Errorf("field mapping %s is unbiguous", k)
+		}
+		columns[k] = v
+	}
+	return columns, nil
 }
 
 // associationGroup defines a group of association mappings.
 type associationGroup []*association
 
-// mapping returns a mapping of column to property.
-func (a associationGroup) mapping() (map[string][]string, error) {
-	m := make(map[string][]string)
-	for _, v := range a {
-		mm, err := v.mapping()
+func (a associationGroup) Columns() (map[string]struct{}, error) {
+	m := make(map[string]struct{})
+	for _, association := range a {
+		columns, err := association.Columns()
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range mm {
+		for k, v := range columns {
 			if _, ok := m[k]; ok {
 				return nil, fmt.Errorf("field mapping %s is unbiguous", k)
 			}
-			m[k] = append(m[k], v...)
+			m[k] = v
 		}
 	}
 	return m, nil
 }
 
 type collection struct {
-	// property is the name of the property to map to.
-	parent           primaryResult
 	property         string
-	id               *resultNode
 	resultGroup      resultGroup
 	associationGroup associationGroup
-	mapping          map[string][]string
 }
 
-func (c *collection) init() error {
-	c.mapping = make(map[string][]string)
-	// add results to mapping
-	for _, v := range c.resultGroup {
-
-		// check if there is any duplicate column
-		if _, ok := c.mapping[v.column]; ok {
-			return fmt.Errorf("field mapping %s is unbiguous", v.column)
-		}
-		c.mapping[v.column] = append(c.mapping[v.column], c.property, v.property)
+func (c *collection) Columns() (map[string]struct{}, error) {
+	m := make(map[string]struct{})
+	resultGroupColumns, err := c.resultGroup.Columns()
+	if err != nil {
+		return nil, err
 	}
-
-	// add associations to mapping
-	for _, v := range c.associationGroup {
-		mm, err := v.mapping()
-		if err != nil {
-			return err
+	for k, v := range resultGroupColumns {
+		if _, ok := m[k]; ok {
+			return nil, fmt.Errorf("field mapping %s is unbiguous", k)
 		}
-
-		// check if there is any duplicate column
-		for k, v := range mm {
-			if _, ok := c.mapping[k]; ok {
-				return fmt.Errorf("field mapping %s is unbiguous", k)
-			}
-			c.mapping[k] = append(c.mapping[k], append([]string{c.property}, v...)...)
-		}
+		m[k] = v
 	}
-
-	return nil
-}
-
-func (c *collection) Pk() *resultNode {
-	return c.id
-}
-
-func (c *collection) HasPk() bool {
-	return c.Pk() != nil
+	associationGroupColumns, err := c.associationGroup.Columns()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range associationGroupColumns {
+		if _, ok := m[k]; ok {
+			return nil, fmt.Errorf("field mapping %s is unbiguous", k)
+		}
+		m[k] = v
+	}
+	return m, nil
 }
 
 type collectionGroup []*collection
+
+func (c collectionGroup) Columns() (map[string]struct{}, error) {
+	m := make(map[string]struct{})
+	for _, collection := range c {
+		columns, err := collection.Columns()
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range columns {
+			if _, ok := m[k]; ok {
+				return nil, fmt.Errorf("field mapping %s is unbiguous", k)
+			}
+			m[k] = v
+		}
+	}
+	return m, nil
+}
