@@ -188,6 +188,10 @@ func (r *resultMapNode) binderToStruct(rv reflect.Value, columns []string, rows 
 			dest[index] = new(any)
 		}
 	}
+
+	if err = checkDestination(dest); err != nil {
+		return err
+	}
 	return rows.Scan(dest...)
 }
 
@@ -421,10 +425,12 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 	}
 }
 
+var errRawBytesScan = errors.New("sql: RawBytes isn't allowed on scan")
+
 func checkDestination(dest []any) error {
 	for _, dp := range dest {
 		if _, ok := dp.(*sql.RawBytes); ok {
-			return errors.New("sql: RawBytes isn't allowed on scan")
+			return errRawBytesScan
 		}
 	}
 	return nil
