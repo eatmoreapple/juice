@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package juice provides a set of utilities for mapping database query results to Go data structures.
 package juice
 
 import (
@@ -26,7 +27,9 @@ import (
 // ErrTooManyRows is returned when the result set has too many rows but excepted only one row.
 var ErrTooManyRows = errors.New("juice: too many rows in result set")
 
+// ResultMap is an interface that defines a method for mapping database query results to Go data structures.
 type ResultMap interface {
+	// ResultTo maps the data from the SQL row to the provided reflect.Value.
 	ResultTo(rv reflect.Value, row *sql.Rows) error
 }
 
@@ -34,6 +37,8 @@ type ResultMap interface {
 type RowResultMap struct{}
 
 // ResultTo implements ResultMapper interface.
+// It maps the data from the SQL row to the provided reflect.Value.
+// If more than one row is returned from the query, it returns an ErrTooManyRows error.
 func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Ptr {
 		return ErrPointerRequired
@@ -78,6 +83,8 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 type RowsResultMap struct{}
 
 // ResultTo implements ResultMapper interface.
+// It maps the data from the SQL row to the provided reflect.Value.
+// It maps each row to a new element in a slice.
 func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 
 	if rv.Kind() != reflect.Ptr {
@@ -175,6 +182,10 @@ func (r *resultMapNode) binderToStruct(rv reflect.Value, columns []string, rows 
 		addr, exists := items[column]
 		if exists {
 			dest[index] = addr
+		} else {
+			// if there is no column in the result, we can set a new instance to it.
+			// just discard
+			dest[index] = new(any)
 		}
 	}
 	return rows.Scan(dest...)
@@ -191,11 +202,11 @@ func (r *resultMapNode) resultToStruct(rv reflect.Value, rows *sql.Rows) error {
 		return err
 	}
 	for rows.Next() {
-		if err := r.binderToStruct(rv, columns, rows); err != nil {
+		if err = r.binderToStruct(rv, columns, rows); err != nil {
 			return err
 		}
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return err
 	}
 	return nil
