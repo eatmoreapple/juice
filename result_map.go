@@ -242,12 +242,12 @@ func (r *resultMapNode) getValuesFromRows(rows *sql.Rows, el reflect.Type, isPtr
 func (r *resultMapNode) appendValuesWithPrimaryKey(ret reflect.Value, values []reflect.Value) reflect.Value {
 	for _, value := range values {
 		directValue := reflect.Indirect(value)
-		pk := directValue.FieldByName(r.pk.property)
+		pk := reflect.Indirect(directValue.FieldByName(r.pk.property)).Interface()
 		var found bool
 		for i := 0; i < ret.Len(); i++ {
 			current := reflect.Indirect(ret.Index(i))
 			field := current.FieldByName(r.pk.property)
-			if found = reflect.Indirect(field).Interface() == reflect.Indirect(pk).Interface(); found {
+			if found = reflect.Indirect(field).Interface() == pk; found {
 				for _, item := range r.collectionGroup {
 					loopField := current.FieldByName(item.property)
 					loop := loopField
