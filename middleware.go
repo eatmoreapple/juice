@@ -62,7 +62,7 @@ type DebugMiddleware struct{}
 // QueryContext implements Middleware.
 // QueryContext will print the sql statement and the execution time.
 func (m *DebugMiddleware) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
-	if !m.isBugMode(stmt) {
+	if !m.isDeBugMode(stmt) {
 		return next
 	}
 	// wrapper QueryHandler
@@ -78,7 +78,7 @@ func (m *DebugMiddleware) QueryContext(stmt *Statement, next QueryHandler) Query
 // ExecContext implements Middleware.
 // ExecContext will print the sql statement and the execution time.
 func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
-	if !m.isBugMode(stmt) {
+	if !m.isDeBugMode(stmt) {
 		return next
 	}
 	// wrapper ExecContext
@@ -91,10 +91,10 @@ func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHan
 	}
 }
 
-// isBugMode returns true if the debug mode is on.
+// isDeBugMode returns true if the debug mode is on.
 // Default debug mode is on.
 // You can turn off the debug mode by setting the debug tag to false in the mapper statement attribute or the configuration.
-func (m *DebugMiddleware) isBugMode(stmt *Statement) bool {
+func (m *DebugMiddleware) isDeBugMode(stmt *Statement) bool {
 	// try to one the bug mode from the Statement
 	debug := stmt.Attribute("debug")
 	// if the bug mode is not set, try to one the bug mode from the Context
