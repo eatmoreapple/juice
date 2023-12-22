@@ -135,6 +135,9 @@ type Mappers struct {
 }
 
 func (m *Mappers) setMapper(key string, mapper *Mapper) error {
+	if prefix := m.Prefix(); prefix != "" {
+		key = fmt.Sprintf("%s.%s", prefix, key)
+	}
 	if _, exists := m.mappers[key]; exists {
 		return fmt.Errorf("mapper %s already exists", key)
 	}
@@ -190,7 +193,7 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 		case reflect.Func:
 			id = runtimeFuncName(rv)
 		case reflect.Struct:
-			id = rv.Type().Name()
+			id = rv.Type().PkgPath() + "." + rv.Type().Name()
 		default:
 			return nil, errors.New("invalid type of statement id")
 		}
