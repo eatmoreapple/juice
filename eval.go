@@ -208,14 +208,14 @@ func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) 
 	}
 	// like [1:2:3] expr
 	// if exp.Max is nil, it means the capacity of the slice
-	var max int
+	var sliceMax int
 	if exp.Max != nil {
-		max, err = strconv.Atoi(exp.Max.(*ast.BasicLit).Value)
+		sliceMax, err = strconv.Atoi(exp.Max.(*ast.BasicLit).Value)
 		if err != nil {
 			return reflect.Value{}, err
 		}
 	}
-	return value.Slice3(low, high, max), nil
+	return value.Slice3(low, high, sliceMax), nil
 }
 
 func evalUnaryExpr(exp *ast.UnaryExpr, params Parameter) (reflect.Value, error) {
