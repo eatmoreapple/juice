@@ -51,7 +51,7 @@ func Get(name string) (Driver, error) {
 
 // SimpleDriver is a driver of MySQL、SQLite.
 type SimpleDriver struct {
-	name string
+	Name string
 }
 
 // Translator returns a translator of SQL.
@@ -59,16 +59,14 @@ func (d SimpleDriver) Translator() Translator {
 	return TranslateFunc(func(matched string) string { return "?" })
 }
 
+// String returns a name of driver.
 func (d SimpleDriver) String() string {
-	return d.Name()
+	return d.Name
 }
 
-func (d SimpleDriver) Name() string {
-	return d.name
-}
-
+// Open opens a database connection.
 func (d SimpleDriver) Open(dataSourceName string) (*sql.DB, error) {
-	return sql.Open(d.Name(), dataSourceName)
+	return sql.Open(d.Name, dataSourceName)
 }
 
 // MySQLDriver is a driver of MySQL.
@@ -112,8 +110,8 @@ func (o OracleDriver) Translator() Translator {
 }
 
 func init() {
-	Register("mysql", &MySQLDriver{SimpleDriver: SimpleDriver{name: "mysql"}})
-	Register("sqlite", &SQLiteDriver{SimpleDriver: SimpleDriver{name: "sqlite"}})
-	Register("postgres", &PostgresDriver{SimpleDriver: SimpleDriver{name: "postgres"}})
-	Register("oracle", &OracleDriver{SimpleDriver: SimpleDriver{name: "oracle"}})
+	Register("mysql", &MySQLDriver{SimpleDriver: SimpleDriver{"mysql"}})
+	Register("sqlite", &SQLiteDriver{SimpleDriver: SimpleDriver{"sqlite"}})
+	Register("postgres", &PostgresDriver{SimpleDriver: SimpleDriver{"postgres"}})
+	Register("oracle", &OracleDriver{SimpleDriver: SimpleDriver{"oracle"}})
 }
