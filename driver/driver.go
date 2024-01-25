@@ -111,7 +111,7 @@ func (o OracleDriver) Translator() Translator {
 
 func init() {
 	Register("mysql", &MySQLDriver{SimpleDriver: SimpleDriver{"mysql"}})
-	Register("sqlite", &SQLiteDriver{SimpleDriver: SimpleDriver{"sqlite"}})
+	Register("sqlite3", &SQLiteDriver{SimpleDriver: SimpleDriver{"sqlite3"}})
 	Register("postgres", &PostgresDriver{SimpleDriver: SimpleDriver{"postgres"}})
 	Register("oracle", &OracleDriver{SimpleDriver: SimpleDriver{"oracle"}})
 }
