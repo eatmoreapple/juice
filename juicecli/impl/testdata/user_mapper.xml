@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <mapper namespace="testdata.Interface">
-    <select id="GetUserByID" resultMap="User">
+    <select id="GetUserByID">
         select * from user limit 1
     </select>
     <insert id="CreateUser">

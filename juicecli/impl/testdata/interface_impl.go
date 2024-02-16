@@ -21,7 +21,7 @@ func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) (result0 User,
 func (i InterfaceImpl) CreateUser(ctx context.Context, u map[string]*User) (result0 error) {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
-	executor := manager.Object(iface.CreateUser)
+	executor := juice.NewGenericManager[any](manager).Object(iface.CreateUser)
 	_, err := executor.ExecContext(ctx, u)
 	return err
 }
@@ -29,7 +29,7 @@ func (i InterfaceImpl) CreateUser(ctx context.Context, u map[string]*User) (resu
 func (i InterfaceImpl) DeleteUserByID(ctx context.Context, id int64, name string) (result0 sql.Result, result1 error) {
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
-	executor := manager.Object(iface.DeleteUserByID)
+	executor := juice.NewGenericManager[any](manager).Object(iface.DeleteUserByID)
 	return executor.ExecContext(ctx, juice.H{"id": id, "name": name})
 }
 
