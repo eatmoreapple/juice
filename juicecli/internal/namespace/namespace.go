@@ -64,7 +64,7 @@ func (n AutoComplete) autoComplete(path string) (string, error) {
 		relativePath = relativePath + "/"
 	}
 	pkgName := pkg + "/" + relativePath
-	pkgName = strings.ReplaceAll(pkgName, "/", ".")
 	namespace := pkgName + n.TypeName
-	return namespace, nil
+	replacer := strings.NewReplacer("/", ".", "\\", ".")
+	return replacer.Replace(namespace), nil
 }
