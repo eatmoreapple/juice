@@ -10,7 +10,7 @@ import (
 )
 
 // replacer defines the replacer of function name
-var replacer = strings.NewReplacer("/", `\`, ".", "*", "", "(", "", ")", "")
+var replacer = strings.NewReplacer("/", ".", `\`, ".", "*", "", "(", "", ")", "")
 
 // runtimeFuncName returns the function name of runtime
 func runtimeFuncName(rv reflect.Value) string {
