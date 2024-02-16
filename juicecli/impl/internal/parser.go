@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go/ast"
 	"io"
-	stdfs "io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,8 +16,8 @@ import (
 	"github.com/eatmoreapple/juice/juicecli/internal/namespace"
 )
 
-//go:linkname newXMLConfigurationParser github.com/eatmoreapple/juice.newXMLConfigurationParser
-func newXMLConfigurationParser(stdfs.FS, string, bool) (*juice.Configuration, error)
+//go:linkname newLocalXMLConfiguration github.com/eatmoreapple/juice.newLocalXMLConfiguration
+func newLocalXMLConfiguration(string, bool) (*juice.Configuration, error)
 
 // CommandParser defines the interface for parsing command.
 type CommandParser interface {
@@ -187,7 +186,7 @@ func (p *Parser) Parse() error {
 }
 
 func (p *Parser) parse() error {
-	cfg, err := newXMLConfigurationParser(juice.LocalFS{}, p.cfg, true)
+	cfg, err := newLocalXMLConfiguration(p.cfg, true)
 	if err != nil {
 		return err
 	}

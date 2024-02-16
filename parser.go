@@ -24,6 +24,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1276,20 +1277,26 @@ func (p *XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder
 }
 
 func NewXMLConfiguration(filename string) (*Configuration, error) {
-	return NewXMLConfigurationWithFS(LocalFS{}, filename)
+	return newLocalXMLConfiguration(filename, false)
+}
+
+// for go linkname
+func newLocalXMLConfiguration(filename string, ignoreEnv bool) (*Configuration, error) {
+	baseDir := filepath.Dir(filename)
+	filename = filepath.Base(filename)
+	return newXMLConfigurationParser(localFS{baseDir: baseDir}, filename, ignoreEnv)
 }
 
 // NewXMLConfigurationWithFS creates a new Configuration from an XML file.
 func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error) {
-	return newXMLConfigurationParser(fs, filename, false)
+	baseDir := path.Dir(filename)
+	filename = path.Base(filename)
+	return newXMLConfigurationParser(fsWrapper{baseDir: baseDir, fs: fs}, filename, false)
 }
 
 // newXMLConfigurationParser creates a new Configuration from an XML file which ignores environment parsing.
 // for internal use only.
 func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (*Configuration, error) {
-	baseDir := filepath.Dir(filename)
-	fs = fsWrapper{fs, baseDir}
-	filename = filepath.Base(filename)
 	file, err := fs.Open(filename)
 	if err != nil {
 		return nil, err
