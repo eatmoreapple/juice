@@ -79,18 +79,29 @@ func (v Value) IndirectKind() reflect.Kind {
 // FindFieldFromTag returns the field value by tag name and tag value.
 // It returns the zero Value if not found or the type is not struct.
 func (v Value) FindFieldFromTag(tagName, tagValue string) Value {
-	t := v.IndirectType()
-	// only struct can have tag
-	if t.Kind() != reflect.Struct {
+	if v.Kind() != reflect.Struct {
 		return Value{}
 	}
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	value, _ := findFieldFromTag(v, tagName, tagValue)
+	return value
+}
+
+func findFieldFromTag(value Value, tagName, tagValue string) (Value, bool) {
+	kind := value.IndirectType()
+	for i := 0; i < kind.NumField(); i++ {
+		field := kind.Field(i)
+		if field.Type.Kind() == reflect.Struct && field.Tag.Get(tagName) == "" {
+			if v, ok := findFieldFromTag(From(value.Field(i)), tagName, tagValue); ok {
+				return v, ok
+			} else {
+				continue
+			}
+		}
 		if tag := field.Tag.Get(tagName); tag == tagValue {
-			return From(v.Field(i))
+			return From(value.Field(i)), true
 		}
 	}
-	return Value{}
+	return Value{}, false
 }
 
 // ValueOf returns a new Value initialized to the concrete value
