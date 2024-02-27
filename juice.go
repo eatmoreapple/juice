@@ -179,6 +179,11 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	return engine, nil
 }
 
+// New is the alias of NewEngine
+func New(configuration *Configuration) (*Engine, error) {
+	return NewEngine(configuration)
+}
+
 // DefaultEngine is the default engine
 // It adds an interceptor to log the statements
 func DefaultEngine(configuration *Configuration) (*Engine, error) {
@@ -189,4 +194,9 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 	engine.Use(&TimeoutMiddleware{})
 	engine.Use(&DebugMiddleware{})
 	return engine, nil
+}
+
+// Default is the alias of DefaultEngine
+func Default(configuration *Configuration) (*Engine, error) {
+	return DefaultEngine(configuration)
 }
