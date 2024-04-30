@@ -67,18 +67,34 @@ type TxManager interface {
 	Rollback() error
 }
 
+// invalidTxManager is an invalid transaction statement which implements the TxManager interface.
+type invalidTxManager struct {
+	error
+}
+
+// Object implements the Manager interface
+func (i invalidTxManager) Object(_ any) Executor {
+	return inValidExecutor(i)
+}
+
+// Commit commits the transaction, but it will return an error directly.
+func (i invalidTxManager) Commit() error {
+	return i
+}
+
+// Rollback rollbacks the transaction, but it will return an error directly.
+func (i invalidTxManager) Rollback() error {
+	return i
+}
+
 // txManager is a transaction statement
 type txManager struct {
 	engine *Engine
 	tx     *sql.Tx
-	err    error
 }
 
 // Object implements the Manager interface
 func (t *txManager) Object(v any) Executor {
-	if t.err != nil {
-		return inValidExecutor(t.err)
-	}
 	exe, err := t.engine.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
@@ -89,17 +105,11 @@ func (t *txManager) Object(v any) Executor {
 
 // Commit commits the transaction
 func (t *txManager) Commit() error {
-	if t.err != nil {
-		return t.err
-	}
 	return t.tx.Commit()
 }
 
 // Rollback rollbacks the transaction
 func (t *txManager) Rollback() error {
-	if t.err != nil {
-		return t.err
-	}
 	return t.tx.Rollback()
 }
 

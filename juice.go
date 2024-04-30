@@ -85,7 +85,10 @@ func (e *Engine) Tx() TxManager {
 // ContextTx returns a TxManager with the given context
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
 	tx, err := e.DB().BeginTx(ctx, opt)
-	return &txManager{engine: e, tx: tx, err: err}
+	if err != nil {
+		return invalidTxManager{error: err}
+	}
+	return &txManager{engine: e, tx: tx}
 }
 
 // CacheTx returns a TxCacheManager.
