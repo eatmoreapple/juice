@@ -167,12 +167,6 @@ func (e *Engine) init() error {
 	return err
 }
 
-type engineKey struct{}
-
-func EngineWithContext(engine *Engine, ctx context.Context) context.Context {
-	return context.WithValue(ctx, engineKey{}, engine)
-}
-
 // NewEngine creates a new Engine
 func NewEngine(configuration *Configuration) (*Engine, error) {
 	engine := &Engine{}
@@ -214,4 +208,18 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 // Default is the alias of DefaultEngine
 func Default(configuration *Configuration) (*Engine, error) {
 	return DefaultEngine(configuration)
+}
+
+// engineKey is the key of the engine in the context
+type engineKey struct{}
+
+// EngineWithContext adds the engine to the context
+func EngineWithContext(engine *Engine, ctx context.Context) context.Context {
+	return context.WithValue(ctx, engineKey{}, engine)
+}
+
+// EngineFromContext returns the engine from the context
+func EngineFromContext(ctx context.Context) *Engine {
+	engine, _ := ctx.Value(engineKey{}).(*Engine)
+	return engine
 }
