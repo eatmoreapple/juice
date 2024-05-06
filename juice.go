@@ -167,6 +167,12 @@ func (e *Engine) init() error {
 	return err
 }
 
+type engineKey struct{}
+
+func EngineWithContext(engine *Engine, ctx context.Context) context.Context {
+	return context.WithValue(ctx, engineKey{}, engine)
+}
+
 // NewEngine creates a new Engine
 func NewEngine(configuration *Configuration) (*Engine, error) {
 	engine := &Engine{}
@@ -178,6 +184,12 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
 	// set default executor wrapper
+	// those are necessary for the engine to work properly
+	var defaultExecutorAdapter ExecutorAdapter = ExecutorAdapterGroup{
+		NewParamCtxExecutorAdapter(),
+		NewSessionCtxInjectorExecutorAdapter(),
+		NewEngineCtxInjectorExecutorAdapter(engine),
+	}
 	engine.executorAdapter = defaultExecutorAdapter
 	return engine, nil
 }
