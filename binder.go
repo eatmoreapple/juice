@@ -68,14 +68,10 @@ func BindWithResultMap[T any](rows *sql.Rows, resultMap ResultMap) (result T, er
 	// ptr is the pointer of the result, it is the destination of the binding.
 	var ptr any = &result
 
-	rv := reflect.ValueOf(result)
-	// if the result is a pointer, create a new instance of the element.
-	// you'd better not use a nil pointer as the result.
-	// for example:
-	//     BindWithResultMap[*int](rows, nil) bad
-	//     BindWithResultMap[int](rows, nil) good
-	if rv.Kind() == reflect.Ptr {
-		result = reflect.New(rv.Type().Elem()).Interface().(T)
+	if _type := reflect.TypeOf(result); _type.Kind() == reflect.Ptr {
+		// if the result is a pointer, create a new instance of the element.
+		// you'd better not use a nil pointer as the result.
+		result = reflect.New(_type.Elem()).Interface().(T)
 		ptr = result
 	}
 	err = bindWithResultMap(rows, ptr, resultMap)
