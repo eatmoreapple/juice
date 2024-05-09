@@ -89,28 +89,3 @@ func NewSessionCtxInjectorExecutorAdapter() ExecutorAdapter {
 		return &sessionCtxInjectorExecutor{Executor: e}
 	})
 }
-
-// engineCtxInjectorExecutor is an executor that injects the engine into the context.
-type engineCtxInjectorExecutor struct {
-	engine *Engine
-	Executor
-}
-
-// QueryContext executes a query that returns rows, typically a SELECT.
-func (e *engineCtxInjectorExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
-	ctx = EngineWithContext(e.engine, ctx)
-	return e.Executor.QueryContext(ctx, param)
-}
-
-// ExecContext executes a query without returning any rows.
-func (e *engineCtxInjectorExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
-	ctx = EngineWithContext(e.engine, ctx)
-	return e.Executor.ExecContext(ctx, param)
-}
-
-// NewEngineCtxInjectorExecutorAdapter returns a new engineCtxInjectorExecutor.
-func NewEngineCtxInjectorExecutorAdapter(engine *Engine) ExecutorAdapter {
-	return AdapterExecutorFunc(func(e Executor) Executor {
-		return &engineCtxInjectorExecutor{engine: engine, Executor: e}
-	})
-}
