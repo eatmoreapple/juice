@@ -131,11 +131,8 @@ func (s *Statement) ResultMap() (ResultMap, error) {
 }
 
 // Build builds the statement with the given parameter.
-func (s *Statement) Build(param Param) (query string, args []any, err error) {
+func (s *Statement) Build(translator driver.Translator, param Param) (query string, args []any, err error) {
 	value := newGenericParam(param, s.Attribute("paramName"))
-
-	translator := s.Engine().Driver().Translator()
-
 	query, args, err = s.Accept(translator, value)
 	if err != nil {
 		return "", nil, err
@@ -147,13 +144,21 @@ func (s *Statement) Build(param Param) (query string, args []any, err error) {
 }
 
 // QueryHandler returns the QueryHandler of the statement.
-func (s *Statement) QueryHandler() QueryHandler {
+func (s *Statement) QueryHandler(middlewares ...Middleware) QueryHandler {
 	next := sessionQueryHandler()
-	return s.Engine().middlewares.QueryContext(s, next)
+	if len(middlewares) > 0 {
+		group := MiddlewareGroup(middlewares)
+		return group.QueryContext(s, next)
+	}
+	return next
 }
 
 // ExecHandler returns the ExecHandler of the statement.
-func (s *Statement) ExecHandler() ExecHandler {
+func (s *Statement) ExecHandler(middlewares ...Middleware) ExecHandler {
 	next := sessionExecHandler()
-	return s.Engine().middlewares.ExecContext(s, next)
+	if len(middlewares) > 0 {
+		group := MiddlewareGroup(middlewares)
+		return group.ExecContext(s, next)
+	}
+	return next
 }

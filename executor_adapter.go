@@ -99,13 +99,13 @@ type engineCtxInjectorExecutor struct {
 // QueryContext executes a query that returns rows, typically a SELECT.
 func (e *engineCtxInjectorExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
 	ctx = EngineWithContext(e.engine, ctx)
-	return e.engine.executorAdapter.AdapterExecutor(e.engine.Object(param)).QueryContext(ctx, param)
+	return e.Executor.QueryContext(ctx, param)
 }
 
 // ExecContext executes a query without returning any rows.
 func (e *engineCtxInjectorExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
 	ctx = EngineWithContext(e.engine, ctx)
-	return e.engine.executorAdapter.AdapterExecutor(e.engine.Object(param)).ExecContext(ctx, param)
+	return e.Executor.ExecContext(ctx, param)
 }
 
 // NewEngineCtxInjectorExecutorAdapter returns a new engineCtxInjectorExecutor.
