@@ -101,11 +101,6 @@ func (s *Statement) Configuration() *Configuration {
 	return s.mapper.Configuration()
 }
 
-// Engine returns the engine of the statement.
-func (s *Statement) Engine() *Engine {
-	return s.Configuration().engine
-}
-
 // ForRead returns true if the statement's Action is Select
 func (s *Statement) ForRead() bool {
 	return s.Action() == Select

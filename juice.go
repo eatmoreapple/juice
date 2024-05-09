@@ -61,9 +61,10 @@ func (e *Engine) executor(v any) (*executor, error) {
 		return nil, err
 	}
 	return &executor{
-		statement: stat,
-		session:   e.DB(),
-		driver:    e.driver,
+		statement:   stat,
+		session:     e.DB(),
+		driver:      e.driver,
+		middlewares: e.middlewares,
 	}, nil
 }
 
