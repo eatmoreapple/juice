@@ -186,7 +186,6 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 	var defaultExecutorAdapter ExecutorAdapter = ExecutorAdapterGroup{
 		NewParamCtxExecutorAdapter(),
 		NewSessionCtxInjectorExecutorAdapter(),
-		NewEngineCtxInjectorExecutorAdapter(engine),
 	}
 	engine.executorAdapter = defaultExecutorAdapter
 	return engine, nil
