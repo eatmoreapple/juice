@@ -10,7 +10,7 @@ import (
 )
 
 type Generator struct {
-	cfg       *juice.Configuration
+	cfg       juice.IConfiguration
 	impl      *Implement
 	namespace string
 }
@@ -19,7 +19,7 @@ func (g *Generator) Generate() (io.Reader, error) {
 	for _, m := range g.impl.iface.Methods() {
 		method := m
 		key := fmt.Sprintf("%s.%s", g.namespace, method.Name())
-		statement, err := g.cfg.Mappers().GetStatementByID(key)
+		statement, err := g.cfg.GetStatement(key)
 		if err != nil {
 			return nil, err
 		}
@@ -50,6 +50,6 @@ func (g *Generator) WriteTo(writer io.Writer) (int64, error) {
 	return io.Copy(writer, reader)
 }
 
-func newGenerator(namespace string, cfg *juice.Configuration, impl *Implement) *Generator {
+func newGenerator(namespace string, cfg juice.IConfiguration, impl *Implement) *Generator {
 	return &Generator{cfg: cfg, impl: impl, namespace: namespace}
 }

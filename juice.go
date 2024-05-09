@@ -28,7 +28,7 @@ import (
 type Engine struct {
 	// configuration is the configuration of the engine
 	// It is used to initialize the engine and to one the mapper statements
-	configuration *Configuration
+	configuration IConfiguration
 
 	// driver is the driver used by the engine
 	// It is used to initialize the database connection and translate the mapper statements
@@ -56,7 +56,7 @@ type Engine struct {
 
 // executor represents a mapper executor with the given parameters
 func (e *Engine) executor(v any) (*executor, error) {
-	stat, err := e.GetConfiguration().mappers.GetStatement(v)
+	stat, err := e.GetConfiguration().GetStatement(v)
 	if err != nil {
 		return nil, err
 	}
@@ -108,18 +108,17 @@ func (e *Engine) ContextCacheTx(ctx context.Context, opt *sql.TxOptions) TxCache
 }
 
 // GetConfiguration returns the configuration of the engine
-func (e *Engine) GetConfiguration() *Configuration {
+func (e *Engine) GetConfiguration() IConfiguration {
 	e.rw.RLock()
 	defer e.rw.RUnlock()
 	return e.configuration
 }
 
 // SetConfiguration sets the configuration of the engine
-func (e *Engine) SetConfiguration(cfg *Configuration) {
+func (e *Engine) SetConfiguration(cfg IConfiguration) {
 	e.rw.Lock()
 	defer e.rw.Unlock()
 	e.configuration = cfg
-	cfg.engine = e
 }
 
 // Use adds a middleware to the engine
@@ -157,7 +156,7 @@ func (e *Engine) SetLocker(locker RWLocker) {
 // init initializes the engine
 func (e *Engine) init() error {
 	// one the default environment from the configuration
-	env, err := e.configuration.environments.DefaultEnv()
+	env, err := e.configuration.Environments().DefaultEnv()
 	if err != nil {
 		return err
 	}
@@ -173,7 +172,7 @@ func (e *Engine) init() error {
 }
 
 // NewEngine creates a new Engine
-func NewEngine(configuration *Configuration) (*Engine, error) {
+func NewEngine(configuration IConfiguration) (*Engine, error) {
 	engine := &Engine{}
 	engine.SetLocker(&sync.RWMutex{})
 	engine.SetConfiguration(configuration)
@@ -193,13 +192,13 @@ func NewEngine(configuration *Configuration) (*Engine, error) {
 }
 
 // New is the alias of NewEngine
-func New(configuration *Configuration) (*Engine, error) {
+func New(configuration IConfiguration) (*Engine, error) {
 	return NewEngine(configuration)
 }
 
 // DefaultEngine is the default engine
 // It adds an interceptor to log the statements
-func DefaultEngine(configuration *Configuration) (*Engine, error) {
+func DefaultEngine(configuration IConfiguration) (*Engine, error) {
 	engine, err := NewEngine(configuration)
 	if err != nil {
 		return nil, err
@@ -210,6 +209,6 @@ func DefaultEngine(configuration *Configuration) (*Engine, error) {
 }
 
 // Default is the alias of DefaultEngine
-func Default(configuration *Configuration) (*Engine, error) {
+func Default(configuration IConfiguration) (*Engine, error) {
 	return DefaultEngine(configuration)
 }

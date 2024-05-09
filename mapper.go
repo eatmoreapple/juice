@@ -105,12 +105,8 @@ func (m *Mapper) GetResultMapByID(id string) (ResultMap, error) {
 	return retMap, nil
 }
 
-func (m *Mapper) Configuration() *Configuration {
+func (m *Mapper) Configuration() IConfiguration {
 	return m.mappers.Configuration()
-}
-
-func (m *Mapper) Engine() *Engine {
-	return m.Configuration().engine
 }
 
 // checkResultMap checks statement's resultMap attribute is valid or not.
@@ -131,7 +127,7 @@ func (m *Mapper) checkResultMap() error {
 type Mappers struct {
 	mappers map[string]*Mapper
 	attrs   map[string]string
-	cfg     *Configuration
+	cfg     IConfiguration
 }
 
 func (m *Mappers) setMapper(key string, mapper *Mapper) error {
@@ -205,7 +201,7 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 }
 
 // Configuration represents a configuration of juice.
-func (m *Mappers) Configuration() *Configuration {
+func (m *Mappers) Configuration() IConfiguration {
 	return m.cfg
 }
 

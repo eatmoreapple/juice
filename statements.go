@@ -97,7 +97,7 @@ func (s *Statement) Mapper() *Mapper {
 }
 
 // Configuration returns the configuration of the statement.
-func (s *Statement) Configuration() *Configuration {
+func (s *Statement) Configuration() IConfiguration {
 	return s.mapper.Configuration()
 }
 
