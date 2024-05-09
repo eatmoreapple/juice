@@ -16,6 +16,18 @@ limitations under the License.
 
 package juice
 
+// IConfiguration is the interface of configuration.
+type IConfiguration interface {
+	// Environments returns the environments.
+	Environments() *Environments
+
+	// Settings returns the settings.
+	Settings() *Settings
+
+	// GetStatement returns the statement of the given value.
+	GetStatement(v any) (*Statement, error)
+}
+
 // Configuration is a configuration of juice.
 type Configuration struct {
 	// environments is a map of environments.
@@ -26,22 +38,19 @@ type Configuration struct {
 
 	// settings is a map of settings.
 	settings Settings
-
-	// engine which binds the configuration
-	engine *Engine
 }
 
 // Environments returns the environments.
-func (c Configuration) Environments() Environments {
-	return c.environments
-}
-
-// Mappers returns the mappers.
-func (c Configuration) Mappers() *Mappers {
-	return c.mappers
+func (c Configuration) Environments() *Environments {
+	return &c.environments
 }
 
 // Settings returns the settings.
-func (c Configuration) Settings() Settings {
-	return c.settings
+func (c Configuration) Settings() *Settings {
+	return &c.settings
+}
+
+// GetStatement returns the statement of the given value.
+func (c Configuration) GetStatement(v any) (*Statement, error) {
+	return c.mappers.GetStatement(v)
 }
