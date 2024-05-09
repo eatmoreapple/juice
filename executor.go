@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/eatmoreapple/juice/driver"
 )
 
 // Executor is an executor of SQL.
@@ -37,6 +38,9 @@ type Executor interface {
 
 	// Session returns the session of the current executor.
 	Session() Session
+
+	// Driver returns the driver of the current executor.
+	Driver() driver.Driver
 }
 
 // inValidExecutor is an invalid executor.
@@ -67,6 +71,8 @@ func (b badExecutor) Statement() *Statement { return nil }
 // Session implements the Executor interface.
 func (b badExecutor) Session() Session { return nil }
 
+func (b badExecutor) Driver() driver.Driver { return nil }
+
 // isBadExecutor
 func isBadExecutor(e Executor) (*badExecutor, bool) {
 	i, ok := e.(*badExecutor)
@@ -75,28 +81,30 @@ func isBadExecutor(e Executor) (*badExecutor, bool) {
 
 // executor is an executor of SQL.
 type executor struct {
-	session   Session
-	statement *Statement
+	session     Session
+	statement   *Statement
+	driver      driver.Driver
+	middlewares MiddlewareGroup
 }
 
 // QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
 	stmt := e.Statement()
-	query, args, err := stmt.Build(param)
+	query, args, err := stmt.Build(e.driver.Translator(), param)
 	if err != nil {
 		return nil, err
 	}
-	return stmt.QueryHandler()(ctx, query, args...)
+	return stmt.QueryHandler(e.middlewares...)(ctx, query, args...)
 }
 
 // ExecContext executes the query and returns the result.
 func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
 	stmt := e.Statement()
-	query, args, err := stmt.Build(param)
+	query, args, err := stmt.Build(e.driver.Translator(), param)
 	if err != nil {
 		return nil, err
 	}
-	return stmt.ExecHandler()(ctx, query, args...)
+	return stmt.ExecHandler(e.middlewares...)(ctx, query, args...)
 }
 
 // Statement returns the statement.
@@ -104,9 +112,9 @@ func (e *executor) Statement() *Statement {
 	return e.statement
 }
 
-func (e *executor) Session() Session {
-	return e.session
-}
+func (e *executor) Session() Session { return e.session }
+
+func (e *executor) Driver() driver.Driver { return e.driver }
 
 // GenericExecutor is a generic executor.
 type GenericExecutor[T any] interface {
@@ -143,7 +151,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	}
 	statement := e.Statement()
 	// build the query and args
-	query, args, err := statement.Build(p)
+	query, args, err := statement.Build(e.Executor.Driver().Translator(), p)
 	if err != nil {
 		return
 	}

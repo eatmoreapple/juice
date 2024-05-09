@@ -60,7 +60,11 @@ func (e *Engine) executor(v any) (*executor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &executor{statement: stat, session: e.DB()}, nil
+	return &executor{
+		statement: stat,
+		session:   e.DB(),
+		driver:    e.driver,
+	}, nil
 }
 
 // warpExecutor wraps the executor, ensure enable the middlewares
