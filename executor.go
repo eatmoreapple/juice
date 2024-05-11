@@ -23,14 +23,14 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
-// Executor is an executor of SQL.
-type Executor interface {
-	// QueryContext executes a query that returns rows, typically a SELECT.
-	// The param are the placeholder collection for this query.
-	QueryContext(ctx context.Context, param Param) (*sql.Rows, error)
+// GenericExecutor is a generic executor.
+type GenericExecutor[T any] interface {
+	// QueryContext executes the query and returns the direct result.
+	// The args are for any placeholder parameters in the query.
+	QueryContext(ctx context.Context, param Param) (T, error)
 
 	// ExecContext executes a query without returning any rows.
-	// The param are the placeholder collection for this query.
+	// The args are for any placeholder parameters in the query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 
 	// Statement returns the xmlSQLStatement of the current executor.
@@ -43,18 +43,8 @@ type Executor interface {
 	Driver() driver.Driver
 }
 
-// inValidExecutor is an invalid executor.
-func inValidExecutor(err error) Executor {
-	return &badExecutor{err}
-}
-
-var (
-	// ensure that the defaultExecutor implements the Executor interface.
-	_ Executor = (*badExecutor)(nil)
-
-	// ensure that the badExecutor implements the error interface.
-	_ error = (*badExecutor)(nil)
-)
+// Executor defines the interface of the executor.
+type Executor GenericExecutor[*sql.Rows]
 
 // badExecutor wraps the error who implements the Executor interface.
 type badExecutor struct{ error }
@@ -73,11 +63,19 @@ func (b badExecutor) Session() Session { return nil }
 
 func (b badExecutor) Driver() driver.Driver { return nil }
 
-// isBadExecutor
+// inValidExecutor is an invalid executor.
+func inValidExecutor(err error) Executor {
+	return &badExecutor{error: err}
+}
+
+// isBadExecutor checks if the executor is a badExecutor.
 func isBadExecutor(e Executor) (*badExecutor, bool) {
 	i, ok := e.(*badExecutor)
 	return i, ok
 }
+
+// ensure that the defaultExecutor implements the Executor interface.
+var _ Executor = (*badExecutor)(nil)
 
 // executor is an executor of SQL.
 type executor struct {
@@ -110,38 +108,21 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 }
 
 // Statement returns the xmlSQLStatement.
-func (e *executor) Statement() Statement {
-	return e.statement
-}
+func (e *executor) Statement() Statement { return e.statement }
 
+// Session returns the session of the executor.
 func (e *executor) Session() Session { return e.session }
 
+// Driver returns the driver of the executor.
 func (e *executor) Driver() driver.Driver { return e.driver }
 
-// GenericExecutor is a generic executor.
-type GenericExecutor[T any] interface {
-	// QueryContext executes the query and returns the direct result.
-	// The args are for any placeholder parameters in the query.
-	QueryContext(ctx context.Context, param Param) (T, error)
-
-	// ExecContext executes a query without returning any rows.
-	// The args are for any placeholder parameters in the query.
-	ExecContext(ctx context.Context, param Param) (sql.Result, error)
-
-	// Statement returns the xmlSQLStatement of the current executor.
-	Statement() Statement
-
-	// Session returns the session of the current executor.
-	Session() Session
-
-	// Use adds a middleware to the current executor.
-	// The difference between Engine.Use and Executor.Use is only works for the current executor.
-	Use(middlewares ...GenericMiddleware[T])
-}
+// ensure that the executor implements the Executor interface.
+var _ Executor = (*executor)(nil)
 
 // genericExecutor is a generic executor.
 type genericExecutor[T any] struct {
 	Executor
+	// extra middlewares for the executor
 	middlewares GenericMiddlewareGroup[T]
 }
 
@@ -153,7 +134,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	}
 	statement := e.Statement()
 	// build the query and args
-	query, args, err := statement.Build(e.Executor.Driver().Translator(), p)
+	query, args, err := statement.Build(e.Driver().Translator(), p)
 	if err != nil {
 		return
 	}
@@ -189,7 +170,7 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
 	// check the error of the executor
 	if exe, ok := isBadExecutor(e.Executor); ok {
-		return ret, exe.error
+		return ret, exe
 	}
 	return e.Executor.ExecContext(ctx, p)
 }
