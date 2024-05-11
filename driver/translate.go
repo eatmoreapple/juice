@@ -16,12 +16,15 @@ limitations under the License.
 
 package driver
 
+// Translator is an interface for translating the matched string.
 type Translator interface {
 	Translate(matched string) string
 }
 
+// TranslateFunc is a function to translate the matched string.
 type TranslateFunc func(matched string) string
 
+// Translate implements the Translator interface.
 func (f TranslateFunc) Translate(matched string) string {
 	return f(matched)
 }
