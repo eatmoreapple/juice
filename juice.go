@@ -167,7 +167,7 @@ func (e *Engine) init() error {
 	}
 	e.driver = drv
 	// open the database connection
-	e.db, err = env.Connect(drv)
+	e.db, err = ConnectFromEnv(env)
 	return err
 }
 
