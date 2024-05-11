@@ -62,7 +62,7 @@ func (e *Environment) Attr(key string) string {
 	return e.attrs[key]
 }
 
-// ID returns a identifier of the environment.
+// ID returns an identifier of the environment.
 func (e *Environment) ID() string {
 	return e.Attr("id")
 }
@@ -85,8 +85,17 @@ func ConnectFromEnv(env *Environment) (*sql.DB, error) {
 	)
 }
 
-// Environments is a collection of environments.
-type Environments struct {
+type EnvironmentProvider interface {
+	// Attribute returns a value of the attribute.
+	Attribute(key string) string
+
+	// Use returns the environment specified by the identifier.
+	Use(id string) (*Environment, error)
+}
+
+// environments is a collection of environments.
+type environments struct {
+	// xml attributes stored as key-value pairs.
 	attr map[string]string
 
 	// envs is a map of environments.
@@ -95,25 +104,20 @@ type Environments struct {
 }
 
 // setAttr sets a value of the attribute.
-func (e *Environments) setAttr(key, value string) {
+func (e *environments) setAttr(key, value string) {
 	if e.attr == nil {
 		e.attr = make(map[string]string)
 	}
 	e.attr[key] = value
 }
 
-// Attr returns a value of the attribute.
-func (e *Environments) Attr(key string) string {
+// Attribute returns a value of the attribute.
+func (e *environments) Attribute(key string) string {
 	return e.attr[key]
 }
 
-// DefaultEnv returns the default environment.
-func (e *Environments) DefaultEnv() (*Environment, error) {
-	return e.Use(e.Attr("default"))
-}
-
 // Use returns the environment specified by the identifier.
-func (e *Environments) Use(id string) (*Environment, error) {
+func (e *environments) Use(id string) (*Environment, error) {
 	env, exists := e.envs[id]
 	if !exists {
 		return nil, fmt.Errorf("environment %s not found", id)

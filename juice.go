@@ -156,7 +156,7 @@ func (e *Engine) SetLocker(locker RWLocker) {
 // init initializes the engine
 func (e *Engine) init() error {
 	// one the default environment from the configuration
-	env, err := e.configuration.Environments().DefaultEnv()
+	env, err := e.configuration.Environments().Use("default")
 	if err != nil {
 		return err
 	}
