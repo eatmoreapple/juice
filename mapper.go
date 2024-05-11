@@ -11,7 +11,7 @@ import (
 type Mapper struct {
 	namespace  string
 	mappers    *Mappers
-	statements map[string]*Statement
+	statements map[string]*xmlSQLStatement
 	sqlNodes   map[string]*SQLNode
 	attrs      map[string]string
 	resultMaps map[string]*resultMapNode
@@ -109,7 +109,7 @@ func (m *Mapper) Configuration() IConfiguration {
 	return m.mappers.Configuration()
 }
 
-// checkResultMap checks statement's resultMap attribute is valid or not.
+// checkResultMap checks xmlSQLStatement's resultMap attribute is valid or not.
 func (m *Mapper) checkResultMap() error {
 	for _, stmt := range m.statements {
 		resultMapName := stmt.attrs["resultMap"]
@@ -150,12 +150,12 @@ func (m *Mappers) GetMapperByNamespace(namespace string) (*Mapper, bool) {
 	return mapper, exists
 }
 
-// GetStatementByID returns a statement by id.
-// If the statement is not found, an error is returned.
-func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
+// GetStatementByID returns a xmlSQLStatement by id.
+// If the xmlSQLStatement is not found, an error is returned.
+func (m *Mappers) GetStatementByID(id string) (*xmlSQLStatement, error) {
 	items := strings.Split(id, ".")
 	if len(items) == 1 {
-		return nil, fmt.Errorf("invalid statement id: %s", id)
+		return nil, fmt.Errorf("invalid xmlSQLStatement id: %s", id)
 	}
 	// get the namespace and pk
 	// main.UserMapper.SelectUser => main.UserMapper, SelectUser
@@ -166,13 +166,13 @@ func (m *Mappers) GetStatementByID(id string) (*Statement, error) {
 	}
 	stmt, exists := mapper.statements[pk]
 	if !exists {
-		return nil, fmt.Errorf("statement `%s` not found", id)
+		return nil, fmt.Errorf("xmlSQLStatement `%s` not found", id)
 	}
 	return stmt, nil
 }
 
-// GetStatement try to one the statement from the Mappers with the given interface
-func (m *Mappers) GetStatement(v any) (*Statement, error) {
+// GetStatement try to one the xmlSQLStatement from the Mappers with the given interface
+func (m *Mappers) GetStatement(v any) (*xmlSQLStatement, error) {
 	var id string
 	// if the interface is StatementIDGetter, use the StatementID() method to get the id
 	// or if the interface is a string type, use the string as the id
@@ -191,11 +191,11 @@ func (m *Mappers) GetStatement(v any) (*Statement, error) {
 		case reflect.Struct:
 			id = rv.Type().PkgPath() + "." + rv.Type().Name()
 		default:
-			return nil, errors.New("invalid type of statement id")
+			return nil, errors.New("invalid type of xmlSQLStatement id")
 		}
 	}
 	if len(id) == 0 {
-		return nil, errors.New("can not get the statement id from the given interface")
+		return nil, errors.New("can not get the xmlSQLStatement id from the given interface")
 	}
 	return m.GetStatementByID(id)
 }

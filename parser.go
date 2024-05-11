@@ -257,7 +257,7 @@ func (p *XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*
 	}
 
 	mapper.namespace = namespace
-	mapper.statements = make(map[string]*Statement)
+	mapper.statements = make(map[string]*xmlSQLStatement)
 
 	for {
 		token, err := decoder.Token()
@@ -272,13 +272,13 @@ func (p *XMLParser) parseMapper(decoder *xml.Decoder, token xml.StartElement) (*
 			action := Action(token.Name.Local)
 			switch action {
 			case Select, Insert, Update, Delete:
-				stmt := &Statement{action: action, mapper: mapper}
+				stmt := &xmlSQLStatement{action: action, mapper: mapper}
 				if err = p.parseStatement(stmt, decoder, token); err != nil {
 					return nil, err
 				}
 				key := stmt.ID()
 				if _, exists := mapper.statements[key]; exists {
-					return nil, fmt.Errorf("duplicate statement id: %s", key)
+					return nil, fmt.Errorf("duplicate xmlSQLStatement id: %s", key)
 				}
 				mapper.statements[key] = stmt
 			case "sql":
@@ -374,12 +374,12 @@ func (p *XMLParser) parseMapperByURL(path string) (*Mapper, error) {
 	}
 }
 
-func (p *XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token xml.StartElement) error {
+func (p *XMLParser) parseStatement(stmt *xmlSQLStatement, decoder *xml.Decoder, token xml.StartElement) error {
 	for _, attr := range token.Attr {
 		stmt.setAttribute(attr.Name.Local, attr.Value)
 	}
 	if id := stmt.Attribute("id"); id == "" {
-		return fmt.Errorf("%s statement id is required", stmt.Action())
+		return fmt.Errorf("%s xmlSQLStatement id is required", stmt.Action())
 	} else {
 		stmt.id = id
 	}
@@ -396,7 +396,7 @@ func (p *XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token 
 			switch token.Name.Local {
 			case "values":
 				if stmt.action != Insert {
-					return fmt.Errorf("values node only support insert statement")
+					return fmt.Errorf("values node only support insert xmlSQLStatement")
 				}
 				node, err := p.parseValuesNode(decoder)
 				if err != nil {
@@ -405,7 +405,7 @@ func (p *XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token 
 				stmt.Nodes = append(stmt.Nodes, node)
 			case "alias":
 				if stmt.action != Select {
-					return fmt.Errorf("alias node only support select statement")
+					return fmt.Errorf("alias node only support select xmlSQLStatement")
 				}
 				node, err := p.parseAliasNode(decoder)
 				if err != nil {
@@ -413,7 +413,7 @@ func (p *XMLParser) parseStatement(stmt *Statement, decoder *xml.Decoder, token 
 				}
 				stmt.Nodes = append(stmt.Nodes, node)
 			default:
-				node, err := p.parseTags(stmt.Mapper(), decoder, token)
+				node, err := p.parseTags(stmt.mapper, decoder, token)
 				if err != nil {
 					return err
 				}
@@ -472,8 +472,8 @@ func (p *XMLParser) parseInclude(mapper *Mapper, decoder *xml.Decoder, token xml
 		return nil, &nodeAttributeRequiredError{nodeName: "include", attrName: "refid"}
 	}
 
-	// try to find sql statement by refid
-	// if not found, it means the sql statement has not been parsed yet,
+	// try to find sql xmlSQLStatement by refid
+	// if not found, it means the sql xmlSQLStatement has not been parsed yet,
 	// ignore it and lazy parse it when use
 	sqlNode, _ := mapper.GetSQLNodeByID(ref)
 

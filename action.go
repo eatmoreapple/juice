@@ -20,3 +20,11 @@ const (
 func (a Action) String() string {
 	return string(a)
 }
+
+func (a Action) ForRead() bool {
+	return a == Select
+}
+
+func (a Action) ForWrite() bool {
+	return a == Insert || a == Update || a == Delete
+}

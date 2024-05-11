@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -21,9 +37,9 @@ import (
 // Middleware is a wrapper of QueryHandler and ExecHandler.
 type Middleware interface {
 	// QueryContext wraps the QueryHandler.
-	QueryContext(stmt *Statement, next QueryHandler) QueryHandler
+	QueryContext(stmt Statement, next QueryHandler) QueryHandler
 	// ExecContext wraps the ExecHandler.
-	ExecContext(stmt *Statement, next ExecHandler) ExecHandler
+	ExecContext(stmt Statement, next ExecHandler) ExecHandler
 }
 
 // ensure MiddlewareGroup implements Middleware.
@@ -34,7 +50,7 @@ type MiddlewareGroup []Middleware
 
 // QueryContext implements Middleware.
 // Call QueryContext will call all the QueryContext of the middlewares in the group.
-func (m MiddlewareGroup) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
+func (m MiddlewareGroup) QueryContext(stmt Statement, next QueryHandler) QueryHandler {
 	for _, middleware := range m {
 		next = middleware.QueryContext(stmt, next)
 	}
@@ -43,7 +59,7 @@ func (m MiddlewareGroup) QueryContext(stmt *Statement, next QueryHandler) QueryH
 
 // ExecContext implements Middleware.
 // Call ExecContext will call all the ExecContext of the middlewares in the group.
-func (m MiddlewareGroup) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+func (m MiddlewareGroup) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
 	for _, middleware := range m {
 		next = middleware.ExecContext(stmt, next)
 	}
@@ -56,12 +72,12 @@ var logger = log.New(log.Writer(), "[juice] ", log.Flags())
 // ensure DebugMiddleware implements Middleware.
 var _ Middleware = (*DebugMiddleware)(nil) // compile time check
 
-// DebugMiddleware is a middleware that prints the sql statement and the execution time.
+// DebugMiddleware is a middleware that prints the sql xmlSQLStatement and the execution time.
 type DebugMiddleware struct{}
 
 // QueryContext implements Middleware.
-// QueryContext will print the sql statement and the execution time.
-func (m *DebugMiddleware) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
+// QueryContext will print the sql xmlSQLStatement and the execution time.
+func (m *DebugMiddleware) QueryContext(stmt Statement, next QueryHandler) QueryHandler {
 	if !m.isDeBugMode(stmt) {
 		return next
 	}
@@ -76,8 +92,8 @@ func (m *DebugMiddleware) QueryContext(stmt *Statement, next QueryHandler) Query
 }
 
 // ExecContext implements Middleware.
-// ExecContext will print the sql statement and the execution time.
-func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+// ExecContext will print the sql xmlSQLStatement and the execution time.
+func (m *DebugMiddleware) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
 	if !m.isDeBugMode(stmt) {
 		return next
 	}
@@ -93,9 +109,9 @@ func (m *DebugMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHan
 
 // isDeBugMode returns true if the debug mode is on.
 // Default debug mode is on.
-// You can turn off the debug mode by setting the debug tag to false in the mapper statement attribute or the configuration.
-func (m *DebugMiddleware) isDeBugMode(stmt *Statement) bool {
-	// try to one the bug mode from the Statement
+// You can turn off the debug mode by setting the debug tag to false in the mapper xmlSQLStatement attribute or the configuration.
+func (m *DebugMiddleware) isDeBugMode(stmt Statement) bool {
+	// try to one the bug mode from the xmlSQLStatement
 	debug := stmt.Attribute("debug")
 	// if the bug mode is not set, try to one the bug mode from the Context
 	if debug == "false" {
@@ -110,12 +126,12 @@ func (m *DebugMiddleware) isDeBugMode(stmt *Statement) bool {
 // ensure TimeoutMiddleware implements Middleware
 var _ Middleware = (*TimeoutMiddleware)(nil) // compile time check
 
-// TimeoutMiddleware is a middleware that sets the timeout for the sql statement.
+// TimeoutMiddleware is a middleware that sets the timeout for the sql xmlSQLStatement.
 type TimeoutMiddleware struct{}
 
 // QueryContext implements Middleware.
-// QueryContext will set the timeout for the sql statement.
-func (t TimeoutMiddleware) QueryContext(stmt *Statement, next QueryHandler) QueryHandler {
+// QueryContext will set the timeout for the sql xmlSQLStatement.
+func (t TimeoutMiddleware) QueryContext(stmt Statement, next QueryHandler) QueryHandler {
 	timeout := t.getTimeout(stmt)
 	if timeout <= 0 {
 		return next
@@ -128,8 +144,8 @@ func (t TimeoutMiddleware) QueryContext(stmt *Statement, next QueryHandler) Quer
 }
 
 // ExecContext implements Middleware.
-// ExecContext will set the timeout for the sql statement.
-func (t TimeoutMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+// ExecContext will set the timeout for the sql xmlSQLStatement.
+func (t TimeoutMiddleware) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
 	timeout := t.getTimeout(stmt)
 	if timeout <= 0 {
 		return next
@@ -141,8 +157,8 @@ func (t TimeoutMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHa
 	}
 }
 
-// getTimeout returns the timeout from the Statement.
-func (t TimeoutMiddleware) getTimeout(stmt *Statement) (timeout int64) {
+// getTimeout returns the timeout from the xmlSQLStatement.
+func (t TimeoutMiddleware) getTimeout(stmt Statement) (timeout int64) {
 	timeoutAttr := stmt.Attribute("timeout")
 	if timeoutAttr == "" {
 		return
@@ -159,14 +175,14 @@ type useGeneratedKeysMiddleware struct{}
 
 // QueryContext implements Middleware.
 // return the result directly and do nothing.
-func (m *useGeneratedKeysMiddleware) QueryContext(_ *Statement, next QueryHandler) QueryHandler {
+func (m *useGeneratedKeysMiddleware) QueryContext(_ Statement, next QueryHandler) QueryHandler {
 	return next
 }
 
 // ExecContext implements Middleware.
 // ExecContext will set the last insert id to the struct.
-func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
-	if !stmt.IsInsert() {
+func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
+	if !(stmt.Action() == Insert) {
 		return next
 	}
 	// If the useGeneratedKeys is not set or false, return the result directly.
@@ -273,11 +289,11 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt *Statement, next ExecHandl
 type GenericMiddleware[T any] interface {
 	// QueryContext wraps the GenericQueryHandler.
 	// The GenericQueryHandler is a function that accepts a context.Context, a query string and a slice of arguments.
-	QueryContext(stmt *Statement, next GenericQueryHandler[T]) GenericQueryHandler[T]
+	QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T]
 
 	// ExecContext wraps the ExecHandler.
 	// The ExecHandler is a function that accepts a context.Context, a query string and a slice of arguments.
-	ExecContext(stmt *Statement, next ExecHandler) ExecHandler
+	ExecContext(stmt Statement, next ExecHandler) ExecHandler
 }
 
 // ensure GenericMiddlewareGroup implements GenericMiddleware
@@ -288,7 +304,7 @@ var _ GenericMiddleware[any] = (GenericMiddlewareGroup[any])(nil) // compile tim
 type GenericMiddlewareGroup[T any] []GenericMiddleware[T]
 
 // QueryContext implements GenericMiddleware.
-func (m GenericMiddlewareGroup[T]) QueryContext(stmt *Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
+func (m GenericMiddlewareGroup[T]) QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
 	for _, middleware := range m {
 		next = middleware.QueryContext(stmt, next)
 	}
@@ -296,7 +312,7 @@ func (m GenericMiddlewareGroup[T]) QueryContext(stmt *Statement, next GenericQue
 }
 
 // ExecContext implements GenericMiddleware.
-func (m GenericMiddlewareGroup[T]) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
+func (m GenericMiddlewareGroup[T]) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
 	for _, middleware := range m {
 		next = middleware.ExecContext(stmt, next)
 	}
@@ -307,13 +323,13 @@ func (m GenericMiddlewareGroup[T]) ExecContext(stmt *Statement, next ExecHandler
 var _ GenericMiddleware[any] = (*CacheMiddleware[any])(nil) // compile time check
 
 // cacheKeyFunc defines the function which is used to generate the scopeCache key.
-type cacheKeyFunc func(stmt *Statement, query string, args []any) (string, error)
+type cacheKeyFunc func(stmt Statement, query string, args []any) (string, error)
 
 // CacheKeyFunc is the function which is used to generate the scopeCache key.
 // default is the md5 of the query and args.
 // reset the CacheKeyFunc variable to change the default behavior.
-var CacheKeyFunc cacheKeyFunc = func(stmt *Statement, query string, args []any) (string, error) {
-	// only same statement same query same args can get the same scopeCache key
+var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (string, error) {
+	// only same xmlSQLStatement same query same args can get the same scopeCache key
 	writer := md5.New()
 	writer.Write([]byte(stmt.ID() + query))
 	if len(args) > 0 {
@@ -332,7 +348,7 @@ type CacheMiddleware[T any] struct {
 }
 
 // QueryContext implements Middleware.
-func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
+func (c *CacheMiddleware[T]) QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
 	// If the scopeCache is nil or the useCache is false, return the result directly.
 	if c.scopeCache == nil || stmt.Attribute("useCache") == "false" {
 		return next
@@ -388,8 +404,8 @@ func (c *CacheMiddleware[T]) QueryContext(stmt *Statement, next GenericQueryHand
 }
 
 // ExecContext implements Middleware.
-func (c *CacheMiddleware[T]) ExecContext(stmt *Statement, next ExecHandler) ExecHandler {
-	// if the scopeCache is enabled and flushCache is not disabled in this statement.
+func (c *CacheMiddleware[T]) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
+	// if the scopeCache is enabled and flushCache is not disabled in this xmlSQLStatement.
 	if stmt.Attribute("flushCache") == "false" || c.scopeCache == nil {
 		return next
 	}

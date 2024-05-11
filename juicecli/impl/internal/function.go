@@ -75,13 +75,13 @@ func (f FunctionGroup) String() string {
 }
 
 type FunctionBodyMaker struct {
-	statement *juice.Statement
+	statement juice.Statement
 	function  *Function
 }
 
 func (f *FunctionBodyMaker) Make() error {
 	var bodyMaker functionBodyMaker
-	if f.statement.ForRead() {
+	if f.statement.Action().ForRead() {
 		bodyMaker = &readFuncBodyMaker{function: f.function, statement: f.statement}
 	} else {
 		bodyMaker = &writeFuncBodyMaker{function: f.function, statement: f.statement}
@@ -94,7 +94,7 @@ type functionBodyMaker interface {
 }
 
 type readFuncBodyMaker struct {
-	statement *juice.Statement
+	statement juice.Statement
 	function  *Function
 }
 
@@ -147,7 +147,7 @@ func (f *readFuncBodyMaker) build() {
 }
 
 type writeFuncBodyMaker struct {
-	statement *juice.Statement
+	statement juice.Statement
 	function  *Function
 }
 
