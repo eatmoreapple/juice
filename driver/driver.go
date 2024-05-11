@@ -46,6 +46,7 @@ func Register(name string, driver Driver) {
 	}
 	lock.Lock()
 	defer lock.Unlock()
+	// allow re-registration
 	registeredDrivers[name] = driver
 }
 
@@ -61,38 +62,34 @@ func Get(name string) (Driver, error) {
 	return driver, nil
 }
 
-// SimpleDriver is a driver of MySQL、SQLite.
-type SimpleDriver struct {
-	Name string
-}
+// MySQLDriver is a driver of MySQL.
+type MySQLDriver struct{}
 
 // Translator returns a translator of SQL.
-func (d SimpleDriver) Translator() Translator {
+func (d MySQLDriver) Translator() Translator {
 	return TranslateFunc(func(matched string) string { return "?" })
 }
 
-// String returns a name of driver.
-func (d SimpleDriver) String() string {
-	return d.Name
-}
-
-// MySQLDriver is a driver of MySQL.
-type MySQLDriver struct {
-	SimpleDriver
+func (d MySQLDriver) String() string {
+	return "mysql"
 }
 
 // SQLiteDriver is a driver of SQLite.
-type SQLiteDriver struct {
-	SimpleDriver
+type SQLiteDriver struct{}
+
+// Translator returns a translator of SQL.
+func (d SQLiteDriver) Translator() Translator {
+	return TranslateFunc(func(matched string) string { return "?" })
+}
+
+func (d SQLiteDriver) String() string {
+	return "sqlite3"
 }
 
 // PostgresDriver is a driver of PostgreSQL.
-type PostgresDriver struct {
-	SimpleDriver
-}
+type PostgresDriver struct{}
 
 // Translator is a function to translate a matched string.
-// Rewrite this function to change the translation.
 func (d PostgresDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
@@ -101,13 +98,14 @@ func (d PostgresDriver) Translator() Translator {
 	})
 }
 
-// OracleDriver is a driver of Oracle.
-type OracleDriver struct {
-	SimpleDriver
+func (d PostgresDriver) String() string {
+	return "postgres"
 }
 
+// OracleDriver is a driver of Oracle.
+type OracleDriver struct{}
+
 // Translator is a function to translate a matched string.
-// Rewrite this function to change the translation.
 func (o OracleDriver) Translator() Translator {
 	var i int
 	return TranslateFunc(func(matched string) string {
@@ -116,9 +114,13 @@ func (o OracleDriver) Translator() Translator {
 	})
 }
 
+func (o OracleDriver) String() string {
+	return "oracle"
+}
+
 func init() {
-	Register("mysql", &MySQLDriver{SimpleDriver: SimpleDriver{"mysql"}})
-	Register("sqlite3", &SQLiteDriver{SimpleDriver: SimpleDriver{"sqlite3"}})
-	Register("postgres", &PostgresDriver{SimpleDriver: SimpleDriver{"postgres"}})
-	Register("oracle", &OracleDriver{SimpleDriver: SimpleDriver{"oracle"}})
+	Register("mysql", &MySQLDriver{})
+	Register("sqlite3", &SQLiteDriver{})
+	Register("postgres", &PostgresDriver{})
+	Register("oracle", &OracleDriver{})
 }
