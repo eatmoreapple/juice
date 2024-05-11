@@ -33,8 +33,8 @@ type Executor interface {
 	// The param are the placeholder collection for this query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 
-	// Statement returns the statement of the current executor.
-	Statement() *Statement
+	// Statement returns the xmlSQLStatement of the current executor.
+	Statement() Statement
 
 	// Session returns the session of the current executor.
 	Session() Session
@@ -66,7 +66,7 @@ func (b badExecutor) QueryContext(_ context.Context, _ Param) (*sql.Rows, error)
 func (b badExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, error) { return nil, b.error }
 
 // Statement implements the Executor interface.
-func (b badExecutor) Statement() *Statement { return nil }
+func (b badExecutor) Statement() Statement { return nil }
 
 // Session implements the Executor interface.
 func (b badExecutor) Session() Session { return nil }
@@ -82,7 +82,7 @@ func isBadExecutor(e Executor) (*badExecutor, bool) {
 // executor is an executor of SQL.
 type executor struct {
 	session     Session
-	statement   *Statement
+	statement   Statement
 	driver      driver.Driver
 	middlewares MiddlewareGroup
 }
@@ -94,7 +94,8 @@ func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, er
 	if err != nil {
 		return nil, err
 	}
-	return stmt.QueryHandler(e.middlewares...)(ctx, query, args...)
+	queryHandler := CombineQueryHandler(stmt, e.middlewares...)
+	return queryHandler(ctx, query, args...)
 }
 
 // ExecContext executes the query and returns the result.
@@ -104,11 +105,12 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 	if err != nil {
 		return nil, err
 	}
-	return stmt.ExecHandler(e.middlewares...)(ctx, query, args...)
+	execHandler := CombineExecHandler(stmt, e.middlewares...)
+	return execHandler(ctx, query, args...)
 }
 
-// Statement returns the statement.
-func (e *executor) Statement() *Statement {
+// Statement returns the xmlSQLStatement.
+func (e *executor) Statement() Statement {
 	return e.statement
 }
 
@@ -126,8 +128,8 @@ type GenericExecutor[T any] interface {
 	// The args are for any placeholder parameters in the query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 
-	// Statement returns the statement of the current executor.
-	Statement() *Statement
+	// Statement returns the xmlSQLStatement of the current executor.
+	Statement() Statement
 
 	// Session returns the session of the current executor.
 	Session() Session

@@ -24,8 +24,8 @@ type IConfiguration interface {
 	// Settings returns the settings.
 	Settings() *Settings
 
-	// GetStatement returns the statement of the given value.
-	GetStatement(v any) (*Statement, error)
+	// GetStatement returns the xmlSQLStatement of the given value.
+	GetStatement(v any) (Statement, error)
 }
 
 // Configuration is a configuration of juice.
@@ -50,7 +50,7 @@ func (c Configuration) Settings() *Settings {
 	return &c.settings
 }
 
-// GetStatement returns the statement of the given value.
-func (c Configuration) GetStatement(v any) (*Statement, error) {
+// GetStatement returns the xmlSQLStatement of the given value.
+func (c Configuration) GetStatement(v any) (Statement, error) {
 	return c.mappers.GetStatement(v)
 }

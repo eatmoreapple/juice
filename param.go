@@ -27,7 +27,7 @@ import (
 )
 
 // Param is an alias of any type.
-// It is used to represent the parameter of the statement and without type limitation.
+// It is used to represent the parameter of the xmlSQLStatement and without type limitation.
 type Param = any
 
 type paramCtxKey struct{}

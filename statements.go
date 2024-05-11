@@ -7,10 +7,20 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
+type Statement interface {
+	ID() string
+	Name() string
+	Attribute(key string) string
+	Action() Action
+	Configuration() IConfiguration
+	ResultMap() (ResultMap, error)
+	Build(translator driver.Translator, param Param) (query string, args []any, err error)
+}
+
 var formatRegexp = regexp.MustCompile(`\$\{ *?([a-zA-Z0-9_\.]+) *?\}`)
 
-// Statement defines a sql statement.
-type Statement struct {
+// xmlSQLStatement defines a sql xmlSQLStatement.
+type xmlSQLStatement struct {
 	mapper *Mapper
 	action Action
 	Nodes  []Node
@@ -19,7 +29,7 @@ type Statement struct {
 	id     string
 }
 
-func (s *Statement) Attribute(key string) string {
+func (s *xmlSQLStatement) Attribute(key string) string {
 	value := s.attrs[key]
 	if value == "" {
 		value = s.mapper.Attribute(key)
@@ -27,22 +37,22 @@ func (s *Statement) Attribute(key string) string {
 	return value
 }
 
-func (s *Statement) setAttribute(key, value string) {
+func (s *xmlSQLStatement) setAttribute(key, value string) {
 	if s.attrs == nil {
 		s.attrs = make(map[string]string)
 	}
 	s.attrs[key] = value
 }
 
-func (s *Statement) ID() string {
+func (s *xmlSQLStatement) ID() string {
 	return s.id
 }
 
-func (s *Statement) Namespace() string {
+func (s *xmlSQLStatement) Namespace() string {
 	return s.mapper.Namespace()
 }
 
-func (s *Statement) lazyName() string {
+func (s *xmlSQLStatement) lazyName() string {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	if prefix := s.mapper.mappers.Prefix(); prefix != "" {
@@ -55,19 +65,19 @@ func (s *Statement) lazyName() string {
 	return builder.String()
 }
 
-// Name is a unique key of the whole statement.
-func (s *Statement) Name() string {
+// Name is a unique key of the whole xmlSQLStatement.
+func (s *xmlSQLStatement) Name() string {
 	if s.name == "" {
 		s.name = s.lazyName()
 	}
 	return s.name
 }
 
-func (s *Statement) Action() Action {
+func (s *xmlSQLStatement) Action() Action {
 	return s.action
 }
 
-func (s *Statement) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+func (s *xmlSQLStatement) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	var builder = getBuilder()
 	defer putBuilder(builder)
 	for i, node := range s.Nodes {
@@ -91,42 +101,22 @@ func (s *Statement) Accept(translator driver.Translator, p Parameter) (query str
 	return
 }
 
-// Mapper is an getter of statements.
-func (s *Statement) Mapper() *Mapper {
-	return s.mapper
-}
-
-// Configuration returns the configuration of the statement.
-func (s *Statement) Configuration() IConfiguration {
+// Configuration returns the configuration of the xmlSQLStatement.
+func (s *xmlSQLStatement) Configuration() IConfiguration {
 	return s.mapper.Configuration()
 }
 
-// ForRead returns true if the statement's Action is Select
-func (s *Statement) ForRead() bool {
-	return s.Action() == Select
-}
-
-// ForWrite returns true if the statement's Action is Insert, Update or Delete
-func (s *Statement) ForWrite() bool {
-	return s.Action() == Insert || s.Action() == Update || s.Action() == Delete
-}
-
-// IsInsert returns true if the statement's Action is Insert
-func (s *Statement) IsInsert() bool {
-	return s.Action() == Insert
-}
-
-// ResultMap returns the ResultMap of the statement.
-func (s *Statement) ResultMap() (ResultMap, error) {
+// ResultMap returns the ResultMap of the xmlSQLStatement.
+func (s *xmlSQLStatement) ResultMap() (ResultMap, error) {
 	key := s.Attribute("resultMap")
 	if key == "" {
 		return nil, ErrResultMapNotSet
 	}
-	return s.Mapper().GetResultMapByID(key)
+	return s.mapper.GetResultMapByID(key)
 }
 
-// Build builds the statement with the given parameter.
-func (s *Statement) Build(translator driver.Translator, param Param) (query string, args []any, err error) {
+// Build builds the xmlSQLStatement with the given parameter.
+func (s *xmlSQLStatement) Build(translator driver.Translator, param Param) (query string, args []any, err error) {
 	value := newGenericParam(param, s.Attribute("paramName"))
 	query, args, err = s.Accept(translator, value)
 	if err != nil {
@@ -136,24 +126,4 @@ func (s *Statement) Build(translator driver.Translator, param Param) (query stri
 		return "", nil, ErrEmptyQuery
 	}
 	return query, args, nil
-}
-
-// QueryHandler returns the QueryHandler of the statement.
-func (s *Statement) QueryHandler(middlewares ...Middleware) QueryHandler {
-	next := sessionQueryHandler()
-	if len(middlewares) > 0 {
-		group := MiddlewareGroup(middlewares)
-		return group.QueryContext(s, next)
-	}
-	return next
-}
-
-// ExecHandler returns the ExecHandler of the statement.
-func (s *Statement) ExecHandler(middlewares ...Middleware) ExecHandler {
-	next := sessionExecHandler()
-	if len(middlewares) > 0 {
-		group := MiddlewareGroup(middlewares)
-		return group.ExecContext(s, next)
-	}
-	return next
 }

@@ -33,3 +33,21 @@ func sessionExecHandler() ExecHandler {
 
 // GenericQueryHandler defines the handler of the generic query.
 type GenericQueryHandler[T any] func(ctx context.Context, query string, args ...any) (T, error)
+
+func CombineQueryHandler(stmt Statement, middlewares ...Middleware) QueryHandler {
+	next := sessionQueryHandler()
+	if len(middlewares) > 0 {
+		group := MiddlewareGroup(middlewares)
+		return group.QueryContext(stmt, next)
+	}
+	return next
+}
+
+func CombineExecHandler(stmt Statement, middlewares ...Middleware) ExecHandler {
+	next := sessionExecHandler()
+	if len(middlewares) > 0 {
+		group := MiddlewareGroup(middlewares)
+		return group.ExecContext(stmt, next)
+	}
+	return next
+}

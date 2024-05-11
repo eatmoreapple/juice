@@ -67,7 +67,7 @@ type TxManager interface {
 	Rollback() error
 }
 
-// invalidTxManager is an invalid transaction statement which implements the TxManager interface.
+// invalidTxManager is an invalid transaction xmlSQLStatement which implements the TxManager interface.
 type invalidTxManager struct {
 	error
 }
@@ -87,7 +87,7 @@ func (i invalidTxManager) Rollback() error {
 	return i
 }
 
-// txManager is a transaction statement
+// txManager is a transaction xmlSQLStatement
 type txManager struct {
 	engine *Engine
 	tx     *sql.Tx

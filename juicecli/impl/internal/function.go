@@ -75,7 +75,7 @@ func (f FunctionGroup) String() string {
 }
 
 type FunctionBodyMaker struct {
-	statement *juice.Statement
+	statement *juice.statement
 	function  *Function
 }
 
@@ -94,7 +94,7 @@ type functionBodyMaker interface {
 }
 
 type readFuncBodyMaker struct {
-	statement *juice.Statement
+	statement *juice.statement
 	function  *Function
 }
 
@@ -147,7 +147,7 @@ func (f *readFuncBodyMaker) build() {
 }
 
 type writeFuncBodyMaker struct {
-	statement *juice.Statement
+	statement *juice.statement
 	function  *Function
 }
 
