@@ -1,3 +1,19 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
@@ -57,36 +73,16 @@ func (e *Environment) provider() EnvValueProvider {
 	return GetEnvValueProvider(e.Attr("provider"))
 }
 
-// Connect returns a database connection.
-func (e *Environment) Connect(driver driver.Driver) (*sql.DB, error) {
-	// Open a database connection with the given driver.
-	db, err := driver.Open(e.DataSource)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set connection parameters.
-
-	// set max idle connection number if it is specified.
-	if e.MaxIdleConnNum > 0 {
-		db.SetMaxIdleConns(e.MaxIdleConnNum)
-	}
-
-	// set max open connection number if it is specified.
-	if e.MaxOpenConnNum > 0 {
-		db.SetMaxOpenConns(e.MaxOpenConnNum)
-	}
-
-	// set max connection lifetime if it is specified.
-	if e.MaxConnLifetime > 0 {
-		db.SetConnMaxLifetime(time.Duration(e.MaxConnLifetime) * time.Second)
-	}
-
-	// set max idle connection lifetime if it is specified.
-	if e.MaxIdleConnLifetime > 0 {
-		db.SetConnMaxLifetime(time.Duration(e.MaxIdleConnLifetime) * time.Second)
-	}
-	return db, nil
+// ConnectFromEnv connects to the database using the environment configuration.
+func ConnectFromEnv(env *Environment) (*sql.DB, error) {
+	return driver.Connect(
+		env.Driver,
+		env.DataSource,
+		driver.ConnectWithMaxOpenConnNum(env.MaxOpenConnNum),
+		driver.ConnectWithMaxIdleConnNum(env.MaxIdleConnNum),
+		driver.ConnectWithMaxConnLifetime(time.Duration(env.MaxConnLifetime)*time.Second),
+		driver.ConnectWithMaxIdleConnLifetime(time.Duration(env.MaxIdleConnLifetime)*time.Second),
+	)
 }
 
 // Environments is a collection of environments.
