@@ -828,12 +828,12 @@ func (p *XMLParser) parseMaxIdleConnLifetime(decoder *xml.Decoder, provider EnvV
 	return p.parseEnvInt("maxIdleConnLifetime", decoder, provider)
 }
 
-func (p *XMLParser) parseSettings(decoder *xml.Decoder) (Settings, error) {
-	var setting []*Setting
+func (p *XMLParser) parseSettings(decoder *xml.Decoder) (keyValueSettingProvider, error) {
+	var setting []settingItem
 	if err := decoder.DecodeElement(&setting, nil); err != nil {
 		return nil, err
 	}
-	var settings = make(Settings, len(setting))
+	var settings = make(keyValueSettingProvider, len(setting))
 	for _, s := range setting {
 		if _, ok := settings[s.Name]; ok {
 			return nil, fmt.Errorf("duplicate setting name: %s", s.Name)

@@ -22,7 +22,7 @@ type IConfiguration interface {
 	Environments() *Environments
 
 	// Settings returns the settings.
-	Settings() *Settings
+	Settings() SettingProvider
 
 	// GetStatement returns the xmlSQLStatement of the given value.
 	GetStatement(v any) (Statement, error)
@@ -37,7 +37,7 @@ type Configuration struct {
 	mappers *Mappers
 
 	// settings is a map of settings.
-	settings Settings
+	settings keyValueSettingProvider
 }
 
 // Environments returns the environments.
@@ -46,7 +46,7 @@ func (c Configuration) Environments() *Environments {
 }
 
 // Settings returns the settings.
-func (c Configuration) Settings() *Settings {
+func (c Configuration) Settings() SettingProvider {
 	return &c.settings
 }
 
