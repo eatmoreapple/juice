@@ -65,7 +65,7 @@ func (p *XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 				if err != nil {
 					return nil, err
 				}
-				p.configuration.environments = *envs
+				p.configuration.environments = envs
 			case "mappers":
 				mappers, err := p.parseMappers(token, decoder)
 				if err != nil {
@@ -84,12 +84,12 @@ func (p *XMLParser) Parse(reader io.Reader) (*Configuration, error) {
 	return &p.configuration, nil
 }
 
-func (p *XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElement) (*Environments, error) {
-	var envs Environments
+func (p *XMLParser) parseEnvironments(decoder *xml.Decoder, token xml.StartElement) (*environments, error) {
+	var envs environments
 	for _, attr := range token.Attr {
 		envs.setAttr(attr.Name.Local, attr.Value)
 	}
-	if envs.Attr("default") == "" {
+	if envs.Attribute("default") == "" {
 		return nil, errors.New("default environment is not specified")
 	}
 	for {

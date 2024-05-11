@@ -19,7 +19,7 @@ package juice
 // IConfiguration is the interface of configuration.
 type IConfiguration interface {
 	// Environments returns the environments.
-	Environments() *Environments
+	Environments() EnvironmentProvider
 
 	// Settings returns the settings.
 	Settings() SettingProvider
@@ -31,7 +31,7 @@ type IConfiguration interface {
 // Configuration is a configuration of juice.
 type Configuration struct {
 	// environments is a map of environments.
-	environments Environments
+	environments *environments
 
 	// mappers is a map of mappers.
 	mappers *Mappers
@@ -41,8 +41,8 @@ type Configuration struct {
 }
 
 // Environments returns the environments.
-func (c Configuration) Environments() *Environments {
-	return &c.environments
+func (c Configuration) Environments() EnvironmentProvider {
+	return c.environments
 }
 
 // Settings returns the settings.
