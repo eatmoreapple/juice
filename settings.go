@@ -21,22 +21,6 @@ import (
 	"strconv"
 )
 
-// Settings is a collection of settings.
-type Settings map[string]StringValue
-
-// Get returns the value of the key.
-func (s Settings) Get(name string) StringValue {
-	return s[name]
-}
-
-// Setting is a setting element.
-type Setting struct {
-	// The name of the setting.
-	Name string `xml:"name,attr"`
-	// The value of the setting.
-	Value StringValue `xml:"value,attr"`
-}
-
 // StringValue is a string value which can be converted to other types.
 type StringValue string
 
@@ -72,4 +56,27 @@ func (s StringValue) Float64() float64 {
 // Unmarshaler unmarshals the value to given marshaller.
 func (s StringValue) Unmarshaler(marshaller encoding.TextUnmarshaler) error {
 	return marshaller.UnmarshalText([]byte(s))
+}
+
+type SettingProvider interface {
+	Get(name string) StringValue
+}
+
+// keyValueSettingProvider is a collection of settings.
+type keyValueSettingProvider map[string]StringValue
+
+// Get returns the value of the key.
+func (s keyValueSettingProvider) Get(name string) StringValue {
+	return s[name]
+}
+
+// ensure keyValueSettingProvider implements SettingProvider.
+var _ SettingProvider = (*keyValueSettingProvider)(nil)
+
+// settingItem is a setting element.
+type settingItem struct {
+	// The name of the setting.
+	Name string `xml:"name,attr"`
+	// The value of the setting.
+	Value StringValue `xml:"value,attr"`
 }
