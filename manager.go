@@ -73,19 +73,13 @@ type invalidTxManager struct {
 }
 
 // Object implements the Manager interface
-func (i invalidTxManager) Object(_ any) Executor {
-	return inValidExecutor(i)
-}
+func (i invalidTxManager) Object(_ any) Executor { return inValidExecutor(i) }
 
 // Commit commits the transaction, but it will return an error directly.
-func (i invalidTxManager) Commit() error {
-	return i
-}
+func (i invalidTxManager) Commit() error { return i }
 
 // Rollback rollbacks the transaction, but it will return an error directly.
-func (i invalidTxManager) Rollback() error {
-	return i
-}
+func (i invalidTxManager) Rollback() error { return i }
 
 // txManager is a transaction xmlSQLStatement
 type txManager struct {
@@ -104,14 +98,10 @@ func (t *txManager) Object(v any) Executor {
 }
 
 // Commit commits the transaction
-func (t *txManager) Commit() error {
-	return t.tx.Commit()
-}
+func (t *txManager) Commit() error { return t.tx.Commit() }
 
 // Rollback rollbacks the transaction
-func (t *txManager) Rollback() error {
-	return t.tx.Rollback()
-}
+func (t *txManager) Rollback() error { return t.tx.Rollback() }
 
 // TxCacheManager defines a transactional scopeCache manager whose scopeCache can be accessed.
 // All queries in the transaction will be cached.
