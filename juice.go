@@ -182,7 +182,13 @@ func (e *Engine) init() error {
 }
 
 // NewEngine creates a new Engine
+// Deprecated: use New instead
 func NewEngine(configuration IConfiguration) (*Engine, error) {
+	return New(configuration)
+}
+
+// New is the alias of NewEngine
+func New(configuration IConfiguration) (*Engine, error) {
 	engine := &Engine{}
 	engine.SetLocker(&sync.RWMutex{})
 	engine.SetConfiguration(configuration)
@@ -198,24 +204,20 @@ func NewEngine(configuration IConfiguration) (*Engine, error) {
 	return engine, nil
 }
 
-// New is the alias of NewEngine
-func New(configuration IConfiguration) (*Engine, error) {
-	return NewEngine(configuration)
+// DefaultEngine is the alias of Default
+// Deprecated: use Default instead
+func DefaultEngine(configuration IConfiguration) (*Engine, error) {
+	return Default(configuration)
 }
 
-// DefaultEngine is the default engine
+// Default creates a new Engine with the default middlewares
 // It adds an interceptor to log the statements
-func DefaultEngine(configuration IConfiguration) (*Engine, error) {
-	engine, err := NewEngine(configuration)
+func Default(configuration IConfiguration) (*Engine, error) {
+	engine, err := New(configuration)
 	if err != nil {
 		return nil, err
 	}
 	engine.Use(&TimeoutMiddleware{})
 	engine.Use(&DebugMiddleware{})
 	return engine, nil
-}
-
-// Default is the alias of DefaultEngine
-func Default(configuration IConfiguration) (*Engine, error) {
-	return DefaultEngine(configuration)
 }

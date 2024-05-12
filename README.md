@@ -103,7 +103,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	engine, err := juice.DefaultEngine(cfg)
+	engine, err := juice.Default(cfg)
 	if err != nil {
 		panic(err)
 	}
