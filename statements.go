@@ -1,10 +1,24 @@
+/*
+Copyright 2023 eatmoreapple
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package juice
 
 import (
-	"regexp"
-	"strings"
-
 	"github.com/eatmoreapple/juice/driver"
+	"regexp"
 )
 
 type Statement interface {
@@ -23,12 +37,13 @@ var formatRegexp = regexp.MustCompile(`\$\{ *?([a-zA-Z0-9_\.]+) *?\}`)
 type xmlSQLStatement struct {
 	mapper *Mapper
 	action Action
-	Nodes  []Node
+	Nodes  NodeGroup
 	attrs  map[string]string
 	name   string
 	id     string
 }
 
+// Attribute returns the value of the attribute with the given key.
 func (s *xmlSQLStatement) Attribute(key string) string {
 	value := s.attrs[key]
 	if value == "" {
@@ -37,6 +52,7 @@ func (s *xmlSQLStatement) Attribute(key string) string {
 	return value
 }
 
+// setAttribute sets the attribute with the given key and value.
 func (s *xmlSQLStatement) setAttribute(key, value string) {
 	if s.attrs == nil {
 		s.attrs = make(map[string]string)
@@ -44,12 +60,9 @@ func (s *xmlSQLStatement) setAttribute(key, value string) {
 	s.attrs[key] = value
 }
 
+// ID returns the unique key of the namespace.
 func (s *xmlSQLStatement) ID() string {
 	return s.id
-}
-
-func (s *xmlSQLStatement) Namespace() string {
-	return s.mapper.Namespace()
 }
 
 func (s *xmlSQLStatement) lazyName() string {
@@ -73,32 +86,9 @@ func (s *xmlSQLStatement) Name() string {
 	return s.name
 }
 
+// Action returns the action of the xmlSQLStatement.
 func (s *xmlSQLStatement) Action() Action {
 	return s.action
-}
-
-func (s *xmlSQLStatement) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
-	for i, node := range s.Nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(s.Nodes)-1 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
-	}
-	// format query
-	// replace ${xxx} to an argument
-	query = builder.String()
-	return
 }
 
 // Configuration returns the configuration of the xmlSQLStatement.
@@ -118,7 +108,7 @@ func (s *xmlSQLStatement) ResultMap() (ResultMap, error) {
 // Build builds the xmlSQLStatement with the given parameter.
 func (s *xmlSQLStatement) Build(translator driver.Translator, param Param) (query string, args []any, err error) {
 	value := newGenericParam(param, s.Attribute("paramName"))
-	query, args, err = s.Accept(translator, value)
+	query, args, err = s.Nodes.Accept(translator, value)
 	if err != nil {
 		return "", nil, err
 	}
