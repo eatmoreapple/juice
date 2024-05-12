@@ -51,7 +51,7 @@ type Engine struct {
 
 	// executorAdapter is the wrapper of the executor
 	// which is used to wrap the executor
-	executorAdapter ExecutorAdapter
+	executorAdapter ExecutorAdapterGroup
 }
 
 // executor represents a mapper executor with the given parameters
@@ -153,6 +153,14 @@ func (e *Engine) SetLocker(locker RWLocker) {
 	e.rw = locker
 }
 
+// AddExecutorAdapter adds the executor adapter to the engine to wrap the executor.
+func (e *Engine) AddExecutorAdapter(executorAdapter ExecutorAdapter) {
+	if executorAdapter == nil {
+		panic("executorAdapter is nil")
+	}
+	e.executorAdapter = append(e.executorAdapter, executorAdapter)
+}
+
 // init initializes the engine
 func (e *Engine) init() error {
 	// one the default environment from the configuration
@@ -185,11 +193,8 @@ func NewEngine(configuration IConfiguration) (*Engine, error) {
 	engine.Use(&useGeneratedKeysMiddleware{})
 	// set default executor wrapper
 	// those are necessary for the engine to work properly
-	var defaultExecutorAdapter ExecutorAdapter = ExecutorAdapterGroup{
-		NewParamCtxExecutorAdapter(),
-		NewSessionCtxInjectorExecutorAdapter(),
-	}
-	engine.executorAdapter = defaultExecutorAdapter
+	engine.AddExecutorAdapter(NewParamCtxExecutorAdapter())
+	engine.AddExecutorAdapter(NewSessionCtxInjectorExecutorAdapter())
 	return engine, nil
 }
 
