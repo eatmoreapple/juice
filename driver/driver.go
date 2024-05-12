@@ -18,6 +18,7 @@ package driver
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 )
@@ -35,7 +36,7 @@ var (
 
 	// lock is a lock for registeredDrivers.
 	// For thread safety.
-	lock sync.RWMutex
+	driversMu sync.RWMutex
 )
 
 // Register registers a driver.
@@ -44,8 +45,8 @@ func Register(name string, driver Driver) {
 	if driver == nil {
 		panic("driver: Register driver is nil")
 	}
-	lock.Lock()
-	defer lock.Unlock()
+	driversMu.Lock()
+	defer driversMu.Unlock()
 	// allow re-registration
 	registeredDrivers[name] = driver
 }
@@ -53,13 +54,25 @@ func Register(name string, driver Driver) {
 // Get returns a driver of the name.
 // If the name is not registered, it returns an error.
 func Get(name string) (Driver, error) {
-	lock.RLock()
-	defer lock.RUnlock()
+	driversMu.RLock()
+	defer driversMu.RUnlock()
 	driver, ok := registeredDrivers[name]
 	if !ok {
 		return nil, fmt.Errorf("driver %s not found", name)
 	}
 	return driver, nil
+}
+
+// Drivers returns a sorted list of the names of the registered drivers.
+func Drivers() []string {
+	driversMu.RLock()
+	defer driversMu.RUnlock()
+	var drivers []string
+	for driver := range registeredDrivers {
+		drivers = append(drivers, driver)
+	}
+	sort.Strings(drivers)
+	return drivers
 }
 
 // MySQLDriver is a driver of MySQL.
