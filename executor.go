@@ -23,6 +23,8 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
+var ErrInvalidExecutor = errors.New("juice: invalid executor")
+
 // GenericExecutor is a generic executor.
 type GenericExecutor[T any] interface {
 	// QueryContext executes the query and returns the direct result.
@@ -46,36 +48,51 @@ type GenericExecutor[T any] interface {
 // Executor defines the interface of the executor.
 type Executor GenericExecutor[*sql.Rows]
 
-// badExecutor wraps the error who implements the Executor interface.
-type badExecutor struct{ error }
+// invalidExecutor wraps the error who implements the Executor interface.
+type invalidExecutor struct {
+	_   struct{}
+	err error
+}
 
 // QueryContext implements the Executor interface.
-func (b badExecutor) QueryContext(_ context.Context, _ Param) (*sql.Rows, error) { return nil, b.error }
+func (b invalidExecutor) QueryContext(_ context.Context, _ Param) (*sql.Rows, error) {
+	return nil, b.err
+}
 
 // ExecContext implements the Executor interface.
-func (b badExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, error) { return nil, b.error }
+func (b invalidExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, error) {
+	return nil, b.err
+}
 
 // Statement implements the Executor interface.
-func (b badExecutor) Statement() Statement { return nil }
+func (b invalidExecutor) Statement() Statement { return nil }
 
 // Session implements the Executor interface.
-func (b badExecutor) Session() Session { return nil }
+func (b invalidExecutor) Session() Session { return nil }
 
-func (b badExecutor) Driver() driver.Driver { return nil }
+func (b invalidExecutor) Driver() driver.Driver { return nil }
 
 // inValidExecutor is an invalid executor.
 func inValidExecutor(err error) Executor {
-	return &badExecutor{error: err}
+	err = errors.Join(ErrInvalidExecutor, err)
+	return &invalidExecutor{err: err}
 }
 
-// isBadExecutor checks if the executor is a badExecutor.
-func isBadExecutor(e Executor) (*badExecutor, bool) {
-	i, ok := e.(*badExecutor)
-	return i, ok
+// InValidExecutor returns an invalid executor.
+func InValidExecutor() Executor {
+	return inValidExecutor(nil)
+}
+
+// isInvalidExecutor checks if the executor is a invalidExecutor.
+func isInvalidExecutor(e Executor) (*invalidExecutor, bool) {
+	if exe, ok := e.(*invalidExecutor); ok {
+		return exe, true
+	}
+	return nil, false
 }
 
 // ensure that the defaultExecutor implements the Executor interface.
-var _ Executor = (*badExecutor)(nil)
+var _ Executor = (*invalidExecutor)(nil)
 
 // executor is an executor of SQL.
 type executor struct {
@@ -129,8 +146,8 @@ type genericExecutor[T any] struct {
 // QueryContext executes the query and returns the scanner.
 func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
 	// check the error of the executor
-	if exe, ok := isBadExecutor(e.Executor); ok {
-		return result, exe.error
+	if exe, ok := isInvalidExecutor(e.Executor); ok {
+		return result, exe.err
 	}
 	statement := e.Statement()
 	// build the query and args
@@ -169,8 +186,8 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 // ExecContext executes the query and returns the result.
 func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
 	// check the error of the executor
-	if exe, ok := isBadExecutor(e.Executor); ok {
-		return ret, exe
+	if exe, ok := isInvalidExecutor(e.Executor); ok {
+		return ret, exe.err
 	}
 	return e.Executor.ExecContext(ctx, p)
 }
