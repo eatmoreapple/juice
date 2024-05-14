@@ -52,12 +52,12 @@ func bindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
 	// get default mapper
 	if resultMap == nil {
 		if kd := reflect.Indirect(rv).Kind(); kd == reflect.Slice {
-			resultMap = RowsResultMap{}
+			resultMap = MultiRowsResultMap{}
 		} else {
-			resultMap = RowResultMap{}
+			resultMap = SingleRowResultMap{}
 		}
 	}
-	return resultMap.ResultTo(rv, rows)
+	return resultMap.MapTo(rv, rows)
 }
 
 // BindWithResultMap bind sql.Rows to given entity with given ResultMap
