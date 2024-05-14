@@ -120,7 +120,9 @@ go run main.go
 
 ### API Documentation
 
-[Read the document](https://juice-doc.readthedocs.io/en/latest/index.html)
+[English](https://juice-doc.readthedocs.io/projects/juice-doc-en/en/latest/)
+[简体中文](https://juice-doc.readthedocs.io/en/latest/index.html)
+
 
 ### License
 
