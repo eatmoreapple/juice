@@ -29,17 +29,17 @@ var ErrTooManyRows = errors.New("juice: too many rows in result set")
 
 // ResultMap is an interface that defines a method for mapping database query results to Go data structures.
 type ResultMap interface {
-	// ResultTo maps the data from the SQL row to the provided reflect.Value.
-	ResultTo(rv reflect.Value, row *sql.Rows) error
+	// MapTo maps the data from the SQL row to the provided reflect.Value.
+	MapTo(rv reflect.Value, row *sql.Rows) error
 }
 
-// RowResultMap is a ResultMap that maps a rowDestination to a non-slice type.
-type RowResultMap struct{}
+// SingleRowResultMap is a ResultMap that maps a rowDestination to a non-slice type.
+type SingleRowResultMap struct{}
 
-// ResultTo implements ResultMapper interface.
+// MapTo implements ResultMapper interface.
 // It maps the data from the SQL row to the provided reflect.Value.
 // If more than one row is returned from the query, it returns an ErrTooManyRows error.
-func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
+func (SingleRowResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Ptr {
 		return ErrPointerRequired
 	}
@@ -79,16 +79,16 @@ func (RowResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	return nil
 }
 
-// RowsResultMap is a ResultMap that maps a rowDestination to a slice type.
-type RowsResultMap struct{}
+// MultiRowsResultMap is a ResultMap that maps a rowDestination to a slice type.
+type MultiRowsResultMap struct{}
 
-// ResultTo implements ResultMapper interface.
+// MapTo implements ResultMapper interface.
 // It maps the data from the SQL row to the provided reflect.Value.
 // It maps each row to a new element in a slice.
-func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
+func (MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 
 	if rv.Kind() != reflect.Ptr {
-		return errors.New(" must be a pointer")
+		return ErrPointerRequired
 	}
 
 	// rv must be a pointer to slice or array
@@ -158,8 +158,8 @@ func (RowsResultMap) ResultTo(rv reflect.Value, rows *sql.Rows) error {
 	return nil
 }
 
-// ResultTo implements ResultMapper interface.
-func (r *resultMapNode) ResultTo(rv reflect.Value, rows *sql.Rows) error {
+// MapTo implements ResultMapper interface.
+func (r *resultMapNode) MapTo(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Ptr {
 		return ErrPointerRequired
 	}
