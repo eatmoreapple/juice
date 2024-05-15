@@ -28,3 +28,14 @@ func SessionFromContext(ctx context.Context) Session {
 	sess, _ := ctx.Value(sessionKey{}).(Session)
 	return sess
 }
+
+// Transaction is a interface that can be used to commit and rollback.
+type Transaction interface {
+	Commit() error
+	Rollback() error
+}
+
+type SessionTransaction interface {
+	Session
+	Transaction
+}

@@ -18,7 +18,6 @@ package juice
 
 import (
 	"context"
-	"database/sql"
 	"github.com/eatmoreapple/juice/cache"
 )
 
@@ -69,22 +68,23 @@ type TxManager interface {
 
 // invalidTxManager is an invalid transaction xmlSQLStatement which implements the TxManager interface.
 type invalidTxManager struct {
-	error
+	_   struct{}
+	err error
 }
 
 // Object implements the Manager interface
-func (i invalidTxManager) Object(_ any) Executor { return inValidExecutor(i) }
+func (i invalidTxManager) Object(_ any) Executor { return inValidExecutor(i.err) }
 
 // Commit commits the transaction, but it will return an error directly.
-func (i invalidTxManager) Commit() error { return i }
+func (i invalidTxManager) Commit() error { return i.err }
 
 // Rollback rollbacks the transaction, but it will return an error directly.
-func (i invalidTxManager) Rollback() error { return i }
+func (i invalidTxManager) Rollback() error { return i.err }
 
 // txManager is a transaction xmlSQLStatement
 type txManager struct {
 	engine *Engine
-	tx     *sql.Tx
+	tx     SessionTransaction
 }
 
 // Object implements the Manager interface
