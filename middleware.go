@@ -375,23 +375,13 @@ func (c *CacheMiddleware[T]) QueryContext(stmt Statement, next GenericQueryHandl
 		}
 
 		// try to get the result from the scopeCache
-		instance, err := c.scopeCache.Get(ctx, cacheKey)
-		if err != nil {
-			// ErrCacheNotFound means the scopeCache is not found,
-			// we should continue to query the database.
-			if !errors.Is(err, cache.ErrCacheNotFound) {
-				return
-			}
-			err = nil
-		}
-
-		// try to convert the instance to the result type.
-		var ok bool
-		result, ok = instance.(T)
-		if ok {
+		if err = c.scopeCache.Get(ctx, cacheKey, &result); err == nil {
 			return
 		}
-
+		// if we can not get the result from the scopeCache, continue with the next handler.
+		if !errors.Is(err, cache.ErrCacheNotFound) {
+			return
+		}
 		// if the instance can not be converted to the result type, continue with the next handler.
 		// call the next handler
 		result, err = next(ctx, query, args...)
