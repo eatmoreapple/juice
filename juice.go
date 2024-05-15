@@ -91,7 +91,7 @@ func (e *Engine) Tx() TxManager {
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
 	tx, err := e.DB().BeginTx(ctx, opt)
 	if err != nil {
-		return invalidTxManager{error: err}
+		return invalidTxManager{err: err}
 	}
 	return &txManager{engine: e, tx: tx}
 }
