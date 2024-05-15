@@ -325,6 +325,8 @@ var _ GenericMiddleware[any] = (*CacheMiddleware[any])(nil) // compile time chec
 // cacheKeyFunc defines the function which is used to generate the scopeCache key.
 type cacheKeyFunc func(stmt Statement, query string, args []any) (string, error)
 
+var errCacheKeyFuncNil = errors.New("juice: CacheKeyFunc is nil")
+
 // CacheKeyFunc is the function which is used to generate the scopeCache key.
 // default is the md5 of the query and args.
 // reset the CacheKeyFunc variable to change the default behavior.
@@ -333,11 +335,9 @@ var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (
 	writer := md5.New()
 	writer.Write([]byte(stmt.ID() + query))
 	if len(args) > 0 {
-		item, err := json.Marshal(args)
-		if err != nil {
+		if err := json.NewEncoder(writer).Encode(args); err != nil {
 			return "", err
 		}
-		writer.Write(item)
 	}
 	return hex.EncodeToString(writer.Sum(nil)), nil
 }
@@ -354,12 +354,12 @@ func (c *CacheMiddleware[T]) QueryContext(stmt Statement, next GenericQueryHandl
 		return next
 	}
 	return func(ctx context.Context, query string, args ...any) (result T, err error) {
-		// cached this function incase the CacheKeyFunc is changed by other goroutines.
+		// cached this function in case the CacheKeyFunc is changed by other goroutines.
 		keyFunc := CacheKeyFunc
 
 		// check the keyFunc variable
 		if keyFunc == nil {
-			err = errors.New("CacheKeyFunc is nil")
+			err = errCacheKeyFuncNil
 			return
 		}
 
