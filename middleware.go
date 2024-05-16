@@ -323,14 +323,15 @@ func (m GenericMiddlewareGroup[T]) ExecContext(stmt Statement, next ExecHandler)
 var _ GenericMiddleware[any] = (*CacheMiddleware[any])(nil) // compile time check
 
 // cacheKeyFunc defines the function which is used to generate the scopeCache key.
-type cacheKeyFunc[T any] func(stmt Statement, query string, args []any) (string, error)
+type cacheKeyFunc func(stmt Statement, query string, args []any) (string, error)
 
+// errCacheKeyFuncNil is an error that is returned when the CacheKeyFunc is nil.
 var errCacheKeyFuncNil = errors.New("juice: CacheKeyFunc is nil")
 
 // CacheKeyFunc is the function which is used to generate the scopeCache key.
 // default is the md5 of the query and args.
 // reset the CacheKeyFunc variable to change the default behavior.
-var CacheKeyFunc cacheKeyFunc[any] = func(stmt Statement, query string, args []any) (string, error) {
+var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (string, error) {
 	// only same xmlSQLStatement same query same args can get the same scopeCache key
 	writer := md5.New()
 	writer.Write([]byte(stmt.ID() + query))
@@ -343,6 +344,7 @@ var CacheKeyFunc cacheKeyFunc[any] = func(stmt Statement, query string, args []a
 }
 
 // CacheMiddleware is a middleware that caches the result of the sql query.
+// Only same query, same args and same result type can get the same result from the cache.
 type CacheMiddleware[T any] struct {
 	scopeCache cache.ScopeCache
 }
@@ -369,7 +371,7 @@ func (c *CacheMiddleware[T]) QueryContext(stmt Statement, next GenericQueryHandl
 		// get the type identify of the result
 		typeIdentify := reflectlite.TypeIdentify[T]()
 		// CacheKeyFunc is the function which is used to generate the scopeCache key.
-		// default is the md5 of the query and args.
+		// default is the md5 of the query and args and the type identify.
 		// reset the CacheKeyFunc variable to change the default behavior.
 		cacheKey, err = keyFunc(stmt, query+typeIdentify, args)
 		if err != nil {
