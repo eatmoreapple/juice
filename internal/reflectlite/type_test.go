@@ -52,7 +52,7 @@ func TestTypeIdentify_PointerType(t *testing.T) {
 
 func TestTypeIdentify_AnonymousStruct(t *testing.T) {
 	type testType struct {
-		field string //nolint:structcheck
+		field string // nolint:unused
 	}
 	result := TypeIdentify[struct{ testType }]()
 	if result != "struct { reflectlite.testType }" {
