@@ -13,7 +13,7 @@ func TestTypeIdentify_BasicType(t *testing.T) {
 
 func TestTypeIdentify_StructType(t *testing.T) {
 	type testType struct {
-		field string
+		field string // nolint:unused
 	}
 	result := TypeIdentify[testType]()
 	if result != "github.com/eatmoreapple/juice/internal/reflectlite.testType" {
@@ -47,7 +47,7 @@ func TestTypeIdentify_PointerType(t *testing.T) {
 
 func TestTypeIdentify_AnonymousStruct(t *testing.T) {
 	type testType struct {
-		field string
+		field string // nolint:unused
 	}
 	result := TypeIdentify[struct{ testType }]()
 	if result != "struct { reflectlite.testType }" {
