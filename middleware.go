@@ -185,10 +185,11 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 	if !(stmt.Action() == Insert) {
 		return next
 	}
+	const _useGeneratedKeys = "useGeneratedKeys"
 	// If the useGeneratedKeys is not set or false, return the result directly.
-	useGeneratedKeys := stmt.Attribute("useGeneratedKeys") == "true" ||
+	useGeneratedKeys := stmt.Attribute(_useGeneratedKeys) == "true" ||
 		// If the useGeneratedKeys is not set, but the global useGeneratedKeys is set and true.
-		stmt.Configuration().Settings().Get("useGeneratedKeys") == "true"
+		stmt.Configuration().Settings().Get(_useGeneratedKeys) == "true"
 
 	if !useGeneratedKeys {
 		return next
