@@ -13,12 +13,7 @@ func TestTypeIdentify_BasicType(t *testing.T) {
 
 func TestTypeIdentify_StructType(t *testing.T) {
 	type testType struct {
-		field string
-	}
-	{
-		// for lint no unused variable
-		var testTypeInstance testType
-		testTypeInstance.field = "test"
+		field string // nolint:unused
 	}
 	result := TypeIdentify[testType]()
 	if result != "github.com/eatmoreapple/juice/internal/reflectlite.testType" {
