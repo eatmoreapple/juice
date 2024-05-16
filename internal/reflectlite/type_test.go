@@ -15,6 +15,11 @@ func TestTypeIdentify_StructType(t *testing.T) {
 	type testType struct {
 		field string
 	}
+	{
+		// for lint no unused variable
+		var testTypeInstance testType
+		testTypeInstance.field = "test"
+	}
 	result := TypeIdentify[testType]()
 	if result != "github.com/eatmoreapple/juice/internal/reflectlite.testType" {
 		t.Errorf("Expected 'reflectlite.testType', got '%s'", result)
@@ -47,7 +52,7 @@ func TestTypeIdentify_PointerType(t *testing.T) {
 
 func TestTypeIdentify_AnonymousStruct(t *testing.T) {
 	type testType struct {
-		field string
+		field string //nolint:structcheck
 	}
 	result := TypeIdentify[struct{ testType }]()
 	if result != "struct { reflectlite.testType }" {
