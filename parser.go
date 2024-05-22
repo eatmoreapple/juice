@@ -33,7 +33,7 @@ import (
 // ConfigurationParser is the interface for parsing configuration.
 type ConfigurationParser interface {
 	// Parse parses the configuration from the reader.
-	Parse(reader io.Reader) (*Configuration, error)
+	Parse(reader io.Reader) (IConfiguration, error)
 }
 
 // XMLParser is the parser for XML configuration.
@@ -44,7 +44,7 @@ type XMLParser struct {
 }
 
 // Parse implements ConfigurationParser.
-func (p *XMLParser) Parse(reader io.Reader) (*Configuration, error) {
+func (p *XMLParser) Parse(reader io.Reader) (IConfiguration, error) {
 	decoder := xml.NewDecoder(reader)
 	for {
 		token, err := decoder.Token()
@@ -1276,19 +1276,19 @@ func (p *XMLParser) parseFieldAlias(token xml.StartElement, decoder *xml.Decoder
 	return nil, &nodeUnclosedError{nodeName: "field"}
 }
 
-func NewXMLConfiguration(filename string) (*Configuration, error) {
+func NewXMLConfiguration(filename string) (IConfiguration, error) {
 	return newLocalXMLConfiguration(filename, false)
 }
 
 // for go linkname
-func newLocalXMLConfiguration(filename string, ignoreEnv bool) (*Configuration, error) {
+func newLocalXMLConfiguration(filename string, ignoreEnv bool) (IConfiguration, error) {
 	baseDir := filepath.Dir(filename)
 	filename = filepath.Base(filename)
 	return newXMLConfigurationParser(localFS{baseDir: baseDir}, filename, ignoreEnv)
 }
 
 // NewXMLConfigurationWithFS creates a new Configuration from an XML file.
-func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error) {
+func NewXMLConfigurationWithFS(fs fs.FS, filename string) (IConfiguration, error) {
 	baseDir := path.Dir(filename)
 	filename = path.Base(filename)
 	return newXMLConfigurationParser(fsWrapper{baseDir: baseDir, fs: fs}, filename, false)
@@ -1296,7 +1296,7 @@ func NewXMLConfigurationWithFS(fs fs.FS, filename string) (*Configuration, error
 
 // newXMLConfigurationParser creates a new Configuration from an XML file which ignores environment parsing.
 // for internal use only.
-func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (*Configuration, error) {
+func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (IConfiguration, error) {
 	file, err := fs.Open(filename)
 	if err != nil {
 		return nil, err
