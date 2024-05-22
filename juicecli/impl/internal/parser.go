@@ -17,7 +17,7 @@ import (
 )
 
 //go:linkname newLocalXMLConfiguration github.com/eatmoreapple/juice.newLocalXMLConfiguration
-func newLocalXMLConfiguration(string, bool) (*juice.Configuration, error)
+func newLocalXMLConfiguration(string, bool) (juice.IConfiguration, error)
 
 // CommandParser defines the interface for parsing command.
 type CommandParser interface {
