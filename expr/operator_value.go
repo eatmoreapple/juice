@@ -373,6 +373,8 @@ func (o InvalidTypeOperator) Operate(left, right reflect.Value) (result reflect.
 			return reflect.ValueOf(ok), nil
 		case Ne:
 			return reflect.ValueOf(!ok), nil
+		default:
+			return invalidValue, NewOperationError(left, right, o.OperatorExpr.String())
 		}
 	}
 	left, right = reflectlite.Unwrap(left), reflectlite.Unwrap(right)
