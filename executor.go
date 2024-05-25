@@ -85,10 +85,8 @@ func InValidExecutor() Executor {
 
 // isInvalidExecutor checks if the executor is a invalidExecutor.
 func isInvalidExecutor(e Executor) (*invalidExecutor, bool) {
-	if exe, ok := e.(*invalidExecutor); ok {
-		return exe, true
-	}
-	return nil, false
+	exe, ok := e.(*invalidExecutor)
+	return exe, ok
 }
 
 // ensure that the defaultExecutor implements the Executor interface.
