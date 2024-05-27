@@ -10,4 +10,19 @@ type RWLocker interface {
 	Unlock()
 }
 
-var _ RWLocker = (*sync.RWMutex)(nil)
+type RWMutex = sync.RWMutex
+
+var _ RWLocker = (*RWMutex)(nil)
+
+// NoOpRWMutex is a no-op implementation of RWLocker.
+type NoOpRWMutex struct{}
+
+func (l *NoOpRWMutex) RLock() {}
+
+func (l *NoOpRWMutex) RUnlock() {}
+
+func (l *NoOpRWMutex) Lock() {}
+
+func (l *NoOpRWMutex) Unlock() {}
+
+var _ RWLocker = (*NoOpRWMutex)(nil)

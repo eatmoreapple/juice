@@ -21,7 +21,6 @@ import (
 	"database/sql"
 	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/driver"
-	"sync"
 )
 
 // Engine is the implementation of Manager interface and the core of juice.
@@ -190,7 +189,8 @@ func NewEngine(configuration IConfiguration) (*Engine, error) {
 // New is the alias of NewEngine
 func New(configuration IConfiguration) (*Engine, error) {
 	engine := &Engine{}
-	engine.SetLocker(&sync.RWMutex{})
+	// for performance, use the no-op locker by default
+	engine.SetLocker(&NoOpRWMutex{})
 	engine.SetConfiguration(configuration)
 	if err := engine.init(); err != nil {
 		return nil, err
