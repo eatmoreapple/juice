@@ -37,7 +37,7 @@ type Engine struct {
 	db *sql.DB
 
 	// rw is the read write lock
-	// default use sync.RWMutex
+	// default use the no-op locker
 	// if you have many multiple processes to access the same database,
 	// you can use the distributed lock, such as redis, etc.
 	// call SetLocker to set your own business lock.
