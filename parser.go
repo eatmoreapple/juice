@@ -422,10 +422,7 @@ func (p *XMLParser) parseStatement(stmt *xmlSQLStatement, decoder *xml.Decoder, 
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return err
-				}
+				node := NewTextNode(char)
 				stmt.Nodes = append(stmt.Nodes, node)
 			}
 		case xml.EndElement:
@@ -518,10 +515,7 @@ func (p *XMLParser) parseSet(mapper *Mapper, decoder *xml.Decoder) (Node, error)
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				setNode.Nodes = append(setNode.Nodes, node)
 			}
 		case xml.EndElement:
@@ -568,10 +562,7 @@ func (p *XMLParser) parseIf(mapper *Mapper, decoder *xml.Decoder, token xml.Star
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				ifNode.Nodes = append(ifNode.Nodes, node)
 			}
 		case xml.EndElement:
@@ -603,10 +594,7 @@ func (p *XMLParser) parseWhere(mapper *Mapper, decoder *xml.Decoder) (Node, erro
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				whereNode.Nodes = append(whereNode.Nodes, node)
 			}
 		case xml.EndElement:
@@ -708,10 +696,7 @@ func (p *XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				foreachNode.Nodes = append(foreachNode.Nodes, node)
 			}
 		case xml.EndElement:
@@ -871,10 +856,7 @@ func (p *XMLParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.Decoder, token x
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return err
-				}
+				node := NewTextNode(char)
 				sqlNode.nodes = append(sqlNode.nodes, node)
 			}
 		case xml.EndElement:
@@ -921,10 +903,7 @@ func (p *XMLParser) parseWhen(mapper *Mapper, decoder *xml.Decoder, token xml.St
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				whenNode.Nodes = append(whenNode.Nodes, node)
 			}
 		case xml.EndElement:
@@ -956,10 +935,7 @@ func (p *XMLParser) parseOtherwise(mapper *Mapper, decoder *xml.Decoder) (Node, 
 		case xml.CharData:
 			text := string(token)
 			if char := strings.TrimSpace(text); char != "" {
-				node, err := NewTextNode(char)
-				if err != nil {
-					return nil, err
-				}
+				node := NewTextNode(char)
 				otherwiseNode.Nodes = append(otherwiseNode.Nodes, node)
 			}
 		case xml.EndElement:
