@@ -152,7 +152,7 @@ func (m *Mappers) GetMapperByNamespace(namespace string) (*Mapper, bool) {
 
 // GetStatementByID returns a xmlSQLStatement by id.
 // If the xmlSQLStatement is not found, an error is returned.
-func (m *Mappers) GetStatementByID(id string) (*xmlSQLStatement, error) {
+func (m *Mappers) GetStatementByID(id string) (Statement, error) {
 	items := strings.Split(id, ".")
 	if len(items) == 1 {
 		return nil, fmt.Errorf("invalid xmlSQLStatement id: %s", id)
@@ -172,7 +172,7 @@ func (m *Mappers) GetStatementByID(id string) (*xmlSQLStatement, error) {
 }
 
 // GetStatement try to one the xmlSQLStatement from the Mappers with the given interface
-func (m *Mappers) GetStatement(v any) (*xmlSQLStatement, error) {
+func (m *Mappers) GetStatement(v any) (Statement, error) {
 	var id string
 	// if the interface is StatementIDGetter, use the StatementID() method to get the id
 	// or if the interface is a string type, use the string as the id
