@@ -24,10 +24,7 @@ import (
 
 func TestForeachNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	textNode, err := NewTextNode("(#{item.id}, #{item.name})")
-	if err != nil {
-		t.Error(err)
-	}
+	textNode := NewTextNode("(#{item.id}, #{item.name})")
 	node := ForeachNode{
 		Nodes:      []Node{textNode},
 		Item:       "item",
@@ -59,10 +56,7 @@ func TestForeachNode_Accept(t *testing.T) {
 
 func TestForeachMapNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	textNode, err := NewTextNode("(#{item}, #{index})")
-	if err != nil {
-		t.Error(err)
-	}
+	textNode := NewTextNode("(#{item}, #{index})")
 	node := ForeachNode{
 		Nodes:      []Node{textNode},
 		Item:       "item",
@@ -107,7 +101,7 @@ func TestForeachMapNode_Accept(t *testing.T) {
 
 func TestIfNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node1, _ := NewTextNode("select * from user where id = #{id}")
+	node1 := NewTextNode("select * from user where id = #{id}")
 	node := &IfNode{
 		Nodes: []Node{node1},
 	}
@@ -140,7 +134,7 @@ func TestIfNode_Accept(t *testing.T) {
 
 func TestTextNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node, _ := NewTextNode("select * from user where id = #{id}")
+	node := NewTextNode("select * from user where id = #{id}")
 	param := newGenericParam(H{"id": 1}, "")
 	query, args, err := node.Accept(drv.Translator(), param)
 	if err != nil {
@@ -163,8 +157,8 @@ func TestTextNode_Accept(t *testing.T) {
 
 func TestWhereNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node1, _ := NewTextNode("AND id = #{id}")
-	node2, _ := NewTextNode("AND name = #{name}")
+	node1 := NewTextNode("AND id = #{id}")
+	node2 := NewTextNode("AND name = #{name}")
 	node := WhereNode{
 		Nodes: []Node{
 			node1,
@@ -210,7 +204,7 @@ func TestWhereNode_Accept(t *testing.T) {
 
 func TestTrimNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node1, _ := NewTextNode("name,")
+	node1 := NewTextNode("name,")
 	ifNode := &IfNode{
 		Nodes: []Node{node1},
 	}
@@ -246,8 +240,8 @@ func TestTrimNode_Accept(t *testing.T) {
 
 func TestSetNode_Accept(t *testing.T) {
 	drv := driver.MySQLDriver{}
-	node1, _ := NewTextNode("id = #{id},")
-	node2, _ := NewTextNode("name = #{name},")
+	node1 := NewTextNode("id = #{id},")
+	node2 := NewTextNode("name = #{name},")
 	node := SetNode{
 		Nodes: []Node{
 			node1, node2,

@@ -136,7 +136,7 @@ func (c *TextNode) replaceTextSubstitution(query string, p Parameter) (string, e
 }
 
 // build builds TextNode.
-func (c *TextNode) build() error {
+func (c *TextNode) build() {
 	placeholder := paramRegex.FindAllStringSubmatch(c.value, -1)
 	if len(placeholder) > 0 {
 		c.placeholder = placeholder
@@ -145,15 +145,12 @@ func (c *TextNode) build() error {
 	if len(textSubstitution) > 0 {
 		c.textSubstitution = textSubstitution
 	}
-	return nil
 }
 
-func NewTextNode(str string) (Node, error) {
+func NewTextNode(str string) Node {
 	var node = &TextNode{value: str}
-	if err := node.build(); err != nil {
-		return nil, err
-	}
-	return node, nil
+	node.build()
+	return node
 }
 
 type ConditionNode struct {
@@ -603,10 +600,7 @@ func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query
 	builder.WriteString(") VALUES (")
 	builder.WriteString(v.values())
 	builder.WriteString(")")
-	node, err := NewTextNode(builder.String())
-	if err != nil {
-		return "", nil, err
-	}
+	node := NewTextNode(builder.String())
 	return node.Accept(translater, param)
 }
 
