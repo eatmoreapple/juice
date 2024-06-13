@@ -319,6 +319,11 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	}
 	// call the function
 	rets := fn.Call(args)
+	// unreachable code.
+	// just for nil check
+	if len(rets) != 2 {
+		return reflect.Value{}, errors.New("invalid number of return values")
+	}
 	// check if the function returns an error
 	errRet := rets[1]
 	if !errRet.IsNil() {
@@ -449,7 +454,11 @@ func evalFunc(fn reflect.Value, exp *ast.BinaryExpr, params Parameter) reflect.V
 		}
 		args = append(args, arg)
 	}
-	return fn.Call(args)[0]
+	out := fn.Call(args)
+	if len(out) == 0 {
+		return reflect.Value{}
+	}
+	return out[0]
 }
 
 // evalBinaryExpr evaluates a binary expression.
