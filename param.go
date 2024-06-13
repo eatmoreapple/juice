@@ -61,9 +61,13 @@ type Parameter interface {
 	Get(name string) (reflect.Value, bool)
 }
 
+// NoOPParameter is a no-op parameter.
+// Its does nothing when calling the Get method.
 type NoOPParameter struct{}
 
-func (NoOPParameter) Get(name string) (reflect.Value, bool) {
+// Get implements Parameter.
+// always return false.
+func (NoOPParameter) Get(_ string) (reflect.Value, bool) {
 	return reflect.Value{}, false
 }
 
