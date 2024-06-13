@@ -61,6 +61,18 @@ type Parameter interface {
 	Get(name string) (reflect.Value, bool)
 }
 
+// NoOPParameter is a no-op parameter.
+// Its does nothing when calling the Get method.
+type NoOPParameter struct{}
+
+// Get implements Parameter.
+// always return false.
+func (NoOPParameter) Get(_ string) (reflect.Value, bool) {
+	return reflect.Value{}, false
+}
+
+var noOPParameter Parameter = NoOPParameter{}
+
 // make sure that ParamGroup implements Parameter.
 var _ Parameter = (ParamGroup)(nil)
 
@@ -208,7 +220,7 @@ func (g *genericParameter) Get(name string) (value reflect.Value, exists bool) {
 // if the value is not a map, struct, slice or array, then wrap it as a map.
 func newGenericParam(v any, wrapKey string) Parameter {
 	if v == nil {
-		return nil
+		return noOPParameter
 	}
 	value := reflect.ValueOf(v)
 
