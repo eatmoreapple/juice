@@ -163,12 +163,6 @@ func (e *Engine) init() error {
 	return err
 }
 
-// NewEngine creates a new Engine
-// Deprecated: use New instead
-func NewEngine(configuration IConfiguration) (*Engine, error) {
-	return New(configuration)
-}
-
 // New is the alias of NewEngine
 func New(configuration IConfiguration) (*Engine, error) {
 	engine := &Engine{}
@@ -181,12 +175,6 @@ func New(configuration IConfiguration) (*Engine, error) {
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
 	return engine, nil
-}
-
-// DefaultEngine is the alias of Default
-// Deprecated: use Default instead
-func DefaultEngine(configuration IConfiguration) (*Engine, error) {
-	return Default(configuration)
 }
 
 // Default creates a new Engine with the default middlewares
