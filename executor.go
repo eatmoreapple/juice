@@ -102,24 +102,14 @@ type executor struct {
 
 // QueryContext executes the query and returns the result.
 func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
-	stmt := e.Statement()
-	query, args, err := stmt.Build(e.driver.Translator(), param)
-	if err != nil {
-		return nil, err
-	}
-	queryHandler := CombineQueryHandler(stmt, e.middlewares...)
-	return queryHandler(ctx, query, args...)
+	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
+	return handler.QueryContext(ctx, e.Statement(), param)
 }
 
 // ExecContext executes the query and returns the result.
 func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
-	stmt := e.Statement()
-	query, args, err := stmt.Build(e.driver.Translator(), param)
-	if err != nil {
-		return nil, err
-	}
-	execHandler := CombineExecHandler(stmt, e.middlewares...)
-	return execHandler(ctx, query, args...)
+	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
+	return handler.ExecContext(ctx, e.Statement(), param)
 }
 
 // Statement returns the xmlSQLStatement.

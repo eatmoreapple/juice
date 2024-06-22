@@ -17,6 +17,8 @@ limitations under the License.
 package juice
 
 import (
+	"context"
+	"database/sql"
 	"github.com/eatmoreapple/juice/driver"
 	"regexp"
 )
@@ -116,4 +118,53 @@ func (s *xmlSQLStatement) Build(translator driver.Translator, param Param) (quer
 		return "", nil, ErrEmptyQuery
 	}
 	return query, args, nil
+}
+
+// SQLRowsStatementHandler handles the execution of SQL statements and returns
+// the results in a sql.Rows structure. It integrates a driver, middlewares, and
+// a session to manage the execution flow.
+type SQLRowsStatementHandler struct {
+	driver      driver.Driver
+	middlewares MiddlewareGroup
+	session     Session
+}
+
+// QueryContext executes a query represented by the Statement object within a context,
+// and returns the resulting rows. It builds the query using the provided Param values,
+// processes the query through any configured middlewares, and then executes it using
+// the associated driver.
+func (s *SQLRowsStatementHandler) QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error) {
+	query, args, err := statement.Build(s.driver.Translator(), param)
+	if err != nil {
+		return nil, err
+	}
+	ctx = CtxWithParam(ctx, param)
+	ctx = SessionWithContext(ctx, s.session)
+	queryHandler := CombineQueryHandler(statement, s.middlewares...)
+	return queryHandler(ctx, query, args...)
+}
+
+// ExecContext executes a non-query SQL statement (such as INSERT, UPDATE, DELETE)
+// within a context, and returns the result. Similar to QueryContext, it constructs
+// the SQL command, applies middlewares, and executes the command using the driver.
+func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Statement, param Param) (sql.Result, error) {
+	query, args, err := statement.Build(s.driver.Translator(), param)
+	if err != nil {
+		return nil, err
+	}
+	ctx = CtxWithParam(ctx, param)
+	ctx = SessionWithContext(ctx, s.session)
+	execHandler := CombineExecHandler(statement, s.middlewares...)
+	return execHandler(ctx, query, args...)
+}
+
+// NewSQLRowsStatementHandler creates a new instance of SQLRowsStatementHandler
+// with the provided driver, session, and an optional list of middlewares. This
+// function is typically used to initialize the handler before executing SQL statements.
+func NewSQLRowsStatementHandler(driver driver.Driver, session Session, middlewares ...Middleware) *SQLRowsStatementHandler {
+	return &SQLRowsStatementHandler{
+		driver:      driver,
+		middlewares: middlewares,
+		session:     session,
+	}
 }
