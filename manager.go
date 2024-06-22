@@ -94,7 +94,7 @@ func (t *txManager) Object(v any) Executor {
 		return inValidExecutor(err)
 	}
 	exe.session = t.tx
-	return t.engine.warpExecutor(exe)
+	return exe
 }
 
 // Commit commits the transaction

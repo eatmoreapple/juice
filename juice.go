@@ -47,10 +47,6 @@ type Engine struct {
 	// It is used to intercept the execution of the statements
 	// like logging, tracing, etc.
 	middlewares MiddlewareGroup
-
-	// executorAdapter is the wrapper of the executor
-	// which is used to wrap the executor
-	executorAdapter ExecutorAdapterGroup
 }
 
 // executor represents a mapper executor with the given parameters
@@ -67,18 +63,13 @@ func (e *Engine) executor(v any) (*executor, error) {
 	}, nil
 }
 
-// warpExecutor wraps the executor, ensure enable the middlewares
-func (e *Engine) warpExecutor(executor Executor) Executor {
-	return e.executorAdapter.AdapterExecutor(executor)
-}
-
 // Object implements the Manager interface
 func (e *Engine) Object(v any) Executor {
 	exe, err := e.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
 	}
-	return e.warpExecutor(exe)
+	return exe
 }
 
 // Tx returns a TxManager
@@ -152,14 +143,6 @@ func (e *Engine) SetLocker(locker RWLocker) {
 	e.rw = locker
 }
 
-// AddExecutorAdapter adds the executor adapter to the engine to wrap the executor.
-func (e *Engine) AddExecutorAdapter(executorAdapter ExecutorAdapter) {
-	if executorAdapter == nil {
-		panic("executorAdapter is nil")
-	}
-	e.executorAdapter = append(e.executorAdapter, executorAdapter)
-}
-
 // init initializes the engine
 func (e *Engine) init() error {
 	// one the default environment from the configuration
@@ -197,10 +180,6 @@ func New(configuration IConfiguration) (*Engine, error) {
 	}
 	// add the default middlewares
 	engine.Use(&useGeneratedKeysMiddleware{})
-	// set default executor wrapper
-	// those are necessary for the engine to work properly
-	engine.AddExecutorAdapter(NewParamCtxExecutorAdapter())
-	engine.AddExecutorAdapter(NewSessionCtxInjectorExecutorAdapter())
 	return engine, nil
 }
 
