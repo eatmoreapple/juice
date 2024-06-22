@@ -138,8 +138,11 @@ func (s *SQLRowsStatementHandler) QueryContext(ctx context.Context, statement St
 	if err != nil {
 		return nil, err
 	}
-	ctx = CtxWithParam(ctx, param)
-	ctx = SessionWithContext(ctx, s.session)
+	contextReducer := ContextReducerGroup{
+		NewSessionContextReducer(s.session),
+		NewParamContextReducer(param),
+	}
+	ctx = contextReducer.Reduce(ctx)
 	queryHandler := CombineQueryHandler(statement, s.middlewares...)
 	return queryHandler(ctx, query, args...)
 }
@@ -152,8 +155,11 @@ func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Sta
 	if err != nil {
 		return nil, err
 	}
-	ctx = CtxWithParam(ctx, param)
-	ctx = SessionWithContext(ctx, s.session)
+	contextReducer := ContextReducerGroup{
+		NewSessionContextReducer(s.session),
+		NewParamContextReducer(param),
+	}
+	ctx = contextReducer.Reduce(ctx)
 	execHandler := CombineExecHandler(statement, s.middlewares...)
 	return execHandler(ctx, query, args...)
 }
