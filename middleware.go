@@ -18,13 +18,9 @@ package juice
 
 import (
 	"context"
-	"crypto/md5"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"log"
 	"reflect"
@@ -283,133 +279,5 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 		// set the id to the field
 		field.SetInt(id)
 		return result, nil
-	}
-}
-
-// GenericMiddleware defines the middleware interface for the generic execution.
-type GenericMiddleware[T any] interface {
-	// QueryContext wraps the GenericQueryHandler.
-	// The GenericQueryHandler is a function that accepts a context.Context, a query string and a slice of arguments.
-	QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T]
-
-	// ExecContext wraps the ExecHandler.
-	// The ExecHandler is a function that accepts a context.Context, a query string and a slice of arguments.
-	ExecContext(stmt Statement, next ExecHandler) ExecHandler
-}
-
-// ensure GenericMiddlewareGroup implements GenericMiddleware
-var _ GenericMiddleware[any] = (GenericMiddlewareGroup[any])(nil) // compile time check
-
-// GenericMiddlewareGroup is a group of GenericMiddleware.
-// It implements the GenericMiddleware interface.
-type GenericMiddlewareGroup[T any] []GenericMiddleware[T]
-
-// QueryContext implements GenericMiddleware.
-func (m GenericMiddlewareGroup[T]) QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
-	for _, middleware := range m {
-		next = middleware.QueryContext(stmt, next)
-	}
-	return next
-}
-
-// ExecContext implements GenericMiddleware.
-func (m GenericMiddlewareGroup[T]) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
-	for _, middleware := range m {
-		next = middleware.ExecContext(stmt, next)
-	}
-	return next
-}
-
-// ensure GenericMiddlewareGroup implements GenericMiddleware
-var _ GenericMiddleware[any] = (*CacheMiddleware[any])(nil) // compile time check
-
-// cacheKeyFunc defines the function which is used to generate the scopeCache key.
-type cacheKeyFunc func(stmt Statement, query string, args []any) (string, error)
-
-// errCacheKeyFuncNil is an error that is returned when the CacheKeyFunc is nil.
-var errCacheKeyFuncNil = errors.New("juice: CacheKeyFunc is nil")
-
-// CacheKeyFunc is the function which is used to generate the scopeCache key.
-// default is the md5 of the query and args.
-// reset the CacheKeyFunc variable to change the default behavior.
-var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (string, error) {
-	// only same xmlSQLStatement same query same args can get the same scopeCache key
-	writer := md5.New()
-	writer.Write([]byte(stmt.ID() + query))
-	if len(args) > 0 {
-		if err := json.NewEncoder(writer).Encode(args); err != nil {
-			return "", err
-		}
-	}
-	return hex.EncodeToString(writer.Sum(nil)), nil
-}
-
-// CacheMiddleware is a middleware that caches the result of the sql query.
-// Only same query, same args and same result type can get the same result from the cache.
-type CacheMiddleware[T any] struct {
-	scopeCache cache.ScopeCache
-}
-
-// QueryContext implements Middleware.
-func (c *CacheMiddleware[T]) QueryContext(stmt Statement, next GenericQueryHandler[T]) GenericQueryHandler[T] {
-	// If the scopeCache is nil or the useCache is false, return the result directly.
-	if c.scopeCache == nil || stmt.Attribute("useCache") == "false" {
-		return next
-	}
-	return func(ctx context.Context, query string, args ...any) (result T, err error) {
-		// cached this function in case the CacheKeyFunc is changed by other goroutines.
-		keyFunc := CacheKeyFunc
-
-		// check the keyFunc variable
-		if keyFunc == nil {
-			err = errCacheKeyFuncNil
-			return
-		}
-
-		// cacheKey is the key which is used to get the result and put the result to the scopeCache.
-		var cacheKey string
-
-		// get the type identify of the result
-		typeIdentify := reflectlite.TypeIdentify[T]()
-		// CacheKeyFunc is the function which is used to generate the scopeCache key.
-		// default is the md5 of the query and args and the type identify.
-		// reset the CacheKeyFunc variable to change the default behavior.
-		cacheKey, err = keyFunc(stmt, query+typeIdentify, args)
-		if err != nil {
-			return
-		}
-
-		// try to get the result from the scopeCache
-		if err = c.scopeCache.Get(ctx, cacheKey, &result); err == nil {
-			return
-		}
-		// if we can not get the result from the scopeCache, continue with the next handler.
-		if !errors.Is(err, cache.ErrCacheNotFound) {
-			return
-		}
-		// if the instance can not be converted to the result type, continue with the next handler.
-		// call the next handler
-		result, err = next(ctx, query, args...)
-		if err != nil {
-			return
-		}
-		err = c.scopeCache.Set(ctx, cacheKey, result)
-		return
-	}
-}
-
-// ExecContext implements Middleware.
-func (c *CacheMiddleware[T]) ExecContext(stmt Statement, next ExecHandler) ExecHandler {
-	// if the scopeCache is enabled and flushCache is not disabled in this xmlSQLStatement.
-	if stmt.Attribute("flushCache") == "false" || c.scopeCache == nil {
-		return next
-	}
-	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
-		// call the next handler
-		result, err := next(ctx, query, args...)
-		if err == nil {
-			err = c.scopeCache.Flush(ctx)
-		}
-		return result, err
 	}
 }

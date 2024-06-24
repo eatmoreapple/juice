@@ -18,9 +18,14 @@ package juice
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/driver"
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 // ErrInvalidExecutor is a custom error type that is used when an invalid executor is found.
@@ -116,11 +121,31 @@ func (e *sqlRowsExecutor) Driver() driver.Driver { return e.driver }
 // ensure that the sqlRowsExecutor implements the SQLRowsExecutor interface.
 var _ SQLRowsExecutor = (*sqlRowsExecutor)(nil)
 
+// cacheKeyFunc defines the function which is used to generate the scopeCache key.
+type cacheKeyFunc func(stmt Statement, query string, args []any) (string, error)
+
+// errCacheKeyFuncNil is an error that is returned when the CacheKeyFunc is nil.
+var errCacheKeyFuncNil = errors.New("juice: CacheKeyFunc is nil")
+
+// CacheKeyFunc is the function which is used to generate the scopeCache key.
+// default is the md5 of the query and args.
+// reset the CacheKeyFunc variable to change the default behavior.
+var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (string, error) {
+	// only same xmlSQLStatement same query same args can get the same scopeCache key
+	writer := md5.New()
+	writer.Write([]byte(stmt.ID() + query))
+	if len(args) > 0 {
+		if err := json.NewEncoder(writer).Encode(args); err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(writer.Sum(nil)), nil
+}
+
 // GenericExecutor is a generic sqlRowsExecutor.
 type GenericExecutor[T any] struct {
 	SQLRowsExecutor
-	// extra middlewares for the sqlRowsExecutor
-	middlewares GenericMiddlewareGroup[T]
+	cache cache.ScopeCache
 }
 
 // QueryContext executes the query and returns the scanner.
@@ -135,8 +160,53 @@ func (e *GenericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	if err != nil {
 		return
 	}
-	// call the middleware
-	return e.middlewares.QueryContext(statement, e.queryContext(p))(ctx, query, args...)
+	// if cache enabled
+	cacheEnabled := e.cache != nil && statement.Attribute("useCache") != "false"
+
+	// cacheKey is the key which is used to get the result and put the result to the scopeCache.
+	var cacheKey string
+
+	if cacheEnabled {
+		// cached this function in case the CacheKeyFunc is changed by other goroutines.
+		keyFunc := CacheKeyFunc
+
+		// check the keyFunc variable
+		if keyFunc == nil {
+			err = errCacheKeyFuncNil
+			return
+		}
+
+		// get the type identify of the result
+		typeIdentify := reflectlite.TypeIdentify[T]()
+		// CacheKeyFunc is the function which is used to generate the scopeCache key.
+		// default is the md5 of the query and args and the type identify.
+		// reset the CacheKeyFunc variable to change the default behavior.
+		cacheKey, err = keyFunc(statement, query+typeIdentify, args)
+		if err != nil {
+			return
+		}
+
+		// try to get the result from the scopeCache
+		if err = e.cache.Get(ctx, cacheKey, &result); err == nil {
+			return
+		}
+		// if we can not get the result from the scopeCache, continue with the next handler.
+		if !errors.Is(err, cache.ErrCacheNotFound) {
+			return
+		}
+	}
+
+	// execute the query directly.
+	result, err = e.queryContext(p)(ctx, query, args...)
+	if err != nil {
+		return
+	}
+	// if cache enabled
+	if cacheEnabled {
+		// put the result to the scopeCache
+		err = e.cache.Set(ctx, cacheKey, result)
+	}
+	return
 }
 
 func (e *GenericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
@@ -164,20 +234,20 @@ func (e *GenericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 }
 
 // ExecContext executes the query and returns the result.
-func (e *GenericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
+func (e *GenericExecutor[_]) ExecContext(ctx context.Context, p Param) (result sql.Result, err error) {
 	// check the error of the sqlRowsExecutor
 	if exe, ok := isInvalidExecutor(e.SQLRowsExecutor); ok {
-		return ret, exe.err
+		return nil, exe.err
 	}
-	return e.SQLRowsExecutor.ExecContext(ctx, p)
-}
-
-// Use adds a middleware to the current sqlRowsExecutor.
-func (e *GenericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
-	if len(middlewares) == 0 {
+	result, err = e.SQLRowsExecutor.ExecContext(ctx, p)
+	if err != nil {
 		return
 	}
-	e.middlewares = append(e.middlewares, middlewares...)
+	// if flushCache is true, flush the cache.
+	if flushCache := e.cache != nil && e.Statement().Attribute("flushCache") != "false"; flushCache {
+		err = e.cache.Flush(ctx)
+	}
+	return
 }
 
 // ensure GenericExecutor implements Executor.
