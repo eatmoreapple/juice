@@ -48,10 +48,9 @@ type genericManager[T any] struct {
 
 // Object implements the GenericManager interface.
 func (s *genericManager[T]) Object(v any) Executor[T] {
-	exe := &GenericExecutor[T]{SQLRowsExecutor: s.Manager.Object(v)}
-	// add the scopeCache middleware if the scopeCache is not nil
-	if s.cache != nil {
-		exe.Use(&CacheMiddleware[T]{scopeCache: s.cache})
+	exe := &GenericExecutor[T]{
+		SQLRowsExecutor: s.Manager.Object(v),
+		cache:           s.cache,
 	}
 	return exe
 }
