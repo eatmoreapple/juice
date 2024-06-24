@@ -38,9 +38,6 @@ type GenericExecutor[T any] interface {
 	// Statement returns the xmlSQLStatement of the current executor.
 	Statement() Statement
 
-	// Session returns the session of the current executor.
-	Session() Session
-
 	// Driver returns the driver of the current executor.
 	Driver() driver.Driver
 }
@@ -66,9 +63,6 @@ func (b invalidExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, er
 
 // Statement implements the Executor interface.
 func (b invalidExecutor) Statement() Statement { return nil }
-
-// Session implements the Executor interface.
-func (b invalidExecutor) Session() Session { return nil }
 
 func (b invalidExecutor) Driver() driver.Driver { return nil }
 
@@ -114,9 +108,6 @@ func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, er
 
 // Statement returns the xmlSQLStatement.
 func (e *executor) Statement() Statement { return e.statement }
-
-// Session returns the session of the executor.
-func (e *executor) Session() Session { return e.session }
 
 // Driver returns the driver of the executor.
 func (e *executor) Driver() driver.Driver { return e.driver }
