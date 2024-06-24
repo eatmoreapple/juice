@@ -23,10 +23,11 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
-var ErrInvalidExecutor = errors.New("juice: invalid executor")
+// ErrInvalidExecutor is a custom error type that is used when an invalid executor is found.
+var ErrInvalidExecutor = errors.New("juice: invalid sqlRowsExecutor")
 
-// GenericExecutor is a generic executor.
-type GenericExecutor[T any] interface {
+// Executor is a generic sqlRowsExecutor.
+type Executor[T any] interface {
 	// QueryContext executes the query and returns the direct result.
 	// The args are for any placeholder parameters in the query.
 	QueryContext(ctx context.Context, param Param) (T, error)
@@ -35,59 +36,59 @@ type GenericExecutor[T any] interface {
 	// The args are for any placeholder parameters in the query.
 	ExecContext(ctx context.Context, param Param) (sql.Result, error)
 
-	// Statement returns the xmlSQLStatement of the current executor.
+	// Statement returns the Statement of the current Executor.
 	Statement() Statement
 
-	// Driver returns the driver of the current executor.
+	// Driver returns the driver of the current Executor.
 	Driver() driver.Driver
 }
 
-// Executor defines the interface of the executor.
-type Executor GenericExecutor[*sql.Rows]
-
-// invalidExecutor wraps the error who implements the Executor interface.
+// invalidExecutor wraps the error who implements the SQLRowsExecutor interface.
 type invalidExecutor struct {
 	_   struct{}
 	err error
 }
 
-// QueryContext implements the Executor interface.
+// QueryContext implements the SQLRowsExecutor interface.
 func (b invalidExecutor) QueryContext(_ context.Context, _ Param) (*sql.Rows, error) {
 	return nil, b.err
 }
 
-// ExecContext implements the Executor interface.
+// ExecContext implements the SQLRowsExecutor interface.
 func (b invalidExecutor) ExecContext(_ context.Context, _ Param) (sql.Result, error) {
 	return nil, b.err
 }
 
-// Statement implements the Executor interface.
+// Statement implements the SQLRowsExecutor interface.
 func (b invalidExecutor) Statement() Statement { return nil }
 
 func (b invalidExecutor) Driver() driver.Driver { return nil }
 
-// inValidExecutor is an invalid executor.
-func inValidExecutor(err error) Executor {
+// SQLRowsExecutor defines the interface of the sqlRowsExecutor.
+type SQLRowsExecutor Executor[*sql.Rows]
+
+// inValidExecutor is an invalid sqlRowsExecutor.
+func inValidExecutor(err error) SQLRowsExecutor {
 	err = errors.Join(ErrInvalidExecutor, err)
 	return &invalidExecutor{err: err}
 }
 
-// InValidExecutor returns an invalid executor.
-func InValidExecutor() Executor {
+// InValidExecutor returns an invalid sqlRowsExecutor.
+func InValidExecutor() SQLRowsExecutor {
 	return inValidExecutor(nil)
 }
 
-// isInvalidExecutor checks if the executor is a invalidExecutor.
-func isInvalidExecutor(e Executor) (*invalidExecutor, bool) {
+// isInvalidExecutor checks if the sqlRowsExecutor is a invalidExecutor.
+func isInvalidExecutor(e SQLRowsExecutor) (*invalidExecutor, bool) {
 	exe, ok := e.(*invalidExecutor)
 	return exe, ok
 }
 
-// ensure that the defaultExecutor implements the Executor interface.
-var _ Executor = (*invalidExecutor)(nil)
+// ensure that the defaultExecutor implements the SQLRowsExecutor interface.
+var _ SQLRowsExecutor = (*invalidExecutor)(nil)
 
-// executor is an executor of SQL.
-type executor struct {
+// sqlRowsExecutor implements the SQLRowsExecutor interface.
+type sqlRowsExecutor struct {
 	session     Session
 	statement   Statement
 	driver      driver.Driver
@@ -95,37 +96,37 @@ type executor struct {
 }
 
 // QueryContext executes the query and returns the result.
-func (e *executor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
+func (e *sqlRowsExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
 	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
 	return handler.QueryContext(ctx, e.Statement(), param)
 }
 
 // ExecContext executes the query and returns the result.
-func (e *executor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
+func (e *sqlRowsExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
 	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
 	return handler.ExecContext(ctx, e.Statement(), param)
 }
 
 // Statement returns the xmlSQLStatement.
-func (e *executor) Statement() Statement { return e.statement }
+func (e *sqlRowsExecutor) Statement() Statement { return e.statement }
 
-// Driver returns the driver of the executor.
-func (e *executor) Driver() driver.Driver { return e.driver }
+// Driver returns the driver of the sqlRowsExecutor.
+func (e *sqlRowsExecutor) Driver() driver.Driver { return e.driver }
 
-// ensure that the executor implements the Executor interface.
-var _ Executor = (*executor)(nil)
+// ensure that the sqlRowsExecutor implements the SQLRowsExecutor interface.
+var _ SQLRowsExecutor = (*sqlRowsExecutor)(nil)
 
-// genericExecutor is a generic executor.
-type genericExecutor[T any] struct {
-	Executor
-	// extra middlewares for the executor
+// GenericExecutor is a generic sqlRowsExecutor.
+type GenericExecutor[T any] struct {
+	SQLRowsExecutor
+	// extra middlewares for the sqlRowsExecutor
 	middlewares GenericMiddlewareGroup[T]
 }
 
 // QueryContext executes the query and returns the scanner.
-func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
-	// check the error of the executor
-	if exe, ok := isInvalidExecutor(e.Executor); ok {
+func (e *GenericExecutor[T]) QueryContext(ctx context.Context, p Param) (result T, err error) {
+	// check the error of the sqlRowsExecutor
+	if exe, ok := isInvalidExecutor(e.SQLRowsExecutor); ok {
 		return result, exe.err
 	}
 	statement := e.Statement()
@@ -138,7 +139,7 @@ func (e *genericExecutor[T]) QueryContext(ctx context.Context, p Param) (result 
 	return e.middlewares.QueryContext(statement, e.queryContext(p))(ctx, query, args...)
 }
 
-func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
+func (e *GenericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 	return func(ctx context.Context, query string, args ...any) (result T, err error) {
 		statement := e.Statement()
 
@@ -152,7 +153,7 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 		}
 
 		// try to query the database.
-		rows, err := e.Executor.QueryContext(ctx, param)
+		rows, err := e.SQLRowsExecutor.QueryContext(ctx, param)
 		if err != nil {
 			return result, err
 		}
@@ -163,21 +164,21 @@ func (e *genericExecutor[T]) queryContext(param Param) GenericQueryHandler[T] {
 }
 
 // ExecContext executes the query and returns the result.
-func (e *genericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
-	// check the error of the executor
-	if exe, ok := isInvalidExecutor(e.Executor); ok {
+func (e *GenericExecutor[_]) ExecContext(ctx context.Context, p Param) (ret sql.Result, err error) {
+	// check the error of the sqlRowsExecutor
+	if exe, ok := isInvalidExecutor(e.SQLRowsExecutor); ok {
 		return ret, exe.err
 	}
-	return e.Executor.ExecContext(ctx, p)
+	return e.SQLRowsExecutor.ExecContext(ctx, p)
 }
 
-// Use adds a middleware to the current executor.
-func (e *genericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
+// Use adds a middleware to the current sqlRowsExecutor.
+func (e *GenericExecutor[T]) Use(middlewares ...GenericMiddleware[T]) {
 	if len(middlewares) == 0 {
 		return
 	}
 	e.middlewares = append(e.middlewares, middlewares...)
 }
 
-// ensure genericExecutor implements GenericExecutor.
-var _ GenericExecutor[any] = (*genericExecutor[any])(nil)
+// ensure GenericExecutor implements Executor.
+var _ Executor[any] = (*GenericExecutor[any])(nil)

@@ -23,12 +23,12 @@ import (
 
 // Manager is an interface for managing database operations.
 type Manager interface {
-	Object(v any) Executor
+	Object(v any) SQLRowsExecutor
 }
 
 // GenericManager is an interface for managing database operations.
 type GenericManager[T any] interface {
-	Object(v any) GenericExecutor[T]
+	Object(v any) Executor[T]
 }
 
 // NewGenericManager returns a new GenericManager.
@@ -47,8 +47,8 @@ type genericManager[T any] struct {
 }
 
 // Object implements the GenericManager interface.
-func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
-	exe := &genericExecutor[T]{Executor: s.Manager.Object(v)}
+func (s *genericManager[T]) Object(v any) Executor[T] {
+	exe := &GenericExecutor[T]{SQLRowsExecutor: s.Manager.Object(v)}
 	// add the scopeCache middleware if the scopeCache is not nil
 	if s.cache != nil {
 		exe.Use(&CacheMiddleware[T]{scopeCache: s.cache})
@@ -56,7 +56,7 @@ func (s *genericManager[T]) Object(v any) GenericExecutor[T] {
 	return exe
 }
 
-// TxManager is a transactional mapper executor
+// TxManager is a transactional mapper sqlRowsExecutor
 type TxManager interface {
 	Manager
 	// Commit commits the transaction.
@@ -73,7 +73,7 @@ type invalidTxManager struct {
 }
 
 // Object implements the Manager interface
-func (i invalidTxManager) Object(_ any) Executor { return inValidExecutor(i.err) }
+func (i invalidTxManager) Object(_ any) SQLRowsExecutor { return inValidExecutor(i.err) }
 
 // Commit commits the transaction, but it will return an error directly.
 func (i invalidTxManager) Commit() error { return i.err }
@@ -88,7 +88,7 @@ type txManager struct {
 }
 
 // Object implements the Manager interface
-func (t *txManager) Object(v any) Executor {
+func (t *txManager) Object(v any) SQLRowsExecutor {
 	exe, err := t.engine.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
@@ -118,7 +118,7 @@ type txCacheManager struct {
 }
 
 // Object implements the Manager interface.
-func (t *txCacheManager) Object(v any) Executor {
+func (t *txCacheManager) Object(v any) SQLRowsExecutor {
 	return t.manager.Object(v)
 }
 

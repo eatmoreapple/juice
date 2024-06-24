@@ -49,13 +49,13 @@ type Engine struct {
 	middlewares MiddlewareGroup
 }
 
-// executor represents a mapper executor with the given parameters
-func (e *Engine) executor(v any) (*executor, error) {
+// sqlRowsExecutor represents a mapper sqlRowsExecutor with the given parameters
+func (e *Engine) executor(v any) (*sqlRowsExecutor, error) {
 	stat, err := e.GetConfiguration().GetStatement(v)
 	if err != nil {
 		return nil, err
 	}
-	return &executor{
+	return &sqlRowsExecutor{
 		statement:   stat,
 		session:     e.DB(),
 		driver:      e.driver,
@@ -64,7 +64,7 @@ func (e *Engine) executor(v any) (*executor, error) {
 }
 
 // Object implements the Manager interface
-func (e *Engine) Object(v any) Executor {
+func (e *Engine) Object(v any) SQLRowsExecutor {
 	exe, err := e.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
