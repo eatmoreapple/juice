@@ -18,6 +18,7 @@ package juice
 
 import (
 	"fmt"
+	"github.com/eatmoreapple/juice/eval"
 	"reflect"
 	"regexp"
 	"strings"
@@ -154,13 +155,13 @@ func NewTextNode(str string) Node {
 }
 
 type ConditionNode struct {
-	expr  Expression
+	expr  eval.Expression
 	Nodes NodeGroup
 }
 
 // Parse with given expression.
 func (c *ConditionNode) Parse(test string) (err error) {
-	c.expr, err = DefaultExprCompiler.Compile(test)
+	c.expr, err = eval.Compile(test)
 	return err
 }
 
@@ -374,13 +375,13 @@ func (f ForeachNode) acceptSlice(value reflect.Value, translator driver.Translat
 
 	// group wraps parameter
 	// nil is for placeholder
-	group := ParamGroup{nil, p}
+	group := eval.ParamGroup{nil, p}
 
 	for i := 0; i < sliceLength; i++ {
 
 		item := value.Index(i).Interface()
 
-		group[0] = H{f.Item: item, f.Index: i}.AsParam()
+		group[0] = eval.H{f.Item: item, f.Index: i}.AsParam()
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, group)
@@ -424,13 +425,13 @@ func (f ForeachNode) acceptMap(value reflect.Value, translator driver.Translator
 
 	// group wraps parameter
 	// nil is for placeholder
-	group := ParamGroup{nil, p}
+	group := eval.ParamGroup{nil, p}
 
 	for _, key := range keys {
 
 		item := value.MapIndex(key).Interface()
 
-		group[0] = H{f.Item: item, f.Index: key.Interface()}.AsParam()
+		group[0] = eval.H{f.Item: item, f.Index: key.Interface()}.AsParam()
 
 		for _, node := range f.Nodes {
 			q, a, err := node.Accept(translator, group)

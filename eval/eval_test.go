@@ -1,4 +1,4 @@
-package juice
+package eval
 
 import (
 	"go/parser"
@@ -7,7 +7,7 @@ import (
 )
 
 func testEval(expr string, v any) (result reflect.Value, err error) {
-	param := newGenericParam(v, "")
+	param := NewGenericParam(v, "")
 	return Eval(expr, param)
 }
 
@@ -90,7 +90,7 @@ func BenchmarkEval2(b *testing.B) {
 		b.Error(err)
 		return
 	}
-	p := newGenericParam(param, "")
+	p := NewGenericParam(param, "")
 	for i := 0; i < b.N; i++ {
 		value, err := eval(expr, p)
 		if err != nil {
@@ -583,7 +583,7 @@ func TestExprNilEQ(t *testing.T) {
 	var entity struct {
 		A *int `param:"a"`
 	}
-	result, err = Eval("a == nil", newGenericParam(entity, ""))
+	result, err = Eval("a == nil", NewGenericParam(entity, ""))
 	if err != nil {
 		t.Error(err)
 		return
@@ -618,7 +618,7 @@ func TestExprNilNEQ(t *testing.T) {
 	var entity struct {
 		A *int `param:"a"`
 	}
-	result, err = Eval("a != nil", newGenericParam(entity, ""))
+	result, err = Eval("a != nil", NewGenericParam(entity, ""))
 	if err != nil {
 		t.Error(err)
 		return
