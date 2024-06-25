@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package juice
+package eval
 
 import (
 	"errors"
 	"fmt"
 	"github.com/eatmoreapple/juice/expr"
+	"github.com/eatmoreapple/juice/internal/env"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"go/ast"
 	"go/parser"
@@ -28,6 +29,22 @@ import (
 	"strconv"
 	"strings"
 )
+
+// SyntaxError represents a syntax error.
+// The error occurs when parsing the expression.
+type SyntaxError struct {
+	err error
+}
+
+// Error returns the error message.
+func (s *SyntaxError) Error() string {
+	return fmt.Sprintf("syntax error: %v", s.err)
+}
+
+// Unwrap returns the underlying error.
+func (s *SyntaxError) Unwrap() error {
+	return s.err
+}
 
 // ExprPretreatment is an expression pretreatment.
 // It is used to pretreatment the expression before parsing.
@@ -88,14 +105,14 @@ type ExprCompiler interface {
 	Compile(expr string) (Expression, error)
 }
 
-// EvalValue is an alias of reflect.Value.
+// Value is an alias of reflect.Value.
 // for semantic.
-type EvalValue = reflect.Value
+type Value = reflect.Value
 
 // Expression is an expression which can be evaluated to a value.
 type Expression interface {
 	// Execute evaluates the expression and returns the value.
-	Execute(params Parameter) (EvalValue, error)
+	Execute(params Parameter) (Value, error)
 }
 
 // goExprCompiler is an evaluator of the expression who uses the go/ast package.
@@ -124,7 +141,7 @@ type goExpression struct {
 }
 
 // Execute evaluates the expression and returns the value.
-func (e *goExpression) Execute(params Parameter) (EvalValue, error) {
+func (e *goExpression) Execute(params Parameter) (Value, error) {
 	return eval(e.Expr, params)
 }
 
@@ -134,8 +151,13 @@ var (
 	DefaultExprCompiler ExprCompiler = &goExprCompiler{pretreatment: exprPretreatmentChain}
 )
 
+// Compile compiles the expression and returns the expression.
+func Compile(expr string) (Expression, error) {
+	return DefaultExprCompiler.Compile(expr)
+}
+
 // Eval is a shortcut of DefaultEvaluator.Compiler(expr).Execute(params).
-func Eval(expr string, params Parameter) (EvalValue, error) {
+func Eval(expr string, params Parameter) (Value, error) {
 	// cache the compiler, incase the DefaultExprCompiler is changed by other goroutine.
 	compiler := DefaultExprCompiler
 	if compiler == nil {
@@ -370,7 +392,7 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 	case reflect.Struct:
 		// findFromTag is a closure function that tries to find the field from the field tag
 		findFromTag := func() {
-			find := reflectlite.From(unwarned).FindFieldFromTag(defaultParamKey, fieldOrTagOrMethodName)
+			find := reflectlite.From(unwarned).FindFieldFromTag(env.DefaultParamKey, fieldOrTagOrMethodName)
 			if find.IsValid() {
 				result = find.Value
 			}

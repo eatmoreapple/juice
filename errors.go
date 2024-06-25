@@ -85,22 +85,6 @@ func (e *sqlNodeNotFoundError) Error() string {
 	return "sql node " + e.nodeName + " not found"
 }
 
-// SyntaxError represents a syntax error.
-// The error occurs when parsing the expression.
-type SyntaxError struct {
-	err error
-}
-
-// Error returns the error message.
-func (s *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %v", s.err)
-}
-
-// Unwrap returns the underlying error.
-func (s *SyntaxError) Unwrap() error {
-	return s.err
-}
-
 // unreachable is a function that is used to mark unreachable code.
 // nolint:deadcode,unused
 func unreachable() error {

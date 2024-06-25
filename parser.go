@@ -20,6 +20,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/eatmoreapple/juice/internal/env"
 	"io"
 	"io/fs"
 	"net/http"
@@ -673,7 +674,7 @@ func (p *XMLParser) parseForeach(mapper *Mapper, decoder *xml.Decoder, token xml
 
 	// if collection is empty, use default param key instead.
 	if foreachNode.Collection == "" {
-		foreachNode.Collection = defaultParamKey
+		foreachNode.Collection = env.DefaultParamKey
 	}
 	if foreachNode.Item == "" {
 		return nil, &nodeAttributeRequiredError{nodeName: "foreach", attrName: "item"}

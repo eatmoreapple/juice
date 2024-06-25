@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package juice
+package eval
 
 import (
 	"errors"
@@ -178,9 +178,6 @@ func splitAfter(text, sep string) ([]string, error) {
 	return strings.SplitAfter(text, sep), nil
 }
 
-// errType is the reflect.Type of error.
-var errType = reflect.TypeOf((*error)(nil)).Elem()
-
 // RegisterEvalFunc registers a function for eval.
 // The function must be a function with one return value.
 // And Allowed to overwrite the built-in function.
@@ -208,6 +205,9 @@ func MustRegisterEvalFunc(name string, v any) {
 		panic(err)
 	}
 }
+
+// errType is the reflect.Type of error.
+var errType = reflect.TypeOf((*error)(nil)).Elem()
 
 // builtins is a map of built-in functions.
 var builtins = map[string]reflect.Value{}
