@@ -54,6 +54,11 @@ var defaultParamKey = func() string {
 	return key
 }()
 
+// DefaultParamKey returns the default key of the parameter.
+func DefaultParamKey() string {
+	return defaultParamKey
+}
+
 // Parameter is the interface that wraps the Get method.
 // Get returns the value of the named parameter.
 type Parameter interface {
