@@ -19,7 +19,7 @@ package eval
 import (
 	"errors"
 	"fmt"
-	"github.com/eatmoreapple/juice/expr"
+	"github.com/eatmoreapple/juice/eval/expr"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"go/ast"
 	"go/parser"

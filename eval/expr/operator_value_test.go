@@ -1,7 +1,7 @@
 package expr_test
 
 import (
-	"github.com/eatmoreapple/juice/expr"
+	"github.com/eatmoreapple/juice/eval/expr"
 	"reflect"
 	"testing"
 )
