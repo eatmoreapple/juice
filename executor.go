@@ -29,7 +29,7 @@ import (
 )
 
 // ErrInvalidExecutor is a custom error type that is used when an invalid executor is found.
-var ErrInvalidExecutor = errors.New("juice: invalid sqlRowsExecutor")
+var ErrInvalidExecutor = errors.New("juice: invalid executor")
 
 // Executor is a generic sqlRowsExecutor.
 type Executor[T any] interface {
