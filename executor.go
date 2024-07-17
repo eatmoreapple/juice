@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+
 	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/driver"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
@@ -94,22 +95,21 @@ var _ SQLRowsExecutor = (*invalidExecutor)(nil)
 
 // sqlRowsExecutor implements the SQLRowsExecutor interface.
 type sqlRowsExecutor struct {
-	session     Session
-	statement   Statement
-	driver      driver.Driver
-	middlewares MiddlewareGroup
+	session          Session
+	statement        Statement
+	statementHandler StatementHandler
+	driver           driver.Driver
+	middlewares      MiddlewareGroup
 }
 
 // QueryContext executes the query and returns the result.
 func (e *sqlRowsExecutor) QueryContext(ctx context.Context, param Param) (*sql.Rows, error) {
-	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
-	return handler.QueryContext(ctx, e.Statement(), param)
+	return e.statementHandler.QueryContext(ctx, e.Statement(), param)
 }
 
 // ExecContext executes the query and returns the result.
 func (e *sqlRowsExecutor) ExecContext(ctx context.Context, param Param) (sql.Result, error) {
-	handler := NewSQLRowsStatementHandler(e.driver, e.session, e.middlewares...)
-	return handler.ExecContext(ctx, e.Statement(), param)
+	return e.statementHandler.ExecContext(ctx, e.Statement(), param)
 }
 
 // Statement returns the xmlSQLStatement.
