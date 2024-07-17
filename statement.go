@@ -19,8 +19,9 @@ package juice
 import (
 	"context"
 	"database/sql"
-	"github.com/eatmoreapple/juice/driver"
 	"regexp"
+
+	"github.com/eatmoreapple/juice/driver"
 )
 
 type Statement interface {
@@ -31,6 +32,11 @@ type Statement interface {
 	Configuration() IConfiguration
 	ResultMap() (ResultMap, error)
 	Build(translator driver.Translator, param Param) (query string, args []any, err error)
+}
+
+type StatementHandler interface {
+	ExecContext(ctx context.Context, statement Statement, param Param) (sql.Result, error)
+	QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error)
 }
 
 var formatRegexp = regexp.MustCompile(`\$\{ *?([a-zA-Z0-9_\.]+) *?\}`)
@@ -164,10 +170,12 @@ func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Sta
 	return execHandler(ctx, query, args...)
 }
 
+var _ StatementHandler = (*SQLRowsStatementHandler)(nil)
+
 // NewSQLRowsStatementHandler creates a new instance of SQLRowsStatementHandler
 // with the provided driver, session, and an optional list of middlewares. This
 // function is typically used to initialize the handler before executing SQL statements.
-func NewSQLRowsStatementHandler(driver driver.Driver, session Session, middlewares ...Middleware) *SQLRowsStatementHandler {
+func NewSQLRowsStatementHandler(driver driver.Driver, session Session, middlewares ...Middleware) StatementHandler {
 	return &SQLRowsStatementHandler{
 		driver:      driver,
 		middlewares: middlewares,

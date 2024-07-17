@@ -19,6 +19,7 @@ package juice
 import (
 	"context"
 	"database/sql"
+
 	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/driver"
 )
@@ -55,11 +56,13 @@ func (e *Engine) executor(v any) (*sqlRowsExecutor, error) {
 	if err != nil {
 		return nil, err
 	}
+	handler := NewSQLRowsStatementHandler(e.driver, e.DB(), e.middlewares...)
 	return &sqlRowsExecutor{
-		statement:   stat,
-		session:     e.DB(),
-		driver:      e.driver,
-		middlewares: e.middlewares,
+		statement:        stat,
+		statementHandler: handler,
+		session:          e.DB(),
+		driver:           e.driver,
+		middlewares:      e.middlewares,
 	}, nil
 }
 
