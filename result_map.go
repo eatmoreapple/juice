@@ -101,7 +101,7 @@ func (MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 	isPtr := el.Kind() == reflect.Ptr
 
 	// get the element type of pointer
-	if el.Kind() == reflect.Ptr {
+	if isPtr {
 		el = el.Elem()
 	}
 
