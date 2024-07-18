@@ -80,7 +80,7 @@ func Connect(driver string, datasource string, opts ...ConnectOptionFunc) (*sql.
 		db.SetConnMaxLifetime(option.MaxConnLifetime)
 	}
 	if option.MaxIdleConnLifetime > 0 {
-		db.SetConnMaxLifetime(option.MaxIdleConnLifetime)
+		db.SetConnMaxIdleTime(option.MaxIdleConnLifetime)
 	}
 	return db, nil
 }
