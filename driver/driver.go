@@ -19,7 +19,6 @@ package driver
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"sync"
 )
 
@@ -73,67 +72,4 @@ func Drivers() []string {
 	}
 	sort.Strings(drivers)
 	return drivers
-}
-
-// MySQLDriver is a driver of MySQL.
-type MySQLDriver struct{}
-
-// Translator returns a translator of SQL.
-func (d MySQLDriver) Translator() Translator {
-	return TranslateFunc(func(matched string) string { return "?" })
-}
-
-func (d MySQLDriver) String() string {
-	return "mysql"
-}
-
-// SQLiteDriver is a driver of SQLite.
-type SQLiteDriver struct{}
-
-// Translator returns a translator of SQL.
-func (d SQLiteDriver) Translator() Translator {
-	return TranslateFunc(func(matched string) string { return "?" })
-}
-
-func (d SQLiteDriver) String() string {
-	return "sqlite3"
-}
-
-// PostgresDriver is a driver of PostgreSQL.
-type PostgresDriver struct{}
-
-// Translator is a function to translate a matched string.
-func (d PostgresDriver) Translator() Translator {
-	var i int
-	return TranslateFunc(func(matched string) string {
-		i++
-		return "$" + strconv.Itoa(i)
-	})
-}
-
-func (d PostgresDriver) String() string {
-	return "postgres"
-}
-
-// OracleDriver is a driver of Oracle.
-type OracleDriver struct{}
-
-// Translator is a function to translate a matched string.
-func (o OracleDriver) Translator() Translator {
-	var i int
-	return TranslateFunc(func(matched string) string {
-		i++
-		return ":" + strconv.Itoa(i)
-	})
-}
-
-func (o OracleDriver) String() string {
-	return "oracle"
-}
-
-func init() {
-	Register("mysql", &MySQLDriver{})
-	Register("sqlite3", &SQLiteDriver{})
-	Register("postgres", &PostgresDriver{})
-	Register("oracle", &OracleDriver{})
 }
