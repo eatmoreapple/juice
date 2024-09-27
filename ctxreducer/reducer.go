@@ -14,13 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package juice
+package ctxreducer
 
-import (
-	"context"
-
-	"github.com/eatmoreapple/juice/session"
-)
+import "context"
 
 // ContextReducer is the interface that wraps the Reduce method.
 // Accepts a context.Context and returns a new context instance that is the result of a transformation
@@ -46,34 +42,4 @@ func (g ContextReducerGroup) Reduce(ctx context.Context) context.Context {
 		ctx = r.Reduce(ctx)
 	}
 	return ctx
-}
-
-// SessionWithContextReducer is a ContextReducer that adds a Session to the context.
-type sessionWithContextReducer struct {
-	session session.Session
-}
-
-// The Reduce method uses an external function SessionWithContext to add the Session to the context.
-func (r sessionWithContextReducer) Reduce(ctx context.Context) context.Context {
-	return session.WithContext(ctx, r.session)
-}
-
-// NewSessionContextReducer returns a new instance of the sessionWithContextReducer.
-func NewSessionContextReducer(session session.Session) ContextReducer {
-	return sessionWithContextReducer{session: session}
-}
-
-// paramWithContextReducer is a ContextReducer that adds a Param to the context.
-type paramWithContextReducer struct {
-	Param Param
-}
-
-// The Reduce method uses an external function CtxWithParam to add the Param to the context.
-func (r paramWithContextReducer) Reduce(ctx context.Context) context.Context {
-	return CtxWithParam(ctx, r.Param)
-}
-
-// NewParamContextReducer returns a new instance of the paramWithContextReducer.
-func NewParamContextReducer(param Param) ContextReducer {
-	return paramWithContextReducer{Param: param}
 }

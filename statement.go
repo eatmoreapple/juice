@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"regexp"
 
+	"github.com/eatmoreapple/juice/ctxreducer"
 	"github.com/eatmoreapple/juice/driver"
 	"github.com/eatmoreapple/juice/session"
 )
@@ -145,9 +146,9 @@ func (s *SQLRowsStatementHandler) QueryContext(ctx context.Context, statement St
 	if err != nil {
 		return nil, err
 	}
-	contextReducer := ContextReducerGroup{
-		NewSessionContextReducer(s.session),
-		NewParamContextReducer(param),
+	contextReducer := ctxreducer.ContextReducerGroup{
+		ctxreducer.NewSessionContextReducer(s.session),
+		ctxreducer.NewParamContextReducer(param),
 	}
 	ctx = contextReducer.Reduce(ctx)
 	queryHandler := CombineQueryHandler(statement, s.middlewares...)
@@ -162,9 +163,9 @@ func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Sta
 	if err != nil {
 		return nil, err
 	}
-	contextReducer := ContextReducerGroup{
-		NewSessionContextReducer(s.session),
-		NewParamContextReducer(param),
+	contextReducer := ctxreducer.ContextReducerGroup{
+		ctxreducer.NewSessionContextReducer(s.session),
+		ctxreducer.NewParamContextReducer(param),
 	}
 	ctx = contextReducer.Reduce(ctx)
 	execHandler := CombineExecHandler(statement, s.middlewares...)
