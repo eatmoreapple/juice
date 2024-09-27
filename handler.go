@@ -3,6 +3,8 @@ package juice
 import (
 	"context"
 	"database/sql"
+
+	"github.com/eatmoreapple/juice/session"
 )
 
 // QueryHandler defines the handler of the query.
@@ -13,9 +15,9 @@ type ExecHandler func(ctx context.Context, query string, args ...any) (sql.Resul
 
 func sessionQueryHandler() QueryHandler {
 	return func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-		sess := SessionFromContext(ctx)
+		sess := session.FromContext(ctx)
 		if sess == nil {
-			return nil, ErrNoSession
+			return nil, session.ErrNoSession
 		}
 		return sess.QueryContext(ctx, query, args...)
 	}
@@ -23,9 +25,9 @@ func sessionQueryHandler() QueryHandler {
 
 func sessionExecHandler() ExecHandler {
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
-		sess := SessionFromContext(ctx)
+		sess := session.FromContext(ctx)
 		if sess == nil {
-			return nil, ErrNoSession
+			return nil, session.ErrNoSession
 		}
 		return sess.ExecContext(ctx, query, args...)
 	}

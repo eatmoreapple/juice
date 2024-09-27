@@ -18,7 +18,9 @@ package juice
 
 import (
 	"context"
+
 	"github.com/eatmoreapple/juice/cache"
+	"github.com/eatmoreapple/juice/session"
 )
 
 // Manager is an interface for managing database operations.
@@ -83,7 +85,7 @@ func (i invalidTxManager) Rollback() error { return i.err }
 // txManager is a transaction xmlSQLStatement
 type txManager struct {
 	engine *Engine
-	tx     SessionTransaction
+	tx     session.TransactionSession
 }
 
 // Object implements the Manager interface
