@@ -27,6 +27,7 @@ import (
 	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/driver"
 	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/eatmoreapple/juice/session"
 )
 
 // ErrInvalidExecutor is a custom error type that is used when an invalid executor is found.
@@ -95,7 +96,7 @@ var _ SQLRowsExecutor = (*invalidExecutor)(nil)
 
 // sqlRowsExecutor implements the SQLRowsExecutor interface.
 type sqlRowsExecutor struct {
-	session          Session
+	session          session.Session
 	statement        Statement
 	statementHandler StatementHandler
 	driver           driver.Driver

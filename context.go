@@ -16,7 +16,11 @@ limitations under the License.
 
 package juice
 
-import "context"
+import (
+	"context"
+
+	"github.com/eatmoreapple/juice/session"
+)
 
 // ContextReducer is the interface that wraps the Reduce method.
 // Accepts a context.Context and returns a new context instance that is the result of a transformation
@@ -46,16 +50,16 @@ func (g ContextReducerGroup) Reduce(ctx context.Context) context.Context {
 
 // SessionWithContextReducer is a ContextReducer that adds a Session to the context.
 type sessionWithContextReducer struct {
-	session Session
+	session session.Session
 }
 
 // The Reduce method uses an external function SessionWithContext to add the Session to the context.
 func (r sessionWithContextReducer) Reduce(ctx context.Context) context.Context {
-	return SessionWithContext(ctx, r.session)
+	return session.WithContext(ctx, r.session)
 }
 
 // NewSessionContextReducer returns a new instance of the sessionWithContextReducer.
-func NewSessionContextReducer(session Session) ContextReducer {
+func NewSessionContextReducer(session session.Session) ContextReducer {
 	return sessionWithContextReducer{session: session}
 }
 

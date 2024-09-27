@@ -22,6 +22,7 @@ import (
 	"regexp"
 
 	"github.com/eatmoreapple/juice/driver"
+	"github.com/eatmoreapple/juice/session"
 )
 
 type Statement interface {
@@ -132,7 +133,7 @@ func (s *xmlSQLStatement) Build(translator driver.Translator, param Param) (quer
 type SQLRowsStatementHandler struct {
 	driver      driver.Driver
 	middlewares MiddlewareGroup
-	session     Session
+	session     session.Session
 }
 
 // QueryContext executes a query represented by the Statement object within a context,
@@ -175,7 +176,7 @@ var _ StatementHandler = (*SQLRowsStatementHandler)(nil)
 // NewSQLRowsStatementHandler creates a new instance of SQLRowsStatementHandler
 // with the provided driver, session, and an optional list of middlewares. This
 // function is typically used to initialize the handler before executing SQL statements.
-func NewSQLRowsStatementHandler(driver driver.Driver, session Session, middlewares ...Middleware) StatementHandler {
+func NewSQLRowsStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
 	return &SQLRowsStatementHandler{
 		driver:      driver,
 		middlewares: middlewares,
