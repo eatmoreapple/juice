@@ -18,6 +18,7 @@ package ctxreducer
 
 import (
 	"context"
+
 	"github.com/eatmoreapple/juice/eval"
 )
 

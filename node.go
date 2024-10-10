@@ -18,10 +18,11 @@ package juice
 
 import (
 	"fmt"
-	"github.com/eatmoreapple/juice/eval"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/eatmoreapple/juice/eval"
 
 	"github.com/eatmoreapple/juice/driver"
 )

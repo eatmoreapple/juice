@@ -17,8 +17,9 @@ limitations under the License.
 package expr
 
 import (
-	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"reflect"
+
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 // OperatorExpr represents an operator expression.

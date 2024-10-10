@@ -2,11 +2,12 @@ package juice
 
 import (
 	"fmt"
-	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 // replacer defines the replacer of function name

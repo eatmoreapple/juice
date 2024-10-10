@@ -19,9 +19,10 @@ package expr
 import (
 	"errors"
 	"fmt"
-	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"go/token"
 	"reflect"
+
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 var (

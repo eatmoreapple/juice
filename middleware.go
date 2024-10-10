@@ -21,13 +21,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/eatmoreapple/juice/internal/reflectlite"
 	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 // Middleware is a wrapper of QueryHandler and ExecHandler.
