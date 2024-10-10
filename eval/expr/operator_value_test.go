@@ -1,9 +1,10 @@
 package expr_test
 
 import (
-	"github.com/eatmoreapple/juice/eval/expr"
 	"reflect"
 	"testing"
+
+	"github.com/eatmoreapple/juice/eval/expr"
 )
 
 func TestIntOperator_Addition(t *testing.T) {

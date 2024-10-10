@@ -20,7 +20,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"github.com/eatmoreapple/juice/eval"
 	"io"
 	"io/fs"
 	"net/http"
@@ -29,6 +28,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/eatmoreapple/juice/eval"
 )
 
 // ConfigurationParser is the interface for parsing configuration.

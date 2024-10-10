@@ -19,9 +19,10 @@ package juice
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eatmoreapple/juice/driver"
 	"os"
 	"time"
+
+	"github.com/eatmoreapple/juice/driver"
 )
 
 // Environment defines a environment.
