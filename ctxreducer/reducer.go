@@ -43,3 +43,5 @@ func (g ContextReducerGroup) Reduce(ctx context.Context) context.Context {
 	}
 	return ctx
 }
+
+type G = ContextReducerGroup

@@ -146,7 +146,7 @@ func (s *SQLRowsStatementHandler) QueryContext(ctx context.Context, statement St
 	if err != nil {
 		return nil, err
 	}
-	contextReducer := ctxreducer.ContextReducerGroup{
+	contextReducer := ctxreducer.G{
 		ctxreducer.NewSessionContextReducer(s.session),
 		ctxreducer.NewParamContextReducer(param),
 	}
@@ -163,7 +163,7 @@ func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Sta
 	if err != nil {
 		return nil, err
 	}
-	contextReducer := ctxreducer.ContextReducerGroup{
+	contextReducer := ctxreducer.G{
 		ctxreducer.NewSessionContextReducer(s.session),
 		ctxreducer.NewParamContextReducer(param),
 	}
