@@ -16,6 +16,16 @@ limitations under the License.
 
 package session
 
+import "errors"
+
+var (
+	// ErrTransactionAlreadyBegun is the error that transaction already begun.
+	ErrTransactionAlreadyBegun = errors.New("transaction already begun")
+
+	// ErrTransactionNotBegun is the error that transaction not begun.
+	ErrTransactionNotBegun = errors.New("transaction not begun")
+)
+
 // Transaction is a interface that can be used to commit and rollback.
 type Transaction interface {
 	Commit() error
