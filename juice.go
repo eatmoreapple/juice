@@ -17,6 +17,7 @@ limitations under the License.
 package juice
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 
@@ -82,11 +83,11 @@ func (e *Engine) Tx() TxManager {
 
 // ContextTx returns a TxManager with the given context
 func (e *Engine) ContextTx(ctx context.Context, opt *sql.TxOptions) TxManager {
-	tx, err := e.DB().BeginTx(ctx, opt)
-	if err != nil {
-		return invalidTxManager{err: err}
+	return &txManager{
+		engine:    e,
+		txOptions: opt,
+		ctx:       cmp.Or(ctx, context.Background()),
 	}
-	return &txManager{engine: e, tx: tx}
 }
 
 // CacheTx returns a TxCacheManager.

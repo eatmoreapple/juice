@@ -18,6 +18,7 @@ package juice
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/eatmoreapple/juice/cache"
 	"github.com/eatmoreapple/juice/session"
@@ -60,10 +61,14 @@ func (s *genericManager[T]) Object(v any) Executor[T] {
 // TxManager is a transactional mapper sqlRowsExecutor
 type TxManager interface {
 	Manager
+
+	// Begin begins the transaction.
+	Begin() error
+
 	// Commit commits the transaction.
 	Commit() error
+
 	// Rollback rollbacks the transaction.
-	// The rollback will be ignored if the tx has been committed.
 	Rollback() error
 }
 
@@ -76,6 +81,9 @@ type invalidTxManager struct {
 // Object implements the Manager interface
 func (i invalidTxManager) Object(_ any) SQLRowsExecutor { return inValidExecutor(i.err) }
 
+// Begin begins the transaction, but it will return an error directly.
+func (i invalidTxManager) Begin() error { return i.err }
+
 // Commit commits the transaction, but it will return an error directly.
 func (i invalidTxManager) Commit() error { return i.err }
 
@@ -84,12 +92,23 @@ func (i invalidTxManager) Rollback() error { return i.err }
 
 // txManager is a transaction xmlSQLStatement
 type txManager struct {
+	// engine is the engine of the transaction.
 	engine *Engine
-	tx     session.TransactionSession
+
+	// txOptions is the transaction options.
+	// If nil, the default options will be used.
+	txOptions *sql.TxOptions
+
+	// tx is the transaction session if the transaction is begun.
+	tx  session.TransactionSession
+	ctx context.Context
 }
 
 // Object implements the Manager interface
 func (t *txManager) Object(v any) SQLRowsExecutor {
+	if t.tx == nil {
+		return inValidExecutor(session.ErrTransactionNotBegun)
+	}
 	exe, err := t.engine.executor(v)
 	if err != nil {
 		return inValidExecutor(err)
@@ -98,11 +117,37 @@ func (t *txManager) Object(v any) SQLRowsExecutor {
 	return exe
 }
 
+// Begin begins the transaction
+func (t *txManager) Begin() error {
+	// If the transaction is already begun, return an error directly.
+	if t.tx != nil {
+		return session.ErrTransactionAlreadyBegun
+	}
+	tx, err := t.engine.DB().BeginTx(t.ctx, t.txOptions)
+	if err != nil {
+		return err
+	}
+	t.tx = tx
+	return nil
+}
+
 // Commit commits the transaction
-func (t *txManager) Commit() error { return t.tx.Commit() }
+func (t *txManager) Commit() error {
+	// If the transaction is not begun, return an error directly.
+	if t.tx == nil {
+		return session.ErrTransactionNotBegun
+	}
+	return t.tx.Commit()
+}
 
 // Rollback rollbacks the transaction
-func (t *txManager) Rollback() error { return t.tx.Rollback() }
+func (t *txManager) Rollback() error {
+	// If the transaction is not begun, return an error directly.
+	if t.tx == nil {
+		return session.ErrTransactionNotBegun
+	}
+	return t.tx.Rollback()
+}
 
 // TxCacheManager defines a transactional scopeCache manager whose scopeCache can be accessed.
 // All queries in the transaction will be cached.
@@ -121,6 +166,10 @@ type txCacheManager struct {
 // Object implements the Manager interface.
 func (t *txCacheManager) Object(v any) SQLRowsExecutor {
 	return t.manager.Object(v)
+}
+
+func (t *txCacheManager) Begin() error {
+	return t.manager.Begin()
 }
 
 // Commit commits the transaction and flushes the scopeCache.
