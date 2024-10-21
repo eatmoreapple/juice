@@ -72,24 +72,6 @@ type TxManager interface {
 	Rollback() error
 }
 
-// invalidTxManager is an invalid transaction xmlSQLStatement which implements the TxManager interface.
-type invalidTxManager struct {
-	_   struct{}
-	err error
-}
-
-// Object implements the Manager interface
-func (i invalidTxManager) Object(_ any) SQLRowsExecutor { return inValidExecutor(i.err) }
-
-// Begin begins the transaction, but it will return an error directly.
-func (i invalidTxManager) Begin() error { return i.err }
-
-// Commit commits the transaction, but it will return an error directly.
-func (i invalidTxManager) Commit() error { return i.err }
-
-// Rollback rollbacks the transaction, but it will return an error directly.
-func (i invalidTxManager) Rollback() error { return i.err }
-
 // txManager is a transaction xmlSQLStatement
 type txManager struct {
 	// engine is the engine of the transaction.
