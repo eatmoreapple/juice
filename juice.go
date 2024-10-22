@@ -60,9 +60,7 @@ func (e *Engine) executor(v any) (*sqlRowsExecutor, error) {
 	return &sqlRowsExecutor{
 		statement:        stat,
 		statementHandler: handler,
-		session:          e.DB(),
 		driver:           e.driver,
-		middlewares:      e.middlewares,
 	}, nil
 }
 

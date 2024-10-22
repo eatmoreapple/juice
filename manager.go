@@ -91,12 +91,17 @@ func (t *txManager) Object(v any) SQLRowsExecutor {
 	if t.tx == nil {
 		return inValidExecutor(session.ErrTransactionNotBegun)
 	}
-	exe, err := t.engine.executor(v)
+	stat, err := t.engine.GetConfiguration().GetStatement(v)
 	if err != nil {
 		return inValidExecutor(err)
 	}
-	exe.session = t.tx
-	return exe
+	drv := t.engine.driver
+	handler := NewSQLRowsStatementHandler(drv, t.tx, t.engine.middlewares...)
+	return &sqlRowsExecutor{
+		statement:        stat,
+		statementHandler: handler,
+		driver:           drv,
+	}
 }
 
 // Begin begins the transaction
@@ -178,9 +183,16 @@ func NewTxCacheManager(manager TxManager, cache cache.ScopeCache) TxCacheManager
 
 type managerKey struct{}
 
+// managerFromContext returns the Manager from the context.
+func managerFromContext(ctx context.Context) (Manager, bool) {
+	manager, ok := ctx.Value(managerKey{}).(Manager)
+	return manager, ok
+}
+
 // ManagerFromContext returns the Manager from the context.
 func ManagerFromContext(ctx context.Context) Manager {
-	return ctx.Value(managerKey{}).(Manager)
+	manager, _ := managerFromContext(ctx)
+	return manager
 }
 
 // ContextWithManager returns a new context with the given Manager.
