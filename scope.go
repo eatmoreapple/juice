@@ -18,11 +18,15 @@ package juice
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 )
 
 // ErrInvalidManager is an error for invalid manager.
 var ErrInvalidManager = errors.New("juice: invalid manager")
+
+// ErrCommitOnSpecific is an error for commit on specific transaction.
+var ErrCommitOnSpecific = errors.New("juice: commit on specific transaction")
 
 // Transaction executes a transaction with the given handler.
 // If the manager is not an instance of Engine, it will return ErrInvalidManager.
@@ -40,7 +44,7 @@ var ErrInvalidManager = errors.New("juice: invalid manager")
 //		}); err != nil {
 //			// handle error
 //		}
-func Transaction(ctx context.Context, handler func(ctx context.Context) error) error {
+func Transaction(ctx context.Context, handler func(ctx context.Context) error) (err error) {
 	manager := ManagerFromContext(ctx)
 	engine, ok := manager.(*Engine)
 	if !ok {
@@ -49,17 +53,29 @@ func Transaction(ctx context.Context, handler func(ctx context.Context) error) e
 	// create a new transaction
 	tx := engine.ContextTx(ctx, nil)
 
-	if err := tx.Begin(); err != nil {
+	if err = tx.Begin(); err != nil {
 		return err
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() {
+		// make sure to roll back the transaction if there is an error
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			// if the error is not sql.ErrTxDone, it means the transaction is not already rolled back
+			if !errors.Is(rollbackErr, sql.ErrTxDone) {
+				err = errors.Join(err, rollbackErr)
+			}
+		}
+	}()
 
 	// create a new context with the transaction
 	txCtx := ContextWithManager(ctx, tx)
 
 	// call the handler
-	if err := handler(txCtx); err != nil {
-		return err
+	err = handler(txCtx)
+	if err != nil {
+		// if the error is ErrCommitOnSpecific, it means the transaction needs to be committed by the user
+		if !errors.Is(err, ErrCommitOnSpecific) {
+			return err
+		}
 	}
-	return tx.Commit()
+	return errors.Join(err, tx.Commit())
 }
