@@ -141,15 +141,15 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 	length := v.Len()
 	pk := s.id
 	for i := length - 1; i >= 0; i-- {
-		elValue := v.Index(i)
+		value := v.Index(i)
 		if isPrt {
-			elValue = elValue.Elem()
+			value = value.Elem()
 		}
 		// try to find the field indexes based on the key property
 		// and ensure the field is valid and can be converted to int
-		value := elValue.FieldByIndex(indexes)
+		value = value.FieldByIndex(indexes)
 		if !value.IsValid() {
-			return errors.New("invalid id")
+			return fmt.Errorf("invalid field %s", s.keyProperty)
 		}
 		if !value.CanInt() {
 			return fmt.Errorf("can not convert %s to int", s.keyProperty)
