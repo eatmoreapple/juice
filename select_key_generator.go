@@ -139,6 +139,7 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 		return nil
 	}
 	length := v.Len()
+	pk := s.id
 	for i := length - 1; i >= 0; i-- {
 		elValue := v.Index(i)
 		if isPrt {
@@ -153,7 +154,6 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 		if !value.CanInt() {
 			return fmt.Errorf("can not convert %s to int", s.keyProperty)
 		}
-		pk := s.id
 		if i != length-1 {
 			pk -= s.keyIncrement
 		}
