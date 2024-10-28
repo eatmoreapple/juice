@@ -107,27 +107,7 @@ func findFieldFromTag(value Value, tagName, tagValue string) (Value, bool) {
 
 // GetFieldIndexesFromTag returns the field indexes by tag name and tag value.
 func (v Value) GetFieldIndexesFromTag(tagName, tagValue string) ([]int, bool) {
-	if v.Kind() != reflect.Struct {
-		return nil, false
-	}
-	return getFieldIndexesFromTag(v.Type(), tagName, tagValue)
-}
-
-func getFieldIndexesFromTag(value reflect.Type, tagName, tagValue string) ([]int, bool) {
-	for i := 0; i < value.NumField(); i++ {
-		field := value.Field(i)
-		if field.Type.Kind() == reflect.Struct && field.Tag.Get(tagName) == "" {
-			if indexes, ok := getFieldIndexesFromTag(field.Type, tagName, tagValue); ok {
-				return append(field.Index[:], indexes...), ok
-			} else {
-				continue
-			}
-		}
-		if tag := field.Tag.Get(tagName); tag == tagValue {
-			return field.Index[:], true
-		}
-	}
-	return nil, false
+	return TypeFrom(v.IndirectType()).GetFieldIndexesFromTag(tagName, tagValue)
 }
 
 // ValueOf returns a new Value initialized to the concrete value

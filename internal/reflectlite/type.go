@@ -42,3 +42,42 @@ func qualifiedName(t reflect.Type) string {
 	// It's a built-in type or unnamed type, just return the type's string representation.
 	return t.String()
 }
+
+type Type struct {
+	reflect.Type
+}
+
+// Identify returns the string representation of the type, including the
+// package path for non-built-in types.
+func (t Type) Identify() string {
+	return typeToString(t.Type)
+}
+
+func getFieldIndexesFromTag(value reflect.Type, tagName, tagValue string) ([]int, bool) {
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		if field.Type.Kind() == reflect.Struct && field.Tag.Get(tagName) == "" {
+			if indexes, ok := getFieldIndexesFromTag(field.Type, tagName, tagValue); ok {
+				return append(field.Index[:], indexes...), ok
+			} else {
+				continue
+			}
+		}
+		if tag := field.Tag.Get(tagName); tag == tagValue {
+			return field.Index[:], true
+		}
+	}
+	return nil, false
+}
+
+func (t Type) GetFieldIndexesFromTag(tagName, tagValue string) ([]int, bool) {
+	if t.Kind() != reflect.Struct {
+		return nil, false
+	}
+	return getFieldIndexesFromTag(t.Type, tagName, tagValue)
+}
+
+// TypeFrom returns a Type from the given reflect.Type.
+func TypeFrom(t reflect.Type) Type {
+	return Type{t}
+}
