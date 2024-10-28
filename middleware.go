@@ -20,15 +20,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
-	"unicode"
-
-	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
 // Middleware is a wrapper of QueryHandler and ExecHandler.
@@ -167,6 +162,11 @@ func (t TimeoutMiddleware) getTimeout(stmt Statement) (timeout int64) {
 // ensure useGeneratedKeysMiddleware implements Middleware
 var _ Middleware = (*useGeneratedKeysMiddleware)(nil) // compile time check
 
+// errStructPointerOrSliceArrayRequired is an error that the param is not a struct pointer or a slice array type.
+var errStructPointerOrSliceArrayRequired = errors.New(
+	"useGeneratedKeys is true, but the param is not a struct pointer or a slice array type",
+)
+
 // useGeneratedKeysMiddleware is a middleware that set the last insert id to the struct.
 type useGeneratedKeysMiddleware struct{}
 
@@ -193,11 +193,14 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 	}
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
 		result, err := next(ctx, query, args...)
-
 		if err != nil {
 			return nil, err
 		}
 
+		id, err := result.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
 		// try to get param from context
 		// ParamCtxInjectorExecutor is already set in middlewares, so the param should be in the context.
 		param := ParamFromContext(ctx)
@@ -209,76 +212,35 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 		// checkout the input param
 		rv := reflect.ValueOf(param)
 
-		// If the useGeneratedKeys is set and true but the param is not a pointer.
-		if rv.Kind() != reflect.Ptr {
-			return nil, errors.New("useGeneratedKeys is true, but the param is not a pointer")
-		}
-
-		rv = reflect.Indirect(rv)
-
-		// If the useGeneratedKeys is set and true but the param is not a struct pointer.
-		// NOTE: batch insert does not support useGeneratedKeys yet.
-		// TODO: support batch insert useGeneratedKeys.
-		if rv.Kind() != reflect.Struct {
-			return nil, errors.New("useGeneratedKeys is true, but the param is not a struct pointer")
-		}
-
-		var field reflect.Value
-
-		// keyProperty is the name of the field that will be set the generated key.
 		keyProperty := stmt.Attribute("keyProperty")
 
-		if len(keyProperty) == 0 {
-			// try to find the field by default behavior.
-			field = reflectlite.From(rv).FindFieldFromTag("autoincr", "true").Value
-		} else {
-			keyProperties := strings.Split(keyProperty, ".")
-			// try to find the field from the given struct.
-			// if isPublic is true, then it means the following keyProperties are the field names.
-			// otherwise, the following keyProperties are the tag names.
-			isPublic := unicode.IsUpper(rune(keyProperty[0]))
+		var keyGenerator selectKeyGenerator
 
-			loopValue := rv
-
-			for i := 0; i < len(keyProperties); i++ {
-
-				value := reflectlite.From(loopValue)
-
-				if ik := value.IndirectKind(); ik != reflect.Struct {
-					return nil, fmt.Errorf("expect struct, but got %s", ik)
-				}
-				// if the keyProperty is public, find the field by name.
-				// otherwise, find the field by tag.
-				if isPublic {
-					loopValue = value.FieldByName(keyProperties[i])
-				} else {
-					loopValue = value.FindFieldFromTag("column", keyProperties[i]).Value
-				}
-				// we can not find the field, return directly.
-				if !loopValue.IsValid() {
-					return nil, fmt.Errorf("the keyProperty %s is not found", keyProperty)
-				}
+		switch reflect.Indirect(rv).Kind() {
+		case reflect.Struct:
+			keyGenerator = &singleKeyGenerator{
+				keyProperty: keyProperty,
+				id:          id,
 			}
-			// reset the field
-			field = loopValue
+		case reflect.Array, reflect.Slice:
+			// try to get the keyIncrement from the xmlSQLStatement
+			// if the keyIncrement is not set or invalid, use the default value 1
+			keyIncrementValue := stmt.Attribute("keyIncrement")
+			keyIncrement, _ := strconv.ParseInt(keyIncrementValue, 10, 64)
+			if keyIncrement == 0 {
+				keyIncrement = 1
+			}
+			keyGenerator = &batchKeyGenerator{
+				keyProperty:  keyProperty,
+				id:           id,
+				keyIncrement: keyIncrement,
+			}
+		default:
+			return nil, errStructPointerOrSliceArrayRequired
 		}
-
-		if !field.IsValid() {
-			return nil, fmt.Errorf("the keyProperty %s is not found or not field has the autoincr tag", keyProperty)
-		}
-
-		// If the field is not an int, return the result directly.
-		if !field.CanInt() {
-			return nil, fmt.Errorf("the keyProperty %s is not a int", keyProperty)
-		}
-
-		// get the last insert id
-		id, err := result.LastInsertId()
-		if err != nil {
+		if err = keyGenerator.GenerateKeyTo(rv); err != nil {
 			return nil, err
 		}
-		// set the id to the field
-		field.SetInt(id)
 		return result, nil
 	}
 }
