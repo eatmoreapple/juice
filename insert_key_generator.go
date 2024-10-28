@@ -128,6 +128,12 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 	elementType := v.Type().Elem()
 	isPrt := elementType.Kind() == reflect.Ptr
 
+	if isPrt {
+		elementType = elementType.Elem()
+	}
+	if elementType.Kind() != reflect.Struct {
+		return errors.New("the element of the slice or array is not a struct")
+	}
 	// find the field indexes based on the key property
 	var indexes []int
 	if len(s.keyProperty) > 0 {
