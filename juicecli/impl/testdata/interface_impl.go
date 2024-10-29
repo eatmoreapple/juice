@@ -5,7 +5,6 @@ package testcase
 import (
 	"context"
 	"database/sql"
-
 	"github.com/eatmoreapple/juice"
 )
 
@@ -15,7 +14,15 @@ func (i InterfaceImpl) GetUserByID(ctx context.Context, id int64) (result0 User,
 	manager := juice.ManagerFromContext(ctx)
 	var iface Interface = i
 	executor := juice.NewGenericManager[User](manager).Object(iface.GetUserByID)
-	ret, err := executor.QueryContext(ctx, id)
+	ret, err := executor.QueryContext(ctx, juice.H{"id": id})
+	return ret, err
+}
+
+func (i InterfaceImpl) GetUserByIDs(ctx context.Context, ids []int64) (result0 User, result1 error) {
+	manager := juice.ManagerFromContext(ctx)
+	var iface Interface = i
+	executor := juice.NewGenericManager[User](manager).Object(iface.GetUserByIDs)
+	ret, err := executor.QueryContext(ctx, juice.H{"ids": ids})
 	return ret, err
 }
 

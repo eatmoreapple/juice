@@ -18,6 +18,7 @@ package internal
 
 import (
 	"fmt"
+	stdast "go/ast"
 	"strings"
 
 	"github.com/eatmoreapple/juice"
@@ -209,7 +210,15 @@ func formatParams(params ast.ValueGroup) string {
 	case 0, 1:
 		return "nil"
 	case 2:
-		return params[1].Name()
+		param1 := params[1]
+		if param1.IsBuiltInType() {
+			return fmt.Sprintf(`juice.H{"%s": %s}`, param1.Name(), param1.Name())
+		}
+		switch param1.Field.Type.(type) {
+		case *stdast.ArrayType:
+			return fmt.Sprintf(`juice.H{"%s": %s}`, param1.Name(), param1.Name())
+		}
+		return param1.Name()
 	default:
 		var builder strings.Builder
 		builder.WriteString("juice.H{")
