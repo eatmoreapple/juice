@@ -92,14 +92,14 @@ func findFieldFromTag(value Value, tagName, tagValue string) (Value, bool) {
 	for i := 0; i < kind.NumField(); i++ {
 		field := kind.Field(i)
 		if field.Type.Kind() == reflect.Struct && field.Tag.Get(tagName) == "" {
-			if v, ok := findFieldFromTag(From(value.Field(i)), tagName, tagValue); ok {
+			if v, ok := findFieldFromTag(ValueFrom(value.Field(i)), tagName, tagValue); ok {
 				return v, ok
 			} else {
 				continue
 			}
 		}
 		if tag := field.Tag.Get(tagName); tag == tagValue {
-			return From(value.Field(i)), true
+			return ValueFrom(value.Field(i)), true
 		}
 	}
 	return Value{}, false
@@ -116,7 +116,7 @@ func ValueOf(v any) Value {
 	return Value{reflect.ValueOf(v)}
 }
 
-// From returns a new Value initialized to the concrete value
-func From(v reflect.Value) Value {
+// ValueFrom returns a new Value initialized to the concrete value
+func ValueFrom(v reflect.Value) Value {
 	return Value{v}
 }

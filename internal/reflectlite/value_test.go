@@ -20,7 +20,7 @@ func TestValue_FindFieldFromTag(t *testing.T) {
 	b.AName = "a_name"
 	b.BName = "b_name"
 
-	value := From(reflect.ValueOf(b))
+	value := ValueFrom(reflect.ValueOf(b))
 
 	v := value.FindFieldFromTag("param", "a_name")
 	if !v.IsValid() {
@@ -46,7 +46,7 @@ func TestValue_GetFieldIndexesFromTag(t *testing.T) {
 	b.AName = "a_name"
 	b.BName = "b_name"
 
-	value := From(reflect.ValueOf(b))
+	value := ValueFrom(reflect.ValueOf(b))
 
 	// Test finding field index by tag
 	indexes, ok := value.GetFieldIndexesFromTag("param", "a_name")
@@ -68,7 +68,7 @@ func TestValue_GetFieldIndexesFromTag(t *testing.T) {
 	}
 
 	// Test not finding field index in non-struct type
-	nonStructValue := From(reflect.ValueOf("string"))
+	nonStructValue := ValueFrom(reflect.ValueOf("string"))
 	indexes, ok = nonStructValue.GetFieldIndexesFromTag("param", "a_name")
 	if ok {
 		t.Error("expected not to find a_name in non-struct type")
