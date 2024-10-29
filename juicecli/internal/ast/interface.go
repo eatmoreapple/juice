@@ -12,6 +12,25 @@ const (
 	ResultPrefix = "result"
 )
 
+func isBuiltInType(name string) bool {
+	switch name {
+	case "int", "int8", "int16", "int32", "int64":
+		return true
+	case "uint", "uint8", "uint16", "uint32", "uint64":
+		return true
+	case "float32", "float64":
+		return true
+	case "string":
+		return true
+	case "bool":
+		return true
+	case "complex64", "complex128":
+		return true
+	default:
+		return false
+	}
+}
+
 // Value is a value of interface, which wraps ast.Field.
 type Value struct {
 	*ast.Field
@@ -97,22 +116,15 @@ func (v *Value) ImportPackageName() string {
 }
 
 func (v *Value) IsBuiltInType() bool {
-	switch v.TypeName() {
-	case "int", "int8", "int16", "int32", "int64":
-		return true
-	case "uint", "uint8", "uint16", "uint32", "uint64":
-		return true
-	case "float32", "float64":
-		return true
-	case "string":
-		return true
-	case "bool":
-		return true
-	case "complex64", "complex128":
-		return true
-	default:
-		return false
-	}
+	return isBuiltInType(v.DirectTypename())
+}
+
+func (v *Value) IsPointerType() bool {
+	return strings.HasPrefix(v.TypeName(), "*")
+}
+
+func (v *Value) DirectTypename() string {
+	return strings.TrimLeft(v.TypeName(), "*")
 }
 
 // ValueGroup is a group of Value. It is used to represent the return values of a method.

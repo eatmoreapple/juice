@@ -8,7 +8,7 @@ import (
 //go:generate juicecli impl --type Interface  --output interface_impl.go
 type Interface interface {
 	// GetUserByID 根据用户id查找用户
-	GetUserByID(ctx context.Context, id int64) (User, error)
+	GetUserByID(ctx context.Context, id *int64) (User, error)
 	// GetUserByIDs 根据用户id查找用户
 	GetUserByIDs(ctx context.Context, ids []int64) (User, error)
 	// CreateUser 创建用户
