@@ -230,7 +230,7 @@ func NewGenericParam(v any, wrapKey string) Parameter {
 	}
 	value := reflect.ValueOf(v)
 
-	tp := reflectlite.IndirectType(value)
+	tp := reflectlite.IndirectType(value.Type())
 
 	switch tp.Kind() {
 	case reflect.Map, reflect.Struct:

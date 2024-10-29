@@ -4,10 +4,12 @@ import (
 	"reflect"
 )
 
-// TypeIdentify returns the string representation of the type, including the
-// package path for non-built-in types.
-func TypeIdentify[T any]() string {
-	return typeToString(reflect.TypeOf((*T)(nil)).Elem())
+// IndirectType returns the type of the element if the type is a pointer type.
+func IndirectType(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
 }
 
 // typeToString returns a string representation of the reflect.Type, including
@@ -43,6 +45,12 @@ func qualifiedName(t reflect.Type) string {
 	return t.String()
 }
 
+// TypeIdentify returns the string representation of the type, including the
+// package path for non-built-in types.
+func TypeIdentify[T any]() string {
+	return typeToString(reflect.TypeOf((*T)(nil)).Elem())
+}
+
 type Type struct {
 	reflect.Type
 }
@@ -51,6 +59,11 @@ type Type struct {
 // package path for non-built-in types.
 func (t Type) Identify() string {
 	return typeToString(t.Type)
+}
+
+// Indirect returns the type of the element if the type is a pointer type.
+func (t Type) Indirect() Type {
+	return Type{IndirectType(t.Type)}
 }
 
 func getFieldIndexesFromTag(value reflect.Type, tagName, tagValue string) ([]int, bool) {

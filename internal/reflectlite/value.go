@@ -42,12 +42,8 @@ func NilAble(v reflect.Value) bool {
 	return false
 }
 
-func IndirectType(v reflect.Value) reflect.Type {
-	return Unwrap(v).Type()
-}
-
 func IndirectKind(v reflect.Value) reflect.Kind {
-	return IndirectType(v).Kind()
+	return IndirectType(v.Type()).Kind()
 }
 
 type Value struct {
@@ -68,7 +64,7 @@ func (v Value) NilAble() bool {
 // IndirectType returns the type of the element if the type is a pointer type.
 // Otherwise, it returns the type directly.
 func (v Value) IndirectType() reflect.Type {
-	return IndirectType(v.Value)
+	return IndirectType(v.Type())
 }
 
 // IndirectKind returns the kind of the element if the type is a pointer type.
