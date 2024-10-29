@@ -115,7 +115,7 @@ func (p structParameter) Get(name string) (reflect.Value, bool) {
 	isPublic := unicode.IsUpper(rune(name[0]))
 	if !isPublic {
 		// try to find the field by tag
-		value := reflectlite.From(p.Value).FindFieldFromTag(defaultParamKey, name)
+		value := reflectlite.ValueFrom(p.Value).FindFieldFromTag(defaultParamKey, name)
 		return value.Value, value.IsValid()
 	}
 	value := p.FieldByName(name)
