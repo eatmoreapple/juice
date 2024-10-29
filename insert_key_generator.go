@@ -34,9 +34,7 @@ type selectKeyGenerator interface {
 // findFieldIndexesFromProperties finds the field indexes in a struct type based on the provided key properties.
 // It returns a slice of indexes and a boolean indicating if the indexes were found.
 func findFieldIndexesFromProperties(t reflect.Type, keyProperties ...string) ([]int, bool) {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
+	t = reflectlite.IndirectType(t)
 	if t.Kind() != reflect.Struct {
 		return nil, false
 	}
