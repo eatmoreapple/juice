@@ -119,7 +119,7 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Slice, reflect.Array:
 	default:
-		return errors.New("the param is not a slice or array")
+		return errSliceOrArrayRequired
 	}
 
 	// slice or array element type

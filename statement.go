@@ -19,7 +19,13 @@ package juice
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"reflect"
 	"regexp"
+	"strconv"
+
+	"github.com/eatmoreapple/juice/internal/reflectlite"
 
 	"github.com/eatmoreapple/juice/ctxreducer"
 	"github.com/eatmoreapple/juice/driver"
@@ -126,6 +132,87 @@ func (s *xmlSQLStatement) Build(translator driver.Translator, param Param) (quer
 		return "", nil, ErrEmptyQuery
 	}
 	return query, args, nil
+}
+
+type BatchSQLRowsStatementHandler struct {
+	driver      driver.Driver
+	middlewares MiddlewareGroup
+	session     session.Session
+}
+
+func (b *BatchSQLRowsStatementHandler) QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error) {
+	statementHandler := NewSQLRowsStatementHandler(b.driver, b.session, b.middlewares...)
+	return statementHandler.QueryContext(ctx, statement, param)
+}
+
+// ExecContext executes a batch of SQL statements within a context. It handles
+// the execution of SQL statements in batches if the action is an Insert and a
+// batch size is specified. If the action is not an Insert or no batch size is
+// specified, it delegates to the execContext method.
+func (b *BatchSQLRowsStatementHandler) ExecContext(ctx context.Context, statement Statement, param Param) (result sql.Result, err error) {
+	if statement.Action() != Insert {
+		return b.execContext(ctx, statement, param)
+	}
+	batchSizeValue := statement.Attribute("batchSize")
+	if len(batchSizeValue) == 0 {
+		return b.execContext(ctx, statement, param)
+	}
+	batchSize, err := strconv.ParseInt(batchSizeValue, 10, 64)
+	if err != nil {
+		return nil, errors.Join(err, fmt.Errorf("failed to parse batch size: %s", batchSizeValue))
+	}
+	if batchSize <= 0 {
+		return nil, errors.New("batch size must be greater than 0")
+	}
+	// ensure the param is a slice or array
+	value := reflectlite.ValueOf(param)
+
+	switch value.IndirectType().Kind() {
+	case reflect.Slice, reflect.Array:
+	default:
+		return nil, errSliceOrArrayRequired
+	}
+
+	unwrapValue := value.Unwrap()
+	length := unwrapValue.Len()
+	if length == 0 {
+		return nil, errors.New("invalid param length")
+	}
+	times := (length + int(batchSize) - 1) / int(batchSize)
+
+	// execute the statement in batches.
+	for i := 0; i < times; i++ {
+		start := i * int(batchSize)
+		end := (i + 1) * int(batchSize)
+		if end > length {
+			end = length
+		}
+		batchParam := unwrapValue.Slice(start, end).Interface()
+		result, err = b.execContext(ctx, statement, batchParam)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (b *BatchSQLRowsStatementHandler) execContext(ctx context.Context, statement Statement, param Param) (sql.Result, error) {
+	statementHandler := NewSQLRowsStatementHandler(b.driver, b.session, b.middlewares...)
+	return statementHandler.ExecContext(ctx, statement, param)
+}
+
+// NewBatchSQLRowsStatementHandler creates a new instance of BatchSQLRowsStatementHandler
+func NewBatchSQLRowsStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
+	return &BatchSQLRowsStatementHandler{
+		driver:      driver,
+		middlewares: middlewares,
+		session:     session,
+	}
+}
+
+// DefaultStatementHandler returns a new instance of StatementHandler with the default behavior.
+func DefaultStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
+	return NewBatchSQLRowsStatementHandler(driver, session, middlewares...)
 }
 
 // SQLRowsStatementHandler handles the execution of SQL statements and returns

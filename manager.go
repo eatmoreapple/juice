@@ -96,7 +96,7 @@ func (t *txManager) Object(v any) SQLRowsExecutor {
 		return inValidExecutor(err)
 	}
 	drv := t.engine.driver
-	handler := NewSQLRowsStatementHandler(drv, t.tx, t.engine.middlewares...)
+	handler := DefaultStatementHandler(drv, t.tx, t.engine.middlewares...)
 	return &sqlRowsExecutor{
 		statement:        stat,
 		statementHandler: handler,

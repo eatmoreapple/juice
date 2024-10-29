@@ -93,6 +93,7 @@
                 keyProperty CDATA #IMPLIED
                 flushCache CDATA #IMPLIED
                 paramName CDATA #IMPLIED
+                batchSize CDATA #IMPLIED
                 >
 
         <!ELEMENT id EMPTY>

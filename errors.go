@@ -40,6 +40,9 @@ var (
 
 	// ErrPointerRequired is an error that is returned when the destination is not a pointer.
 	ErrPointerRequired = errors.New("destination must be a pointer")
+
+	// errSliceOrArrayRequired is an error that is returned when the destination is not a slice or array.
+	errSliceOrArrayRequired = errors.New("type must be a slice or array")
 )
 
 // nodeUnclosedError is an error that is returned when the node is not closed.
