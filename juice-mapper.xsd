@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://github.com/eatmoreaple/juice/schema"
+           xmlns="http://github.com/eatmoreaple/juice/schema"
+           elementFormDefault="qualified">
+
+    <xs:element name="configuration">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="environments" minOccurs="0"/>
+                <xs:element ref="mappers" minOccurs="0"/>
+                <xs:element ref="settings" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="environments">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="environment" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="default" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="environment">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="dataSource"/>
+                <xs:element ref="driver"/>
+                <xs:element ref="maxIdleConnNum" minOccurs="0"/>
+                <xs:element ref="maxOpenConnNum" minOccurs="0"/>
+                <xs:element ref="maxConnLifetime" minOccurs="0"/>
+                <xs:element ref="maxIdleConnLifetime" minOccurs="0"/>
+            </xs:sequence>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+            <xs:attribute name="provider" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="dataSource" type="xs:string"/>
+
+    <xs:element name="driver" type="xs:string"/>
+
+    <xs:element name="maxIdleConnNum" type="xs:int"/>
+
+    <xs:element name="maxOpenConnNum" type="xs:int"/>
+
+    <xs:element name="maxConnLifetime" type="xs:int"/>
+
+    <xs:element name="maxIdleConnLifetime" type="xs:int"/>
+
+    <xs:element name="settings">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="setting" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="setting">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required"/>
+            <xs:attribute name="value" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="mappers">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="mapper" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="prefix" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="mapper">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="resultMap" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="sql" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="select" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="update" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="delete" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="insert" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="resource" type="xs:string"/>
+            <xs:attribute name="url" type="xs:string"/>
+            <xs:attribute name="namespace" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+
+    <xs:element name="include">
+        <xs:complexType mixed="true">
+            <xs:attribute name="refid" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="trim">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="prefix" type="xs:string"/>
+            <xs:attribute name="prefixOverrides" type="xs:string"/>
+            <xs:attribute name="suffix" type="xs:string"/>
+            <xs:attribute name="suffixOverrides" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="where">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="set">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="foreach">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="collection" type="xs:string" use="required"/>
+            <xs:attribute name="item" type="xs:string"/>
+            <xs:attribute name="index" type="xs:string"/>
+            <xs:attribute name="open" type="xs:string"/>
+            <xs:attribute name="close" type="xs:string"/>
+            <xs:attribute name="separator" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="choose">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="when"/>
+                <xs:element ref="otherwise"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="when">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="test" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="otherwise">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="if">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="test" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="alias">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="field" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="field">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required"/>
+            <xs:attribute name="alias" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="values">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="value" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="value">
+        <xs:complexType>
+            <xs:attribute name="column" type="xs:string" use="required"/>
+            <xs:attribute name="property" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="select">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+                <xs:element ref="alias"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+            <xs:attribute name="resultMap" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="update">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="delete">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="insert">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+                <xs:element ref="values"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+            <xs:attribute name="useGeneratedKeys" type="xs:boolean"/>
+            <xs:attribute name="keyProperty" type="xs:string"/>
+            <xs:attribute name="batchSize" type="xs:int"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="id">
+        <xs:complexType>
+            <xs:attribute name="column" type="xs:string" use="required"/>
+            <xs:attribute name="property" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="result">
+        <xs:complexType>
+            <xs:attribute name="column" type="xs:string" use="required"/>
+            <xs:attribute name="property" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="association">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="association"/>
+                <xs:element ref="result"/>
+            </xs:choice>
+            <xs:attribute name="property" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="collection">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="id"/>
+                <xs:element ref="association"/>
+                <xs:element ref="result"/>
+            </xs:choice>
+            <xs:attribute name="property" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="sql">
+        <xs:complexType mixed="true">
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="include"/>
+                <xs:element ref="trim"/>
+                <xs:element ref="where"/>
+                <xs:element ref="set"/>
+                <xs:element ref="foreach"/>
+                <xs:element ref="choose"/>
+                <xs:element ref="if"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="resultMap">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="id"/>
+                <xs:element ref="result"/>
+                <xs:element ref="association"/>
+                <xs:element ref="collection"/>
+            </xs:choice>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
