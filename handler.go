@@ -15,9 +15,9 @@ type ExecHandler func(ctx context.Context, query string, args ...any) (sql.Resul
 
 func sessionQueryHandler() QueryHandler {
 	return func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-		sess := session.FromContext(ctx)
-		if sess == nil {
-			return nil, session.ErrNoSession
+		sess, err := session.FromContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 		return sess.QueryContext(ctx, query, args...)
 	}
@@ -25,9 +25,9 @@ func sessionQueryHandler() QueryHandler {
 
 func sessionExecHandler() ExecHandler {
 	return func(ctx context.Context, query string, args ...any) (sql.Result, error) {
-		sess := session.FromContext(ctx)
-		if sess == nil {
-			return nil, session.ErrNoSession
+		sess, err := session.FromContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 		return sess.ExecContext(ctx, query, args...)
 	}
