@@ -41,8 +41,8 @@ type NodeGroup []Node
 
 // Accept accepts parameters and returns query and arguments.
 func (g NodeGroup) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 	for i, node := range g {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -215,8 +215,8 @@ type WhereNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (w WhereNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 	for i, node := range w.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -267,8 +267,8 @@ type TrimNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 	if t.Prefix != "" {
 		builder.WriteString(t.Prefix)
 	}
@@ -367,8 +367,8 @@ func (f ForeachNode) acceptSlice(value reflect.Value, translator driver.Translat
 		return "", nil, nil
 	}
 
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 
 	builder.WriteString(f.Open)
 
@@ -415,8 +415,8 @@ func (f ForeachNode) acceptMap(value reflect.Value, translator driver.Translator
 		return "", nil, nil
 	}
 
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 
 	builder.WriteString(f.Open)
 
@@ -466,8 +466,8 @@ type SetNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 	for i, node := range s.Nodes {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -595,8 +595,8 @@ func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query
 	if len(v) == 0 {
 		return "", nil, nil
 	}
-	builder := getBuilder()
-	defer putBuilder(builder)
+	builder := getStringBuilder()
+	defer putStringBuilder(builder)
 	builder.WriteString("(")
 	builder.WriteString(v.columns())
 	builder.WriteString(") VALUES (")
