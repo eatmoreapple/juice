@@ -82,8 +82,8 @@ func (s *xmlSQLStatement) ID() string {
 }
 
 func (s *xmlSQLStatement) lazyName() string {
-	var builder = getBuilder()
-	defer putBuilder(builder)
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
 	if prefix := s.mapper.mappers.Prefix(); prefix != "" {
 		builder.WriteString(prefix)
 		builder.WriteString(".")
