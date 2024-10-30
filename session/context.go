@@ -16,7 +16,13 @@ limitations under the License.
 
 package session
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrNoSession is the error that no session found in context.
+var ErrNoSession = errors.New("no session found in context")
 
 // sessionKey is the key for the session in the context.
 type sessionKey struct{}
@@ -27,7 +33,11 @@ func WithContext(ctx context.Context, sess Session) context.Context {
 }
 
 // FromContext returns the session from the context.
-func FromContext(ctx context.Context) Session {
-	sess, _ := ctx.Value(sessionKey{}).(Session)
-	return sess
+// If no session is found in the context, it returns ErrNoSession.
+func FromContext(ctx context.Context) (Session, error) {
+	sess, ok := ctx.Value(sessionKey{}).(Session)
+	if !ok {
+		return nil, ErrNoSession
+	}
+	return sess, nil
 }

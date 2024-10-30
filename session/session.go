@@ -19,11 +19,7 @@ package session
 import (
 	"context"
 	"database/sql"
-	"errors"
 )
-
-// ErrNoSession is the error that no session found in context.
-var ErrNoSession = errors.New("no session found in context")
 
 // Session is a wrapper of sql.DB and sql.Tx
 type Session interface {
