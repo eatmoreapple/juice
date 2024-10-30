@@ -28,6 +28,9 @@ var ErrInvalidManager = errors.New("juice: invalid manager")
 // ErrCommitOnSpecific is an error for commit on specific transaction.
 var ErrCommitOnSpecific = errors.New("juice: commit on specific transaction")
 
+// transactionOptionFunc is a function to set the transaction options.
+type transactionOptionFunc func(options *sql.TxOptions)
+
 // Transaction executes a transaction with the given handler.
 // If the manager is not an instance of Engine, it will return ErrInvalidManager.
 // If the handler returns an error, the transaction will be rolled back.
@@ -44,14 +47,22 @@ var ErrCommitOnSpecific = errors.New("juice: commit on specific transaction")
 //		}); err != nil {
 //			// handle error
 //		}
-func Transaction(ctx context.Context, handler func(ctx context.Context) error) (err error) {
+func Transaction(ctx context.Context, handler func(ctx context.Context) error, opts ...transactionOptionFunc) (err error) {
 	manager := ManagerFromContext(ctx)
 	engine, ok := manager.(*Engine)
 	if !ok {
 		return ErrInvalidManager
 	}
+
+	var options *sql.TxOptions
+	if len(opts) > 0 {
+		options = new(sql.TxOptions)
+		for _, opt := range opts {
+			opt(options)
+		}
+	}
 	// create a new transaction
-	tx := engine.ContextTx(ctx, nil)
+	tx := engine.ContextTx(ctx, options)
 
 	if err = tx.Begin(); err != nil {
 		return err
