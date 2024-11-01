@@ -59,3 +59,43 @@ func fileExists(path string) (bool, error) {
 	}
 	return false, err
 }
+
+func GetPackageName(dir string) (string, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	getPackageName := func(filename string) (string, error) {
+		file, err := os.Open(filename)
+		if err != nil {
+			return "", err
+		}
+		defer func() { _ = file.Close() }()
+		reader := bufio.NewReader(file)
+		for {
+			line, _, err := reader.ReadLine()
+			if errors.Is(err, io.EOF) {
+				return "", errors.New("can not find package name")
+			}
+			if err != nil {
+				return "", err
+			}
+			data := strings.TrimSpace(string(line))
+			if strings.HasPrefix(data, "package") {
+				return strings.TrimSpace(strings.TrimPrefix(data, "package")), nil
+			}
+		}
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(file.Name(), ".go") {
+			// read file
+			return getPackageName(filepath.Join(dir, file.Name()))
+		}
+	}
+	return "", errors.New("can not find package name")
+}
