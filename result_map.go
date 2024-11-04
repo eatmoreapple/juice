@@ -80,12 +80,14 @@ func (SingleRowResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 }
 
 // MultiRowsResultMap is a ResultMap that maps a rowDestination to a slice type.
-type MultiRowsResultMap struct{}
+type MultiRowsResultMap struct {
+	New func() reflect.Value
+}
 
 // MapTo implements ResultMapper interface.
 // It maps the data from the SQL row to the provided reflect.Value.
 // It maps each row to a new element in a slice.
-func (MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
+func (m MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 
 	if rv.Kind() != reflect.Ptr {
 		return ErrPointerRequired
@@ -105,6 +107,10 @@ func (MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 		el = el.Elem()
 	}
 
+	if m.New == nil {
+		m.New = func() reflect.Value { return reflect.New(el) }
+	}
+
 	// get columns from rows
 	columns, err := rows.Columns()
 	if err != nil {
@@ -119,7 +125,7 @@ func (MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
 	for rows.Next() {
 
 		// make a new element of slice
-		nrv := reflect.New(el)
+		nrv := m.New()
 
 		// get the Value of element
 		nel := nrv.Elem()
