@@ -31,11 +31,6 @@ var (
 	timeType = reflect.TypeOf((*time.Time)(nil)).Elem()
 )
 
-// Bind sql.Rows to given entity with default mapper
-func Bind[T any](rows *sql.Rows) (result T, err error) {
-	return BindWithResultMap[T](rows, nil)
-}
-
 func bindWithResultMap(rows *sql.Rows, v any, resultMap ResultMap) error {
 	if v == nil {
 		return ErrNilDestination
@@ -76,4 +71,33 @@ func BindWithResultMap[T any](rows *sql.Rows, resultMap ResultMap) (result T, er
 	}
 	err = bindWithResultMap(rows, ptr, resultMap)
 	return
+}
+
+// Bind sql.Rows to given entity with default mapper
+func Bind[T any](rows *sql.Rows) (result T, err error) {
+	return BindWithResultMap[T](rows, nil)
+}
+
+// List converts sql.Rows to a slice of the given entity type.
+// If there are no rows, it will return an empty slice.
+//
+// Differences between List and Bind:
+// - List always returns a slice, even if there is only one row.
+// - Bind always returns the entity of the given type.
+//
+// Bind is more flexible; you can use it to bind a single row to a struct, a slice of structs, or a slice of any type.
+// However, if you are sure that the result will be a slice, you can use List. It could be faster than Bind.
+func List[T any](rows *sql.Rows) (result []T, err error) {
+	var multiRowsResultMap MultiRowsResultMap
+
+	element := reflect.TypeOf((*T)(nil)).Elem()
+
+	// using reflect.New to create a new instance of the element is a very time-consuming operation.
+	// if the element is not a pointer, we can create a new instance of it directly.
+	if element.Kind() != reflect.Ptr {
+		multiRowsResultMap.New = func() reflect.Value { return reflect.ValueOf(new(T)) }
+	}
+
+	err = multiRowsResultMap.MapTo(reflect.ValueOf(&result), rows)
+	return result, err
 }
