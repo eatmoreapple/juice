@@ -37,7 +37,7 @@ type Statement interface {
 	Name() string
 	Attribute(key string) string
 	Action() Action
-	Configuration() IConfiguration
+	Setting() SettingProvider
 	ResultMap() (ResultMap, error)
 	Build(translator driver.Translator, param Param) (query string, args []any, err error)
 }
@@ -107,9 +107,9 @@ func (s *xmlSQLStatement) Action() Action {
 	return s.action
 }
 
-// Configuration returns the configuration of the xmlSQLStatement.
-func (s *xmlSQLStatement) Configuration() IConfiguration {
-	return s.mapper.Configuration()
+// Setting returns the SettingProvider of the xmlSQLStatement.
+func (s *xmlSQLStatement) Setting() SettingProvider {
+	return s.mapper.Configuration().Settings()
 }
 
 // ResultMap returns the ResultMap of the xmlSQLStatement.
