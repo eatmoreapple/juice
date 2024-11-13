@@ -20,8 +20,8 @@ import (
 	"context"
 	"crypto/md5"
 	"database/sql"
+	"encoding/gob"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 
 	"github.com/eatmoreapple/juice/cache"
@@ -133,7 +133,7 @@ var CacheKeyFunc cacheKeyFunc = func(stmt Statement, query string, args []any) (
 	writer := md5.New()
 	writer.Write([]byte(stmt.ID() + query))
 	if len(args) > 0 {
-		if err := json.NewEncoder(writer).Encode(args); err != nil {
+		if err := gob.NewEncoder(writer).Encode(args); err != nil {
 			return "", err
 		}
 	}
