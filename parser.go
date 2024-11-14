@@ -43,15 +43,12 @@ type XMLParser struct {
 	configuration Configuration
 	FS            fs.FS
 	ignoreEnv     bool
+	parsers       []XMLElementParser
 }
 
 // Parse implements ConfigurationParser.
 func (p *XMLParser) Parse(reader io.Reader) (IConfiguration, error) {
-	var parserChain = XMLElementParserChain{
-		&XMLEnvironmentsElementParser{},
-		&XMLSettingsElementParser{},
-		&XMLMappersElementParser{},
-	}
+	parserChain := XMLElementParserChain(p.parsers)
 	decoder := xml.NewDecoder(reader)
 	for {
 		token, err := decoder.Token()
@@ -74,11 +71,16 @@ func (p *XMLParser) Parse(reader io.Reader) (IConfiguration, error) {
 	return &p.configuration, nil
 }
 
+func (p *XMLParser) AddXMLElementParser(parsers ...XMLElementParser) {
+	p.parsers = append(p.parsers, parsers...)
+}
+
 type XMLElementParser interface {
 	ParseElement(parser *XMLParser, decoder *xml.Decoder, token xml.StartElement) error
 	MatchElement(token xml.StartElement) bool
 }
 
+// errNoXMLElementMatched is an error that indicates no XML element matched the expected criteria.
 var errNoXMLElementMatched = errors.New("no xml element matched")
 
 type XMLElementParserChain []XMLElementParser
@@ -1274,6 +1276,11 @@ func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (IConf
 	}
 	defer func() { _ = file.Close() }()
 	parser := &XMLParser{FS: fs, ignoreEnv: ignoreEnv}
+	parser.AddXMLElementParser(
+		&XMLEnvironmentsElementParser{},
+		&XMLMappersElementParser{},
+		&XMLSettingsElementParser{},
+	)
 	return parser.Parse(file)
 }
 
