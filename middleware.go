@@ -201,6 +201,15 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 		if err != nil {
 			return nil, err
 		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		// on most databases, the last insert ID is the first row affected.
+		// calculate the last insert ID by the number of rows affected.
+		if rowsAffected > 1 {
+			id = id + rowsAffected - 1
+		}
 		// try to get param from context
 		// ParamCtxInjectorExecutor is already set in middlewares, so the param should be in the context.
 		param := ParamFromContext(ctx)
