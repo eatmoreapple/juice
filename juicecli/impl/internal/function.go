@@ -161,29 +161,72 @@ func (f *writeFuncBodyMaker) Make() error {
 }
 
 func (f *writeFuncBodyMaker) check() error {
-	if len(f.function.Params()) == 0 {
+	// check input params
+	params := f.function.Params()
+
+	switch len(params) {
+	case 0:
 		return fmt.Errorf("%s: must have at least one argument", f.function.Name())
+	case 1:
+		if params[0].TypeName() != "context.Context" {
+			return fmt.Errorf("%s: first argument must be context.Context", f.function.Name())
+		}
+	case 2:
+		if params[0].TypeName() != "context.Context" {
+			return fmt.Errorf("%s: first argument must be context.Context", f.function.Name())
+		}
+		// if `useGeneratedKeys` is true, the second parameter must be a pointer or a pointer array type
+		useGeneratedKeys := f.statement.Attribute("useGeneratedKeys")
+		if useGeneratedKeys == "true" {
+			// if the second parameter is not a pointer
+			param1 := params[1]
+			if arrayType, ok := param1.Field.Type.(*stdast.ArrayType); ok {
+				// if arrayType.Elt is not a pointer
+				starType, ok := arrayType.Elt.(*stdast.StarExpr)
+				if !ok {
+					return fmt.Errorf("`%s` `useGeneratedKeys` is true, but `%s` is not a pointer array type", f.statement.ID(), param1.Name())
+				}
+				// todo check the starType.X is a struct type
+				_ = starType
+			} else {
+				// not an array type
+				// ensure it is a pointer struct type
+				starType, ok := param1.Field.Type.(*stdast.StarExpr)
+				if !ok {
+					return fmt.Errorf("`%s` `useGeneratedKeys` is true, but `%s` is not a pointer type", f.statement.ID(), param1.Name())
+				}
+				// todo check the starType.X is a struct type
+				_ = starType
+			}
+		}
+	default:
+		// more than 2 parameters
+		// if `useGeneratedKeys` is true
+		useGeneratedKeys := f.statement.Attribute("useGeneratedKeys")
+		if useGeneratedKeys == "true" {
+			return fmt.Errorf("`%s` `useGeneratedKeys` is true, but there are more than 2 parameters", f.statement.ID())
+		}
 	}
-	if f.function.Params()[0].TypeName() != "context.Context" {
-		return fmt.Errorf("%s: first argument must be context.Context", f.function.Name())
-	}
-	if len(f.function.Results()) == 0 {
+
+	// check results
+
+	results := f.function.Results()
+
+	switch len(results) {
+	case 0:
 		return fmt.Errorf("%s: must have one result", f.function.Name())
-	}
-	if len(f.function.Results()) == 1 {
-		if f.function.Results()[0].TypeName() != "error" {
+	case 1:
+		if results[0].TypeName() != "error" {
 			return fmt.Errorf("%s: result must be error", f.function.Name())
 		}
-	}
-	if len(f.function.Results()) == 2 {
-		if f.function.Results()[0].TypeName() != "sql.Result" {
+	case 2:
+		if results[0].TypeName() != "sql.Result" {
 			return fmt.Errorf("%s: first result must be sql.Result", f.function.Name())
 		}
-		if f.function.Results()[1].TypeName() != "error" {
+		if results[1].TypeName() != "error" {
 			return fmt.Errorf("%s: second result must be error", f.function.Name())
 		}
-	}
-	if len(f.function.Results()) > 2 {
+	default:
 		return fmt.Errorf("%s: must have at most two results", f.function.Name())
 	}
 	return nil
