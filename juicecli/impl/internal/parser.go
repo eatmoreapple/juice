@@ -214,6 +214,10 @@ func (p *Parser) parse() error {
 
 	generator := newGenerator(p.namespace, cfg, impl)
 
+	reader, err := generator.Generate()
+	if err != nil {
+		return err
+	}
 	var output io.Writer = os.Stdout
 	if p.output != "" {
 		output, err = os.Create(p.output)
@@ -222,7 +226,7 @@ func (p *Parser) parse() error {
 		}
 		defer func() { _ = output.(io.Closer).Close() }()
 	}
-	_, err = generator.WriteTo(output)
+	_, err = io.Copy(output, reader)
 	return err
 }
 
