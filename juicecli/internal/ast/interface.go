@@ -84,35 +84,7 @@ func (v *Value) Name() string {
 
 // ImportPackageName returns the package name of the import.
 func (v *Value) ImportPackageName() string {
-	switch t := v.Type.(type) {
-	case *ast.StarExpr:
-		switch t := t.X.(type) {
-		case *ast.Ident:
-			return t.Name
-		case *ast.SelectorExpr:
-			if ident, ok := t.X.(*ast.Ident); ok {
-				return ident.Name
-			}
-		}
-		if ident, ok := t.X.(*ast.Ident); ok {
-			return ident.Name
-		}
-	case *ast.SelectorExpr:
-		if ident, ok := t.X.(*ast.Ident); ok {
-			return ident.Name
-		}
-	case *ast.ArrayType:
-		if ident, ok := t.Elt.(*ast.Ident); ok {
-			return ident.Name
-		}
-	case *ast.MapType:
-		if ident, ok := t.Value.(*ast.Ident); ok {
-			return ident.Name
-		}
-	case *ast.Ident:
-		return t.Name
-	}
-	return ""
+	return importTypeName(v.Type)
 }
 
 func (v *Value) IsBuiltInType() bool {
@@ -258,4 +230,20 @@ func (f *Function) Results() ValueGroup {
 // Imports returns all imports of function.
 func (f *Function) Imports(pkgImports []*ast.ImportSpec) ImportGroup {
 	return append(f.Params().Imports(pkgImports), f.Results().Imports(pkgImports)...).Uniq()
+}
+
+func importTypeName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return importTypeName(t.X)
+	case *ast.SelectorExpr:
+		return importTypeName(t.X)
+	case *ast.ArrayType:
+		return importTypeName(t.Elt)
+	case *ast.MapType:
+		return importTypeName(t.Value)
+	case *ast.Ident:
+		return t.Name
+	}
+	return ""
 }
