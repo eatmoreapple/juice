@@ -26,6 +26,24 @@ import (
 	"github.com/eatmoreapple/juice/juicecli/internal/ast"
 )
 
+type funcBodyWriter struct {
+	builder strings.Builder
+}
+
+func (w *funcBodyWriter) FWrite(format string, args ...interface{}) {
+	w.FTabWrite(1, format, args...)
+}
+
+func (w *funcBodyWriter) FTabWrite(tab int, format string, args ...interface{}) {
+	w.builder.WriteString("\n")
+	w.builder.WriteString(strings.Repeat("\t", tab))
+	w.builder.WriteString(fmt.Sprintf(format, args...))
+}
+
+func (w *funcBodyWriter) String() string {
+	return w.builder.String()
+}
+
 type Function struct {
 	method   *ast.Function
 	receiver string
@@ -125,10 +143,9 @@ func (f *readFuncBodyMaker) check() error {
 }
 
 func (f *readFuncBodyMaker) build() {
-	var builder = new(strings.Builder)
-
-	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
-	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
+	var builder funcBodyWriter
+	builder.FWrite("manager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
+	builder.FWrite("var iface %s = %s", f.function.typename, f.function.receiverAlias())
 
 	var body string
 
@@ -147,23 +164,30 @@ func (f *readFuncBodyMaker) build() {
 		if isPointer {
 			retType = retType[1:]
 		}
-		fmt.Fprintf(builder, "\n\trows, err := manager.Object(iface.%s).QueryContext(%s, %s)",
-			f.function.Name(), f.function.Params().NameAt(ast.ParamPrefix, 0), query)
-		fmt.Fprintf(builder, "\n\tif err != nil {")
-		fmt.Fprintf(builder, "\n\t\treturn nil, err")
-		fmt.Fprintf(builder, "\n\t}")
-		fmt.Fprintf(builder, "\n\tdefer func() { _ = rows.Close() }()")
+		builder.FWrite("rows, err := manager.Object(iface.%s).QueryContext(%s, %s)",
+			f.function.Name(),
+			f.function.Params().NameAt(ast.ParamPrefix, 0),
+			query,
+		)
+		//fmt.Fprintf(builder, "\n\trows, err := manager.Object(iface.%s).QueryContext(%s, %s)",
+		//	f.function.Name(), f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+		builder.FWrite("if err != nil {")
+		builder.FTabWrite(1, "return nil, err")
+		builder.FWrite("}")
+		builder.FWrite("defer func() { _ = rows.Close() }()")
 		if !isPointer {
-			fmt.Fprintf(builder, "\n\treturn juice.List[%s](rows)", retType)
+			builder.FWrite("return juice.List[%s](rows)", retType)
 		} else {
-			fmt.Fprintf(builder, "\n\tret, err := juice.List[%s](rows)", retType)
-			fmt.Fprintf(builder, "\n\tvar result = make([]*%s, len(ret))", retType)
-			fmt.Fprintf(builder, "\n\tfor index, item := range ret {")
-			fmt.Fprintf(builder, "\n\t\tresult[index] = &item")
-			fmt.Fprintf(builder, "\n\t}")
-			fmt.Fprintf(builder, "\n\treturn result, err")
+			builder.FWrite("ret, err := juice.List[%s](rows)", retType)
+			builder.FWrite("if err != nil {")
+			builder.FTabWrite(1, "return nil, err")
+			builder.FWrite("}")
+			builder.FWrite("var result = make([]*%s, len(ret))", retType)
+			builder.FWrite("for index, item := range ret {")
+			builder.FTabWrite(1, "result[index] = &item")
+			builder.FWrite("}")
+			builder.FWrite("return result, err")
 		}
-		body = formatCode(builder.String())
 	} else {
 		// if is a pointer
 		isPointer := strings.HasPrefix(retType, "*")
@@ -172,15 +196,15 @@ func (f *readFuncBodyMaker) build() {
 			// in order to get the real type and use it to create the object without using reflection.
 			retType = retType[1:]
 		}
-		fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)", retType, f.function.Name())
-		fmt.Fprintf(builder, "\n\tret, err := executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+		builder.FWrite("executor := juice.NewGenericManager[%s](manager).Object(iface.%s)", retType, f.function.Name())
+		builder.FWrite("ret, err := executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
 		if isPointer {
-			fmt.Fprintf(builder, "\n\treturn &ret, err")
+			builder.FWrite("return &ret, err")
 		} else {
-			fmt.Fprintf(builder, "\n\treturn ret, err")
+			builder.FWrite("return ret, err")
 		}
-		body = formatCode(builder.String())
 	}
+	body = formatCode(builder.String())
 
 	f.function.body = body
 }
@@ -271,16 +295,17 @@ func (f *writeFuncBodyMaker) check() error {
 }
 
 func (f *writeFuncBodyMaker) build() {
-	var builder = new(strings.Builder)
-	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
-	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
-	fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[any](manager).Object(iface.%s)", f.function.Name())
+	//var builder = new(strings.Builder)
+	var builder funcBodyWriter
+	builder.FWrite("manager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
+	builder.FWrite("var iface %s = %s", f.function.typename, f.function.receiverAlias())
+	builder.FWrite("executor := juice.NewGenericManager[any](manager).Object(iface.%s)", f.function.Name())
 	query := formatParams(f.function.Params())
 	if len(f.function.Results()) == 1 {
-		fmt.Fprintf(builder, "\n\t_, err := executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
-		fmt.Fprintf(builder, "\n\treturn err")
+		builder.FWrite("_, err := executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
+		builder.FWrite("return err")
 	} else {
-		fmt.Fprintf(builder, "\n\treturn executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
+		builder.FWrite("return executor.ExecContext(%s, %s)", f.function.Params()[0].Name(), query)
 	}
 	body := formatCode(builder.String())
 	f.function.body = body
