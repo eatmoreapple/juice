@@ -17,6 +17,7 @@ limitations under the License.
 package internal
 
 import (
+	"errors"
 	"fmt"
 	stdast "go/ast"
 	"strings"
@@ -125,25 +126,62 @@ func (f *readFuncBodyMaker) check() error {
 
 func (f *readFuncBodyMaker) build() {
 	var builder = new(strings.Builder)
+
 	fmt.Fprintf(builder, "\n\tmanager := juice.ManagerFromContext(%s)", f.function.Params().NameAt(ast.ParamPrefix, 0))
 	fmt.Fprintf(builder, "\n\tvar iface %s = %s", f.function.typename, f.function.receiverAlias())
+
+	var body string
+
 	retType := f.function.Results()[0].TypeName()
-	// if is a pointer
-	isPointer := strings.HasPrefix(retType, "*")
-	if isPointer {
-		// if is a pointer, remove the *
-		// in order to get the real type and use it to create the object without using reflection.
-		retType = retType[1:]
-	}
-	fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)", retType, f.function.Name())
 	query := formatParams(f.function.Params())
-	fmt.Fprintf(builder, "\n\tret, err := executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
-	if isPointer {
-		fmt.Fprintf(builder, "\n\treturn &ret, err")
+
+	isArrayType := strings.HasPrefix(retType, "[]")
+
+	_, err := f.statement.ResultMap()
+
+	// if isArrayType is true and the error is ErrResultMapNotSet
+	if isArrayType && errors.Is(err, juice.ErrResultMapNotSet) {
+		// if is an array type
+		retType = retType[2:]
+		isPointer := strings.HasPrefix(retType, "*")
+		if isPointer {
+			retType = retType[1:]
+		}
+		fmt.Fprintf(builder, "\n\trows, err := manager.Object(iface.%s).QueryContext(%s, %s)",
+			f.function.Name(), f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+		fmt.Fprintf(builder, "\n\tif err != nil {")
+		fmt.Fprintf(builder, "\n\t\treturn nil, err")
+		fmt.Fprintf(builder, "\n\t}")
+		fmt.Fprintf(builder, "\n\tdefer func() { _ = rows.Close() }()")
+		if !isPointer {
+			fmt.Fprintf(builder, "\n\treturn juice.List[%s](rows)", retType)
+		} else {
+			fmt.Fprintf(builder, "\n\tret, err := juice.List[%s](rows)", retType)
+			fmt.Fprintf(builder, "\n\tvar result = make([]*%s, len(ret))", retType)
+			fmt.Fprintf(builder, "\n\tfor index, item := range ret {")
+			fmt.Fprintf(builder, "\n\t\tresult[index] = &item")
+			fmt.Fprintf(builder, "\n\t}")
+			fmt.Fprintf(builder, "\n\treturn result, err")
+		}
+		body = formatCode(builder.String())
 	} else {
-		fmt.Fprintf(builder, "\n\treturn ret, err")
+		// if is a pointer
+		isPointer := strings.HasPrefix(retType, "*")
+		if isPointer {
+			// if is a pointer, remove the *
+			// in order to get the real type and use it to create the object without using reflection.
+			retType = retType[1:]
+		}
+		fmt.Fprintf(builder, "\n\texecutor := juice.NewGenericManager[%s](manager).Object(iface.%s)", retType, f.function.Name())
+		fmt.Fprintf(builder, "\n\tret, err := executor.QueryContext(%s, %s)", f.function.Params().NameAt(ast.ParamPrefix, 0), query)
+		if isPointer {
+			fmt.Fprintf(builder, "\n\treturn &ret, err")
+		} else {
+			fmt.Fprintf(builder, "\n\treturn ret, err")
+		}
+		body = formatCode(builder.String())
 	}
-	body := formatCode(builder.String())
+
 	f.function.body = body
 }
 
