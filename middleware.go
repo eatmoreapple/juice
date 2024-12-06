@@ -239,13 +239,13 @@ func (m *useGeneratedKeysMiddleware) ExecContext(stmt Statement, next ExecHandle
 			if keyIncrement == 0 {
 				keyIncrement = 1
 			}
-			// batchInsertIDStrategy is the strategy to generate the key in batch insert
-			batchInsertIDStrategy := stmt.Attribute("batchInsertIDStrategy")
+			// batchInsertIDGenerateStrategy is the strategy to generate the key in batch insert
+			batchInsertIDStrategy := stmt.Attribute("batchInsertIDGenerateStrategy")
 			keyGenerator = &batchKeyGenerator{
-				keyProperty:           keyProperty,
-				id:                    id,
-				keyIncrement:          keyIncrement,
-				batchInsertIDStrategy: batchInsertIDStrategy,
+				keyProperty:                   keyProperty,
+				id:                            id,
+				keyIncrement:                  keyIncrement,
+				batchInsertIDGenerateStrategy: batchInsertIDStrategy,
 			}
 		default:
 			return nil, errStructPointerOrSliceArrayRequired
