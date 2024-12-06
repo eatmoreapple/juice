@@ -182,10 +182,10 @@ func (s singleKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 
 // batchKeyGenerator is a struct that holds an id, a key property, and a key increment for generating keys in batch.
 type batchKeyGenerator struct {
-	id                    int64
-	keyProperty           string
-	keyIncrement          int64
-	batchInsertIDStrategy string
+	id                            int64
+	keyProperty                   string
+	keyIncrement                  int64
+	batchInsertIDGenerateStrategy string
 }
 
 // GenerateKeyTo generates keys for each element in the given reflect.Value slice based on the key property and sets them to the id.
@@ -222,13 +222,13 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 	}
 
 	// determine the batch insert id strategy
-	if s.batchInsertIDStrategy == "" {
-		s.batchInsertIDStrategy = _INCREMENTAL
+	if s.batchInsertIDGenerateStrategy == "" {
+		s.batchInsertIDGenerateStrategy = _INCREMENTAL
 	}
 
 	var batchInsertIDGenerateStrategy BatchInsertIDGenerateStrategy
 
-	switch s.batchInsertIDStrategy {
+	switch s.batchInsertIDGenerateStrategy {
 	case _INCREMENTAL:
 		batchInsertIDGenerateStrategy = &IncrementalBatchInsertIDStrategy{
 			ID:           s.id,
@@ -246,7 +246,7 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 			keyProperty:  s.keyProperty,
 		}
 	default:
-		return fmt.Errorf("unknown batch insert id strategy: %s", s.batchInsertIDStrategy)
+		return fmt.Errorf("unknown batch insert id strategy: %s", s.batchInsertIDGenerateStrategy)
 	}
 	return batchInsertIDGenerateStrategy.BatchInsertID(v)
 }

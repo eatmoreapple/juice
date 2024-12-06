@@ -309,6 +309,7 @@
             <xs:attribute name="useGeneratedKeys" type="xs:boolean"/>
             <xs:attribute name="keyProperty" type="xs:string"/>
             <xs:attribute name="batchSize" type="xs:int"/>
+            <xs:attribute name="batchInsertIDGenerateStrategy" type="batchInsertIDGenerateStrategyType"/>
         </xs:complexType>
     </xs:element>
 
@@ -373,5 +374,13 @@
             <xs:attribute name="id" type="xs:string" use="required"/>
         </xs:complexType>
     </xs:element>
+
+
+    <xs:simpleType name="batchInsertIDGenerateStrategyType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="INCREMENTAL"/>
+            <xs:enumeration value="DECREMENTAL"/>
+        </xs:restriction>
+    </xs:simpleType>
 
 </xs:schema>
