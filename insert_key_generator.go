@@ -26,6 +26,83 @@ import (
 	"github.com/eatmoreapple/juice/internal/reflectlite"
 )
 
+// BatchInsertIDGenerateStrategy is an interface that defines a method for generating batch insert IDs.
+type BatchInsertIDGenerateStrategy interface {
+	// BatchInsertID generates batch insert IDs for the given reflect.Value slice.
+	BatchInsertID(sliceReflectValue reflect.Value) error
+}
+
+type IncrementalBatchInsertIDStrategy struct {
+	ID           int64
+	isPtr        bool
+	indexes      []int
+	keyIncrement int64
+	keyProperty  string
+}
+
+func (in IncrementalBatchInsertIDStrategy) BatchInsertID(v reflect.Value) error {
+	length := v.Len()
+	pk := in.ID
+	for i := 0; i < length; i++ {
+		value := v.Index(i)
+		if in.isPtr {
+			value = value.Elem()
+		}
+		// try to find the field indexes based on the key property
+		// and ensure the field is valid and can be converted to int
+		value = value.FieldByIndex(in.indexes)
+		if !value.IsValid() {
+			return fmt.Errorf("invalid field %s", in.keyProperty)
+		}
+		if !value.CanInt() {
+			return fmt.Errorf("can not convert %s to int", in.keyProperty)
+		}
+		if i != 0 {
+			pk += in.keyIncrement
+		}
+		value.SetInt(pk)
+	}
+	return nil
+}
+
+type DecrementalBatchInsertIDStrategy struct {
+	ID           int64
+	isPtr        bool
+	indexes      []int
+	keyIncrement int64
+	keyProperty  string
+}
+
+func (in DecrementalBatchInsertIDStrategy) BatchInsertID(v reflect.Value) error {
+	length := v.Len()
+	pk := in.ID
+	for i := length - 1; i >= 0; i-- {
+		value := v.Index(i)
+		if in.isPtr {
+			value = value.Elem()
+		}
+		// try to find the field indexes based on the key property
+		// and ensure the field is valid and can be converted to int
+		value = value.FieldByIndex(in.indexes)
+		if !value.IsValid() {
+			return fmt.Errorf("invalid field %s", in.keyProperty)
+		}
+		if !value.CanInt() {
+			return fmt.Errorf("can not convert %s to int", in.keyProperty)
+		}
+		if i != length-1 {
+			pk -= in.keyIncrement
+		}
+		value.SetInt(pk)
+	}
+	return nil
+}
+
+const (
+	_INCREMENTAL = "INCREMENTAL"
+	_DECREMENTAL = "DECREMENTAL"
+)
+
 // selectKeyGenerator is an interface that defines a method to generate keys for a given reflect.Value.
 type selectKeyGenerator interface {
 	GenerateKeyTo(v reflect.Value) error
@@ -105,9 +182,10 @@ func (s singleKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 
 // batchKeyGenerator is a struct that holds an id, a key property, and a key increment for generating keys in batch.
 type batchKeyGenerator struct {
-	id           int64
-	keyProperty  string
-	keyIncrement int64
+	id                    int64
+	keyProperty           string
+	keyIncrement          int64
+	batchInsertIDStrategy string
 }
 
 // GenerateKeyTo generates keys for each element in the given reflect.Value slice based on the key property and sets them to the id.
@@ -142,26 +220,33 @@ func (s batchKeyGenerator) GenerateKeyTo(v reflect.Value) error {
 	if len(indexes) == 0 {
 		return nil
 	}
-	length := v.Len()
-	pk := s.id
-	for i := length - 1; i >= 0; i-- {
-		value := v.Index(i)
-		if isPrt {
-			value = value.Elem()
-		}
-		// try to find the field indexes based on the key property
-		// and ensure the field is valid and can be converted to int
-		value = value.FieldByIndex(indexes)
-		if !value.IsValid() {
-			return fmt.Errorf("invalid field %s", s.keyProperty)
-		}
-		if !value.CanInt() {
-			return fmt.Errorf("can not convert %s to int", s.keyProperty)
-		}
-		if i != length-1 {
-			pk -= s.keyIncrement
-		}
-		value.SetInt(pk)
+
+	// determine the batch insert id strategy
+	if s.batchInsertIDStrategy == "" {
+		s.batchInsertIDStrategy = _INCREMENTAL
 	}
-	return nil
+
+	var batchInsertIDGenerateStrategy BatchInsertIDGenerateStrategy
+
+	switch s.batchInsertIDStrategy {
+	case _INCREMENTAL:
+		batchInsertIDGenerateStrategy = &IncrementalBatchInsertIDStrategy{
+			ID:           s.id,
+			isPtr:        isPrt,
+			indexes:      indexes,
+			keyIncrement: s.keyIncrement,
+			keyProperty:  s.keyProperty,
+		}
+	case _DECREMENTAL:
+		batchInsertIDGenerateStrategy = &DecrementalBatchInsertIDStrategy{
+			ID:           s.id,
+			isPtr:        isPrt,
+			indexes:      indexes,
+			keyIncrement: s.keyIncrement,
+			keyProperty:  s.keyProperty,
+		}
+	default:
+		return fmt.Errorf("unknown batch insert id strategy: %s", s.batchInsertIDStrategy)
+	}
+	return batchInsertIDGenerateStrategy.BatchInsertID(v)
 }
