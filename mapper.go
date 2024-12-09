@@ -14,7 +14,6 @@ type Mapper struct {
 	statements map[string]*xmlSQLStatement
 	sqlNodes   map[string]*SQLNode
 	attrs      map[string]string
-	resultMaps map[string]*resultMapNode
 }
 
 // Namespace returns the namespace of the mapper.
@@ -42,17 +41,6 @@ func (m *Mapper) setSqlNode(node *SQLNode) error {
 		return fmt.Errorf("sql node %s already exists", node.ID())
 	}
 	m.sqlNodes[node.ID()] = node
-	return nil
-}
-
-func (m *Mapper) setResultMap(node *resultMapNode) error {
-	if m.resultMaps == nil {
-		m.resultMaps = make(map[string]*resultMapNode)
-	}
-	if _, exists := m.resultMaps[node.ID()]; exists {
-		return fmt.Errorf("result map %s already exists", node.ID())
-	}
-	m.resultMaps[node.ID()] = node
 	return nil
 }
 
@@ -97,30 +85,8 @@ func (m *Mapper) getSQLNodeFromNamespace(id string) (Node, error) {
 	return node, nil
 }
 
-func (m *Mapper) GetResultMapByID(id string) (ResultMap, error) {
-	retMap, exists := m.resultMaps[id]
-	if !exists {
-		return nil, fmt.Errorf("result map %s not found", id)
-	}
-	return retMap, nil
-}
-
 func (m *Mapper) Configuration() IConfiguration {
 	return m.mappers.Configuration()
-}
-
-// checkResultMap checks xmlSQLStatement's resultMap attribute is valid or not.
-func (m *Mapper) checkResultMap() error {
-	for _, stmt := range m.statements {
-		resultMapName := stmt.attrs["resultMap"]
-		if resultMapName == "" {
-			continue
-		}
-		if _, err := m.GetResultMapByID(resultMapName); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Mappers is a map of mappers.

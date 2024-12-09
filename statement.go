@@ -114,11 +114,10 @@ func (s *xmlSQLStatement) Configuration() IConfiguration {
 
 // ResultMap returns the ResultMap of the xmlSQLStatement.
 func (s *xmlSQLStatement) ResultMap() (ResultMap, error) {
-	key := s.Attribute("resultMap")
-	if key == "" {
-		return nil, ErrResultMapNotSet
-	}
-	return s.mapper.GetResultMapByID(key)
+	// TODO: implement the ResultMap method.
+	// why is this not implemented?
+	// result map implementation is too complex, and it's not a common feature.
+	return nil, ErrResultMapNotSet
 }
 
 // Build builds the xmlSQLStatement with the given parameter.
