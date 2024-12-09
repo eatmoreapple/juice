@@ -105,3 +105,14 @@ func Transaction(ctx context.Context, handler func(ctx context.Context) error, o
 	}
 	return errors.Join(err, tx.Commit())
 }
+
+// NestedTransaction executes a handler function with transaction support.
+// If the manager is a TxManager, it will execute the handler within the existing transaction.
+// Otherwise, it will create a new transaction and execute the handler within the new transaction.
+func NestedTransaction(ctx context.Context, handler func(ctx context.Context) error, opts ...TransactionOptionFunc) (err error) {
+	manager := ManagerFromContext(ctx)
+	if IsTxManager(manager) {
+		return handler(ctx)
+	}
+	return Transaction(ctx, handler, opts...)
+}
