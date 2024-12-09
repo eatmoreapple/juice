@@ -273,7 +273,7 @@ func (r *resultMapNode) appendValuesWithPrimaryKey(ret reflect.Value, values []r
 // resultToSlice scans rows to slice with given entity
 func (r *resultMapNode) resultToSlice(rv reflect.Value, rows *sql.Rows) error {
 	if rv.Kind() != reflect.Slice {
-		return errors.New("slice element must be a struct")
+		return errors.New("destination must be a slice")
 	}
 	el := rv.Type().Elem()
 	isPtr := el.Kind() == reflect.Ptr
@@ -379,11 +379,21 @@ func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string
 func (s *rowDestination) setIndexes(rv reflect.Value, columns []string) {
 	tp := rv.Type()
 	s.indexes = make([][]int, len(columns))
-	s.findFromStruct(tp, columns, nil)
+
+	// columnIndex is a map to store the index of the column.
+	columnIndex := func() map[string]int {
+		m := make(map[string]int)
+		for i, column := range columns {
+			m[column] = i
+		}
+		return m
+	}()
+
+	s.findFromStruct(tp, columns, columnIndex, nil)
 }
 
 // findFromStruct finds the index from the given struct type.
-func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk []int) {
+func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, columnIndex map[string]int, walk []int) {
 
 	// finished is a helper function to check if the indexes completed or not.
 	finished := func() bool {
@@ -394,15 +404,6 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 		}
 		return true
 	}
-
-	// columnIndex is a map to store the index of the column.
-	columnIndex := func() map[string]int {
-		m := make(map[string]int)
-		for i, column := range columns {
-			m[column] = i
-		}
-		return m
-	}()
 
 	// walk into the struct
 	for i := 0; i < tp.NumField(); i++ {
@@ -418,7 +419,7 @@ func (s *rowDestination) findFromStruct(tp reflect.Type, columns []string, walk 
 		}
 		// if the field is anonymous and the type is struct, we can walk into it.
 		if deepScan := field.Anonymous && field.Type.Kind() == reflect.Struct && len(tag) == 0; deepScan {
-			s.findFromStruct(field.Type, columns, append(walk, i))
+			s.findFromStruct(field.Type, columns, columnIndex, append(walk, i))
 			continue
 		}
 		// find the index of the column
