@@ -170,14 +170,25 @@ type ColumnDestination interface {
 	Destination(rv reflect.Value, column []string) ([]any, error)
 }
 
-// rowDestination is a ColumnDestination which can be used to scan a row.
+// rowDestination implements ColumnDestination interface for mapping SQL query results
+// to struct fields. It handles the mapping between database columns and struct fields
+// by maintaining the field indexes and managing unmapped columns.
 type rowDestination struct {
-	// indexes stores the index of the column in the struct.
-	// this could not be used to for deep struct scan.
+	// indexes stores the mapping between column positions and struct field indexes.
+	// Each element is a slice of integers representing the path to the struct field:
+	// - Empty slice means the column has no corresponding struct field
+	// - Single integer means direct field access
+	// - Multiple integers represent nested struct field access
 	indexes [][]int
 
-	// checked is a flag to check if the dest has sql.RawBytes
+	// checked indicates whether the destination has been validated for sql.RawBytes.
+	// This flag helps avoid redundant checks for the same rowDestination instance.
 	checked bool
+
+	// discard is a placeholder destination for SQL columns that don't have
+	// corresponding struct fields. Each rowDestination instance maintains its
+	// own discard variable to ensure thread safety during concurrent scans.
+	discard any
 }
 
 // Destination returns the destination for the given reflect value and column.
@@ -224,7 +235,7 @@ func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string
 	dest := make([]any, len(columns))
 	for i, indexes := range s.indexes {
 		if len(indexes) == 0 {
-			dest[i] = new(any)
+			dest[i] = &s.discard
 		} else {
 			dest[i] = rv.FieldByIndex(indexes).Addr().Interface()
 		}
