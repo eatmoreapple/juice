@@ -28,8 +28,23 @@ var ErrInvalidManager = errors.New("juice: invalid manager")
 // ErrCommitOnSpecific is an error for commit on specific transaction.
 var ErrCommitOnSpecific = errors.New("juice: commit on specific transaction")
 
-// transactionOptionFunc is a function to set the transaction options.
-type transactionOptionFunc func(options *sql.TxOptions)
+// TransactionOptionFunc is a function to set the transaction options.
+// It is used to set the transaction options for the transaction.
+type TransactionOptionFunc func(options *sql.TxOptions)
+
+// WithIsolationLevel sets the isolation level for the transaction.
+func WithIsolationLevel(level sql.IsolationLevel) TransactionOptionFunc {
+	return func(options *sql.TxOptions) {
+		options.Isolation = level
+	}
+}
+
+// WithReadOnly sets the read-only flag for the transaction.
+func WithReadOnly(readOnly bool) TransactionOptionFunc {
+	return func(options *sql.TxOptions) {
+		options.ReadOnly = readOnly
+	}
+}
 
 // Transaction executes a transaction with the given handler.
 // If the manager is not an instance of Engine, it will return ErrInvalidManager.
@@ -47,7 +62,7 @@ type transactionOptionFunc func(options *sql.TxOptions)
 //		}); err != nil {
 //			// handle error
 //		}
-func Transaction(ctx context.Context, handler func(ctx context.Context) error, opts ...transactionOptionFunc) (err error) {
+func Transaction(ctx context.Context, handler func(ctx context.Context) error, opts ...TransactionOptionFunc) (err error) {
 	manager := ManagerFromContext(ctx)
 	engine, ok := manager.(*Engine)
 	if !ok {
