@@ -205,8 +205,3 @@ func IsTxManager(manager Manager) bool {
 	_, ok := manager.(TxManager)
 	return ok
 }
-
-// HasTxManager returns true if the context has a TxManager.
-func HasTxManager(ctx context.Context) bool {
-	return IsTxManager(ManagerFromContext(ctx))
-}
