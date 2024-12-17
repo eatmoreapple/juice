@@ -16,7 +16,10 @@ limitations under the License.
 
 package juice
 
-import "database/sql"
+import (
+	"database/sql"
+	"reflect"
+)
 
 // RowScanner is an interface that provides a custom mechanism for mapping database rows
 // to Go structures. It serves as an extension point in the data binding system,
@@ -44,3 +47,6 @@ import "database/sql"
 type RowScanner interface {
 	ScanRows(rows *sql.Rows) error
 }
+
+// rowScannerType is the type of the RowScanner interface
+var rowScannerType = reflect.TypeOf((*RowScanner)(nil)).Elem()

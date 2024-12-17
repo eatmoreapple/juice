@@ -40,42 +40,52 @@ type SingleRowResultMap struct{}
 // It maps the data from the SQL row to the provided reflect.Value.
 // If more than one row is returned from the query, it returns an ErrTooManyRows error.
 func (SingleRowResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
+	// Validate input is a pointer
 	if rv.Kind() != reflect.Ptr {
 		return ErrPointerRequired
 	}
-	// if it has any row data
+
+	// Check if there is any row and handle potential errors
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
-			return err
+			return fmt.Errorf("error occurred while fetching row: %w", err)
 		}
 		return sql.ErrNoRows
 	}
 
+	// Get column information
 	columns, err := rows.Columns()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get columns: %w", err)
 	}
 
-	rv = reflect.Indirect(rv)
+	// Get the actual value to map into
+	targetValue := reflect.Indirect(rv)
 
-	var cd ColumnDestination = &rowDestination{}
+	// Create destination mapper
+	columnDest := &rowDestination{}
 
-	dest, err := cd.Destination(rv, columns)
+	// Map columns to struct fields and create scan destinations
+	dest, err := columnDest.Destination(targetValue, columns)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create destination mapping: %w", err)
 	}
-	// scan the row data to dest
+
+	// Scan row data into destinations
 	if err = rows.Scan(dest...); err != nil {
-		return err
+		return fmt.Errorf("failed to scan row: %w", err)
 	}
+
+	// Check for any errors that occurred during row scanning
 	if err = rows.Err(); err != nil {
-		return err
+		return fmt.Errorf("error occurred during row scanning: %w", err)
 	}
-	// return ErrTooManyRows if there are more than one row data
-	// it means the result is a slice, but the destination is not
+
+	// Ensure there is only one row
 	if rows.Next() {
 		return ErrTooManyRows
 	}
+
 	return nil
 }
 
@@ -85,83 +95,133 @@ type MultiRowsResultMap struct {
 }
 
 // MapTo implements ResultMapper interface.
-// It maps the data from the SQL row to the provided reflect.Value.
-// It maps each row to a new element in a slice.
+// It maps the data from the SQL rows to the provided reflect.Value.
+// The reflect.Value must be a pointer to a slice.
+// Each row will be mapped to a new element in the slice.
 func (m MultiRowsResultMap) MapTo(rv reflect.Value, rows *sql.Rows) error {
-
-	if rv.Kind() != reflect.Ptr {
-		return ErrPointerRequired
+	if err := m.validateInput(rv); err != nil {
+		return err
 	}
+	elementType := rv.Elem().Type().Elem()
+	// get the element type and check if it's a pointer
+	isPointer, isElementImplementsScanner := m.resolveTypes(elementType)
 
-	// rv must be a pointer to slice or array
-	rv = rv.Elem()
-
-	// get the element type of slice or array
-	el := rv.Type().Elem()
-
-	// if it's a pointer, get the element type of pointer
-	isPtr := el.Kind() == reflect.Ptr
-
-	// get the element type of pointer
-	if isPtr {
-		el = el.Elem()
-	}
-
+	// initialize element creator if not provided
 	if m.New == nil {
-		m.New = func() reflect.Value { return reflect.New(el) }
+		targetElementType := elementType
+		if isPointer {
+			targetElementType = targetElementType.Elem()
+		}
+		m.New = func() reflect.Value { return reflect.New(targetElementType) }
 	}
 
-	// get columns from rows
-	columns, err := rows.Columns()
+	// map the rows to values
+	values, err := m.mapRows(rows, isPointer, isElementImplementsScanner)
 	if err != nil {
 		return err
 	}
+	target := rv.Elem()
+	// create slice with proper capacity and set the values
+	result := reflect.MakeSlice(target.Type(), 0, len(values))
+	target.Set(reflect.Append(result, values...))
+	return nil
+}
 
-	var cd ColumnDestination = &rowDestination{}
-	// if it's a struct, scan rows to struct
-	// now, we start scan rows
-	values := make([]reflect.Value, 0)
+// validateInput validates that the input reflect.Value is a pointer to a slice
+func (m MultiRowsResultMap) validateInput(rv reflect.Value) error {
+	if rv.Kind() != reflect.Ptr {
+		return fmt.Errorf("%w: expected pointer to slice", ErrPointerRequired)
+	}
+	if rv.Elem().Kind() != reflect.Slice {
+		return fmt.Errorf("expected pointer to slice, got pointer to %v", rv.Elem().Kind())
+	}
+	return nil
+}
+
+// resolveTypes returns the element type, whether it's a pointer, and the actual type
+func (m MultiRowsResultMap) resolveTypes(elementType reflect.Type) (bool, bool) {
+	isPointer := elementType.Kind() == reflect.Ptr
+	pointerType := elementType
+	if !isPointer {
+		pointerType = reflect.PointerTo(elementType)
+	}
+	return isPointer, pointerType.Implements(rowScannerType)
+}
+
+// mapRows maps the rows to a slice of reflect.Values
+func (m MultiRowsResultMap) mapRows(rows *sql.Rows, isPointer bool, useScanner bool) ([]reflect.Value, error) {
+	if useScanner {
+		return m.mapWithRowScanner(rows, isPointer)
+	}
+	return m.mapWithColumnDestination(rows, isPointer)
+}
+
+// mapWithRowScanner maps rows using the RowScanner interface
+func (m MultiRowsResultMap) mapWithRowScanner(rows *sql.Rows, isPointer bool) ([]reflect.Value, error) {
+	// Pre-allocate slice with an initial capacity
+	values := make([]reflect.Value, 0, 8)
 
 	for rows.Next() {
-
-		// make a new element of slice
-		nrv := m.New()
-
-		// get the Value of element
-		nel := nrv.Elem()
-
-		// get the destination of element
-
-		dest, err := cd.Destination(nel, columns)
-
-		if err != nil {
-			return err
-		}
-		// scan rows to dest
-		if err = rows.Scan(dest...); err != nil {
-			return err
+		// Create a new instance. Since RowScanner is implemented with pointer receiver,
+		// we always create a pointer type and use it directly for scanning
+		newValue := m.New()
+		if err := newValue.Interface().(RowScanner).ScanRows(rows); err != nil {
+			return nil, fmt.Errorf("failed to scan row using RowScanner: %w", err)
 		}
 
-		// append the element to
-		if isPtr {
-			values = append(values, nrv)
+		if isPointer {
+			values = append(values, newValue)
 		} else {
-			values = append(values, nel)
+			values = append(values, newValue.Elem())
 		}
 	}
 
-	// has error, return it
-	if err = rows.Err(); err != nil {
-		return err
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error occurred while iterating rows: %w", err)
 	}
 
-	// make a new slice of element type
-	ret := reflect.MakeSlice(rv.Type(), 0, len(values))
+	return values, nil
+}
 
-	// set result to given entity
-	rv.Set(reflect.Append(ret, values...))
+// mapWithColumnDestination maps rows using column destination
+func (m MultiRowsResultMap) mapWithColumnDestination(rows *sql.Rows, isPointer bool) ([]reflect.Value, error) {
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+	columnDest := &rowDestination{}
+	// Pre-allocate slice with an initial capacity
+	values := make([]reflect.Value, 0, 8)
 
-	return nil
+	for rows.Next() {
+		// Create a new instance and get its underlying value for column mapping
+		newValue := m.New()
+		elementValue := newValue.Elem()
+
+		// Map database columns to struct fields and create scan destinations
+		dest, err := columnDest.Destination(elementValue, columns)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get destination: %w", err)
+		}
+
+		// Scan the current row into the destinations
+		if err = rows.Scan(dest...); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		// Append either the pointer or the value based on the target type
+		if isPointer {
+			values = append(values, newValue)
+		} else {
+			values = append(values, elementValue)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error occurred while iterating rows: %w", err)
+	}
+
+	return values, nil
 }
 
 // ColumnDestination is a column destination which can be used to scan a row.
@@ -225,7 +285,7 @@ func (s *rowDestination) destination(rv reflect.Value, columns []string) ([]any,
 	if rv.Kind() == reflect.Struct {
 		return s.destinationForStruct(rv, columns)
 	}
-	return nil, fmt.Errorf("expected struct, but got %s", rv.Type())
+	return nil, fmt.Errorf("expected struct, but got %s", rv.Kind())
 }
 
 func (s *rowDestination) destinationForStruct(rv reflect.Value, columns []string) ([]any, error) {
