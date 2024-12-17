@@ -57,13 +57,17 @@ func (m *Mapper) Prefix() string {
 }
 
 func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
-	// first, try to get sql node from current namespace.
-	node, exists := m.sqlNodes[id]
-	if !exists {
-		// if not exists, try to get sql node from other namespace.
+	// if the id is not cross-namespace
+	isCrossNamespace := strings.Contains(id, ".")
+	if !isCrossNamespace {
+		node, exists := m.sqlNodes[id]
+		if !exists {
+			return nil, &ErrSQLNodeNotFound{NodeName: id, MapperName: m.namespace}
+		}
+		return node, nil
+	} else {
 		return m.mappers.GetSQLNodeByID(id)
 	}
-	return node, nil
 }
 
 // ErrSQLNodeNotFound indicates that the SQL node was not found in the mapper
