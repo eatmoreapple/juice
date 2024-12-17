@@ -109,7 +109,7 @@ func (s *xmlSQLStatement) Action() Action {
 
 // Configuration returns the configuration of the xmlSQLStatement.
 func (s *xmlSQLStatement) Configuration() IConfiguration {
-	return s.mapper.Configuration()
+	return s.mapper.mappers.Configuration()
 }
 
 // ResultMap returns the ResultMap of the xmlSQLStatement.

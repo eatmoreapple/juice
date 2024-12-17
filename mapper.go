@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/eatmoreapple/juice/internal/container"
 )
 
 // Mapper defines a set of statements.
@@ -59,82 +61,91 @@ func (m *Mapper) GetSQLNodeByID(id string) (Node, error) {
 	node, exists := m.sqlNodes[id]
 	if !exists {
 		// if not exists, try to get sql node from other namespace.
-		return m.getSQLNodeFromNamespace(id)
+		return m.mappers.GetSQLNodeByID(id)
 	}
 	return node, nil
 }
 
-// getSQLNodeFromNamespace gets sql node from other namespace.
-func (m *Mapper) getSQLNodeFromNamespace(id string) (Node, error) {
-	if m.mappers == nil {
-		return nil, errors.New("mappers is nil")
-	}
-	items := strings.Split(id, ".")
-	if len(items) == 1 {
-		return nil, &sqlNodeNotFoundError{id}
-	}
-	namespace, pk := strings.Join(items[:len(items)-1], "."), items[len(items)-1]
-	mapper, exists := m.mappers.GetMapperByNamespace(namespace)
-	if !exists {
-		return nil, &sqlNodeNotFoundError{id}
-	}
-	node, exists := mapper.sqlNodes[pk]
-	if !exists {
-		return nil, &sqlNodeNotFoundError{id}
-	}
-	return node, nil
+// ErrSQLNodeNotFound indicates that the SQL node was not found in the mapper
+type ErrSQLNodeNotFound struct {
+	NodeName   string
+	MapperName string
 }
 
-func (m *Mapper) Configuration() IConfiguration {
-	return m.mappers.Configuration()
+func (e ErrSQLNodeNotFound) Error() string {
+	return fmt.Sprintf("SQL node %q not found in mapper %q", e.NodeName, e.MapperName)
 }
 
-// Mappers is a map of mappers.
+// Mappers is a container for all mappers.
 type Mappers struct {
-	mappers map[string]*Mapper
-	attrs   map[string]string
-	cfg     IConfiguration
+	attrs map[string]string
+	cfg   IConfiguration
+	// mappers uses Trie instead of map because mapper namespaces often share common prefixes
+	// (e.g., "com.example.user", "com.example.order"). Trie provides both memory efficiency
+	// by storing shared prefixes only once and fast prefix-based lookups
+	mappers *container.Trie[*Mapper]
 }
 
 func (m *Mappers) setMapper(key string, mapper *Mapper) error {
 	if prefix := m.Prefix(); prefix != "" {
 		key = fmt.Sprintf("%s.%s", prefix, key)
 	}
-	if _, exists := m.mappers[key]; exists {
+	if m.mappers == nil {
+		m.mappers = container.NewTrie[*Mapper]()
+	}
+	if _, exists := m.mappers.Get(key); exists {
 		return fmt.Errorf("mapper %s already exists", key)
 	}
-	if m.mappers == nil {
-		m.mappers = make(map[string]*Mapper)
-	}
-	m.mappers[key] = mapper
 	mapper.mappers = m
+	m.mappers.Insert(key, mapper)
 	return nil
 }
 
 func (m *Mappers) GetMapperByNamespace(namespace string) (*Mapper, bool) {
-	mapper, exists := m.mappers[namespace]
-	return mapper, exists
+	return m.mappers.Get(namespace)
 }
 
-// GetStatementByID returns a xmlSQLStatement by id.
-// If the xmlSQLStatement is not found, an error is returned.
+func (m *Mappers) getMapperAndKey(id string) (mapper *Mapper, key string, err error) {
+	lastDotIndex := strings.LastIndex(id, ".")
+	if lastDotIndex <= 0 {
+		return nil, "", ErrInvalidStatementID
+	}
+
+	namespace, key := id[:lastDotIndex], id[lastDotIndex+1:]
+	mapper, exists := m.GetMapperByNamespace(namespace)
+	if !exists {
+		return nil, "", ErrMapperNotFound(namespace)
+	}
+	return mapper, key, nil
+}
+
+// GetStatementByID returns a Statement by id.
+// The id should be in the format of "namespace.statementName"
+// For example: "main.UserMapper.SelectUser"
 func (m *Mappers) GetStatementByID(id string) (Statement, error) {
-	items := strings.Split(id, ".")
-	if len(items) == 1 {
-		return nil, fmt.Errorf("invalid xmlSQLStatement id: %s", id)
+	mapper, key, err := m.getMapperAndKey(id)
+	if err != nil {
+		return nil, err
 	}
-	// get the namespace and pk
-	// main.UserMapper.SelectUser => main.UserMapper, SelectUser
-	namespace, pk := strings.Join(items[:len(items)-1], "."), items[len(items)-1]
-	mapper, exists := m.mappers[namespace]
+
+	stmt, exists := mapper.statements[key]
 	if !exists {
-		return nil, fmt.Errorf("mapper `%s` not found", namespace)
-	}
-	stmt, exists := mapper.statements[pk]
-	if !exists {
-		return nil, fmt.Errorf("xmlSQLStatement `%s` not found", id)
+		return nil, &ErrStatementNotFound{StatementName: key, MapperName: mapper.namespace}
 	}
 	return stmt, nil
+}
+
+func (m *Mappers) GetSQLNodeByID(id string) (Node, error) {
+	mapper, key, err := m.getMapperAndKey(id)
+	if err != nil {
+		return nil, err
+	}
+
+	node, exists := mapper.sqlNodes[key]
+	if !exists {
+		return nil, &ErrSQLNodeNotFound{NodeName: key, MapperName: mapper.namespace}
+	}
+	return node, nil
 }
 
 // GetStatement try to one the xmlSQLStatement from the Mappers with the given interface

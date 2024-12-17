@@ -78,18 +78,26 @@ func (e *nodeAttributeConflictError) Error() string {
 	return fmt.Sprintf("node %s has conflicting attribute %s", e.nodeName, e.attrName)
 }
 
-// sqlNodeNotFoundError is an error that is returned when the sql node is not found.
-type sqlNodeNotFoundError struct {
-	nodeName string
-}
-
-// Error returns the error message.
-func (e *sqlNodeNotFoundError) Error() string {
-	return "sql node " + e.nodeName + " not found"
-}
-
 // unreachable is a function that is used to mark unreachable code.
 // nolint:deadcode,unused
 func unreachable() error {
 	panic("unreachable")
+}
+
+// ErrInvalidStatementID indicates that the statement ID format is invalid
+var ErrInvalidStatementID = errors.New("invalid statement id: must be in format namespace.statementName")
+
+// ErrMapperNotFound indicates that the mapper was not found
+type ErrMapperNotFound string
+
+func (e ErrMapperNotFound) Error() string { return fmt.Sprintf("mapper %q not found", string(e)) }
+
+// ErrStatementNotFound indicates that the statement was not found in the mapper
+type ErrStatementNotFound struct {
+	StatementName string
+	MapperName    string
+}
+
+func (e ErrStatementNotFound) Error() string {
+	return fmt.Sprintf("statement %q not found in mapper %q", e.StatementName, e.MapperName)
 }
