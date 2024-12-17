@@ -817,6 +817,9 @@ func (p *XMLMappersElementParser) parseSQLNode(sqlNode *SQLNode, decoder *xml.De
 	if sqlNode.id == "" {
 		return &nodeAttributeRequiredError{nodeName: "sql", attrName: "id"}
 	}
+	if strings.Contains(sqlNode.id, ".") {
+		return fmt.Errorf("sql id can not contain '.' %s", sqlNode.id)
+	}
 	for {
 		token, err := decoder.Token()
 		if err != nil {
