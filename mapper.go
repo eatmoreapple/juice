@@ -102,6 +102,9 @@ func (m *Mappers) setMapper(key string, mapper *Mapper) error {
 }
 
 func (m *Mappers) GetMapperByNamespace(namespace string) (*Mapper, bool) {
+	if m.mappers == nil {
+		return nil, false
+	}
 	return m.mappers.Get(namespace)
 }
 
