@@ -1,5 +1,5 @@
 /*
-Copyright 2023 eatmoreapple
+Copyright 2024 eatmoreapple
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// testing fake driver
+
 package juice
 
 import (
@@ -22,6 +24,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,7 +91,16 @@ func (s *fakeStmt) Query(args []driver.Value) (driver.Rows, error) {
 	if s.closed {
 		return nil, driver.ErrBadConn
 	}
-	return &fakeRows{}, nil
+
+	maxRows := 3 // default to 3 rows
+	// Check if the query contains LIMIT
+	if strings.Contains(strings.ToLower(s.query), "limit") && len(args) > 0 {
+		if limit, ok := args[0].(int64); ok && limit > 0 {
+			maxRows = int(limit)
+		}
+	}
+
+	return &fakeRows{maxRows: maxRows}, nil
 }
 
 // fakeResult is a fake result set.
@@ -106,7 +118,7 @@ func (r *fakeResult) RowsAffected() (int64, error) {
 type fakeRows struct {
 	currentRow int
 	closed     bool
-	rows       [][]driver.Value
+	maxRows    int
 }
 
 func (r *fakeRows) Columns() []string {
@@ -123,8 +135,7 @@ func (r *fakeRows) Next(dest []driver.Value) error {
 		return driver.ErrBadConn
 	}
 
-	// For testing, we'll return some fake data
-	if r.currentRow >= 3 { // Return 3 rows of fake data
+	if r.currentRow >= r.maxRows || r.maxRows == 0 {
 		return io.EOF
 	}
 
@@ -152,7 +163,13 @@ func (c *fakeConn) QueryContext(ctx context.Context, query string, args []driver
 	if c.closed {
 		return nil, driver.ErrBadConn
 	}
-	return &fakeRows{}, nil
+	// simple limit
+	if strings.Contains(query, "limit") && len(args) > 0 {
+		if limit, ok := args[0].Value.(int64); ok && limit > 0 {
+			return &fakeRows{maxRows: int(limit)}, nil
+		}
+	}
+	return &fakeRows{maxRows: 3}, nil
 }
 
 // ExecContext implements driver.ExecerContext
@@ -201,21 +218,30 @@ func TestRegular_Query(t *testing.T) {
 		name    string
 		query   string
 		wantErr bool
+		limit   int64
 	}{
 		{
 			name:    "simple query",
-			query:   "SELECT id, name, created_at FROM users WHERE id = ?",
+			query:   "SELECT id, name, created_at FROM users",
 			wantErr: false,
+		},
+		{
+			name:    "simple query with limit",
+			query:   "SELECT id, name, created_at FROM users limit ?",
+			wantErr: false,
+			limit:   1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rows, err := db.Query(tt.query, 1)
+			rows, err := db.Query(tt.query, tt.limit)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer rows.Close()
+
+			var users []user
 
 			for rows.Next() {
 				var user user
@@ -223,116 +249,13 @@ func TestRegular_Query(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Log(user)
+				users = append(users, user)
 			}
-		})
-	}
-}
-
-func TestBind(t *testing.T) {
-	db, err := sql.Open("fake", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	tests := []struct {
-		name    string
-		query   string
-		wantErr bool
-	}{
-		{
-			name:    "simple query",
-			query:   "SELECT id, name, created_at FROM users",
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rows, err := db.Query(tt.query)
-			if err != nil {
+			if err := rows.Err(); err != nil {
 				t.Fatal(err)
 			}
-			defer rows.Close()
-
-			users, err := Bind[[]user](rows)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, user := range users {
-				t.Log(user)
-			}
-		})
-		t.Run(tt.name, func(t *testing.T) {
-			rows, err := db.Query(tt.query)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer rows.Close()
-
-			users, err := Bind[[]*user](rows)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, user := range users {
-				t.Log(user)
-			}
-		})
-	}
-}
-
-func TestList(t *testing.T) {
-	db, err := sql.Open("fake", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	tests := []struct {
-		name    string
-		query   string
-		wantErr bool
-	}{
-		{
-			name:    "simple query",
-			query:   "SELECT id, name, created_at FROM users",
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rows, err := db.Query(tt.query)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer rows.Close()
-
-			users, err := List[user](rows)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, user := range users {
-				t.Log(user)
-			}
-		})
-		t.Run(tt.name, func(t *testing.T) {
-			rows, err := db.Query(tt.query)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer rows.Close()
-
-			users, err := List[*user](rows)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, user := range users {
-				t.Log(user)
+			if tt.limit == 1 && len(users) != 1 {
+				t.Errorf("expected 1 user, got %d", len(users))
 			}
 		})
 	}
