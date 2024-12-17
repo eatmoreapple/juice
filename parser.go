@@ -24,8 +24,6 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
-	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -1053,41 +1051,6 @@ func (p *XMLMappersElementParser) parseFieldAlias(token xml.StartElement, decode
 		}
 	}
 	return nil, &nodeUnclosedError{nodeName: "field"}
-}
-
-func NewXMLConfiguration(filename string) (IConfiguration, error) {
-	return newLocalXMLConfiguration(filename, false)
-}
-
-// for go linkname
-func newLocalXMLConfiguration(filename string, ignoreEnv bool) (IConfiguration, error) {
-	baseDir := filepath.Dir(filename)
-	filename = filepath.Base(filename)
-	return newXMLConfigurationParser(localFS{baseDir: baseDir}, filename, ignoreEnv)
-}
-
-// NewXMLConfigurationWithFS creates a new Configuration from an XML file.
-func NewXMLConfigurationWithFS(fs fs.FS, filename string) (IConfiguration, error) {
-	baseDir := path.Dir(filename)
-	filename = path.Base(filename)
-	return newXMLConfigurationParser(fsWrapper{baseDir: baseDir, fs: fs}, filename, false)
-}
-
-// newXMLConfigurationParser creates a new Configuration from an XML file which ignores environment parsing.
-// for internal use only.
-func newXMLConfigurationParser(fs fs.FS, filename string, ignoreEnv bool) (IConfiguration, error) {
-	file, err := fs.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = file.Close() }()
-	parser := &XMLParser{FS: fs, ignoreEnv: ignoreEnv}
-	parser.AddXMLElementParser(
-		&XMLEnvironmentsElementParser{},
-		&XMLMappersElementParser{},
-		&XMLSettingsElementParser{},
-	)
-	return parser.Parse(file)
 }
 
 // parseCharData reads character data from an XML decoder until it encounters the specified end element.
