@@ -25,16 +25,45 @@ import (
 	"github.com/eatmoreapple/juice/session"
 )
 
-// QueryHandler defines the handler of the query.
-type QueryHandler func(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+// Handler defines a generic query handler function that executes database operations.
+// It is a generic type that can handle different types of query results.
+//
+// Type Parameters:
+//   - T: The return type of the handler function. Can be any type that represents
+//     the result of a database operation (e.g., *sql.Rows, sql.Result).
+//
+// Parameters:
+//   - ctx: Context for handling timeouts, cancellation, and passing values.
+//   - query: The SQL query string to be executed.
+//   - args: Variable number of arguments to be used in the query for parameter binding.
+//
+// Returns:
+//   - T: The result of the query execution, type depends on the generic parameter T.
+//   - error: Any error that occurred during query execution.
+type Handler[T any] func(ctx context.Context, query string, args ...any) (T, error)
 
-// ExecHandler defines the handler of the exec.
-type ExecHandler func(ctx context.Context, query string, args ...any) (sql.Result, error)
+// QueryHandler is a specialized Handler type for query operations that return rows.
+// It is specifically typed to return *sql.Rows, making it suitable for SELECT queries
+// or any operation that returns a result set.
+type QueryHandler = Handler[*sql.Rows]
 
-// sessionQueryHandler is the default QueryHandler.
+// ExecHandler is a specialized Handler type for execution operations.
+// It is specifically typed to return sql.Result, making it suitable for
+// INSERT, UPDATE, DELETE, or any other operation that modifies data.
+type ExecHandler = Handler[sql.Result]
+
+// GenericQueryHandler is a flexible query handler that can return custom result types.
+// It allows for implementing custom result processing logic by specifying the desired
+// return type through the generic parameter T.
+//
+// Type Parameters:
+//   - T: The custom return type that the handler will produce.
+type GenericQueryHandler[T any] Handler[T]
+
+// SessionQueryHandler is the default QueryHandler.
 // It will get the session from the context.
 // And use the session to query the database.
-func sessionQueryHandler(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func SessionQueryHandler(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	sess, err := session.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -42,10 +71,13 @@ func sessionQueryHandler(ctx context.Context, query string, args ...any) (*sql.R
 	return sess.QueryContext(ctx, query, args...)
 }
 
-// sessionExecHandler is the default ExecHandler.
+// ensure SessionQueryHandler implements QueryHandler
+var _ QueryHandler = SessionQueryHandler
+
+// SessionExecHandler is the default ExecHandler.
 // It will get the session from the context.
 // And use the session to exec the database.
-func sessionExecHandler(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func SessionExecHandler(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	sess, err := session.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -53,17 +85,17 @@ func sessionExecHandler(ctx context.Context, query string, args ...any) (sql.Res
 	return sess.ExecContext(ctx, query, args...)
 }
 
-// GenericQueryHandler defines the handler of the generic query.
-type GenericQueryHandler[T any] func(ctx context.Context, query string, args ...any) (T, error)
+// ensure SessionExecHandler implements ExecHandler
+var _ ExecHandler = SessionExecHandler
 
 // CombineQueryHandler will combine the middlewares and the default QueryHandler.
 // If the middlewares is empty, it will return the default QueryHandler.
 func CombineQueryHandler(stmt Statement, middlewares ...Middleware) QueryHandler {
 	if len(middlewares) > 0 {
 		group := MiddlewareGroup(middlewares)
-		return group.QueryContext(stmt, sessionQueryHandler)
+		return group.QueryContext(stmt, SessionQueryHandler)
 	}
-	return sessionQueryHandler
+	return SessionQueryHandler
 }
 
 // CombineExecHandler will combine the middlewares and the default ExecHandler.
@@ -71,7 +103,7 @@ func CombineQueryHandler(stmt Statement, middlewares ...Middleware) QueryHandler
 func CombineExecHandler(stmt Statement, middlewares ...Middleware) ExecHandler {
 	if len(middlewares) > 0 {
 		group := MiddlewareGroup(middlewares)
-		return group.ExecContext(stmt, sessionExecHandler)
+		return group.ExecContext(stmt, SessionExecHandler)
 	}
-	return sessionExecHandler
+	return SessionExecHandler
 }
