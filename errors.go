@@ -93,3 +93,21 @@ func (e *sqlNodeNotFoundError) Error() string {
 func unreachable() error {
 	panic("unreachable")
 }
+
+// ErrInvalidStatementID indicates that the statement ID format is invalid
+var ErrInvalidStatementID = errors.New("invalid statement id: must be in format namespace.statementName")
+
+// ErrMapperNotFound indicates that the mapper was not found
+type ErrMapperNotFound string
+
+func (e ErrMapperNotFound) Error() string { return fmt.Sprintf("mapper %q not found", string(e)) }
+
+// ErrStatementNotFound indicates that the statement was not found in the mapper
+type ErrStatementNotFound struct {
+	StatementName string
+	MapperName    string
+}
+
+func (e ErrStatementNotFound) Error() string {
+	return fmt.Sprintf("statement %q not found in mapper %q", e.StatementName, e.MapperName)
+}
