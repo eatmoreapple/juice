@@ -27,22 +27,91 @@ import (
 	"github.com/eatmoreapple/juice/driver"
 )
 
-// paramRegex is a regular expression for parameter.
-var paramRegex = regexp.MustCompile(`\#\{ *?([a-zA-Z0-9_\.]+) *?\}`)
+var (
+	// paramRegex matches parameter placeholders in SQL queries using #{...} syntax.
+	// Examples:
+	//   - #{id}         -> matches
+	//   - #{user.name}  -> matches
+	//   - #{  age  }    -> matches (whitespace is ignored)
+	//   - #{}           -> doesn't match (requires identifier)
+	//   - #{123}        -> matches
+	paramRegex = regexp.MustCompile(`#{\s*(\w+(?:\.\w+)*)\s*}`)
 
-// Node is a node of SQL.
+	// formatRegexp matches string interpolation placeholders using ${...} syntax.
+	// Unlike paramRegex, these are replaced directly in the SQL string.
+	// WARNING: Be careful with this as it can lead to SQL injection if not properly sanitized.
+	// Examples:
+	//   - ${tableName}  -> matches
+	//   - ${db.schema}  -> matches
+	//   - ${  field  }  -> matches (whitespace is ignored)
+	//   - ${}           -> doesn't match (requires identifier)
+	//   - ${123}        -> matches
+	formatRegexp = regexp.MustCompile(`\${\s*(\w+(?:\.\w+)*)\s*}`)
+)
+
+// Node is the fundamental interface for all SQL generation components.
+// It defines the contract for converting dynamic SQL structures into
+// concrete SQL queries with their corresponding parameters.
+//
+// The Accept method follows the Visitor pattern, allowing different
+// SQL dialects to be supported through the translator parameter.
+//
+// Parameters:
+//   - translator: Handles dialect-specific SQL translations
+//   - p: Contains parameter values for SQL generation
+//
+// Returns:
+//   - query: The generated SQL fragment
+//   - args: Slice of arguments for prepared statement
+//   - err: Any error during SQL generation
+//
+// Implementing types include:
+//   - SQLNode: Complete SQL statements
+//   - WhereNode: WHERE clause handling
+//   - SetNode: SET clause for updates
+//   - IfNode: Conditional inclusion
+//   - ChooseNode: Switch-like conditionals
+//   - ForeachNode: Collection iteration
+//   - TrimNode: String manipulation
+//   - IncludeNode: SQL fragment reuse
+//
+// Example usage:
+//
+//	query, args, err := node.Accept(mysqlTranslator, params)
+//	if err != nil {
+//	  // handle error
+//	}
+//	// use query and args with database
+//
+// Note: Implementations should handle their specific SQL generation
+// logic while maintaining consistency with the overall SQL structure.
 type Node interface {
-	// Accept accepts parameters and returns query and arguments.
+	// Accept processes the node with given translator and parameters
+	// to produce a SQL fragment and its arguments.
 	Accept(translator driver.Translator, p Parameter) (query string, args []any, err error)
 }
 
-// NodeGroup wraps multiple nodes.
+// NodeGroup wraps multiple nodes into a single node.
 type NodeGroup []Node
 
-// Accept accepts parameters and returns query and arguments.
+// Accept processes all nodes in the group and combines their results.
+// The method ensures proper spacing between node outputs and trims any extra whitespace.
+// If the group is empty or no nodes produce output, it returns empty results.
 func (g NodeGroup) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
+	// Return early if group is empty
+	if len(g) == 0 {
+		return "", nil, nil
+	}
+
 	var builder = getStringBuilder()
 	defer putStringBuilder(builder)
+
+	// Pre-allocate args slice to avoid reallocations
+	args = make([]any, 0, len(g))
+
+	lastIdx := len(g) - 1
+
+	// Process each node in the group
 	for i, node := range g {
 		q, a, err := node.Accept(translator, p)
 		if err != nil {
@@ -50,15 +119,23 @@ func (g NodeGroup) Accept(translator driver.Translator, p Parameter) (query stri
 		}
 		if len(q) > 0 {
 			builder.WriteString(q)
+
+			// Add space between nodes, but not after the last one
+			if i < lastIdx && !strings.HasSuffix(q, " ") {
+				builder.WriteString(" ")
+			}
 		}
 		if len(a) > 0 {
 			args = append(args, a...)
 		}
-		if i < len(g)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
 	}
-	return builder.String(), args, nil
+
+	// Return empty results if no content was generated
+	if builder.Len() == 0 {
+		return "", nil, nil
+	}
+
+	return strings.TrimSpace(builder.String()), args, nil
 }
 
 // pureTextNode is a node of pure text.
@@ -155,12 +232,26 @@ func NewTextNode(str string) Node {
 	return node
 }
 
+// ConditionNode represents a conditional SQL fragment with its evaluation expression and child nodes.
+// It is used to conditionally include or exclude SQL fragments based on runtime parameters.
 type ConditionNode struct {
 	expr  eval.Expression
 	Nodes NodeGroup
 }
 
-// Parse with given expression.
+// Parse compiles the given expression string into an evaluable expression.
+// The expression syntax supports various operations like:
+//   - Comparison: ==, !=, >, <, >=, <=
+//   - Logical: &&, ||, !
+//   - Null checks: != null, == null
+//   - Property access: user.age, order.status
+//
+// Examples:
+//
+//	"id != nil"              // Check for non-null
+//	"age >= 18"               // Numeric comparison
+//	"status == "ACTIVE""      // String comparison
+//	"user.role == "ADMIN""    // Property access
 func (c *ConditionNode) Parse(test string) (err error) {
 	c.expr, err = eval.Compile(test)
 	return err
@@ -173,13 +264,18 @@ func (c *ConditionNode) Accept(translator driver.Translator, p Parameter) (query
 	if err != nil {
 		return "", nil, err
 	}
-	if matched {
-		return c.Nodes.Accept(translator, p)
+	if !matched {
+		return "", nil, nil
 	}
-	return "", nil, nil
+	return c.Nodes.Accept(translator, p)
 }
 
-// Match returns true if test is matched.
+// Match evaluates if the condition is true based on the provided parameter.
+// It handles different types of values and converts them to boolean results:
+//   - Bool: returns the boolean value directly
+//   - Integers (signed/unsigned): returns true if non-zero
+//   - Floats: returns true if non-zero
+//   - String: returns true if non-empty
 func (c *ConditionNode) Match(p Parameter) (bool, error) {
 	value, err := c.expr.Execute(p)
 	if err != nil {
@@ -201,64 +297,101 @@ func (c *ConditionNode) Match(p Parameter) (bool, error) {
 	}
 }
 
-var _ Node = (*IfNode)(nil)
+var _ Node = (*ConditionNode)(nil)
 
-// IfNode is a node of if.
+// IfNode is an alias for ConditionNode, representing a conditional SQL fragment.
+// It evaluates a condition and determines whether its content should be included in the final SQL.
+//
+// The condition can be based on various types:
+//   - Boolean: direct condition
+//   - Numbers: non-zero values are true
+//   - Strings: non-empty strings are true
+//
+// Example usage:
+//
+//	<if test="id > 0">
+//	    AND id = #{id}
+//	</if>
+//
+// See ConditionNode for detailed behavior of condition evaluation.
 type IfNode = ConditionNode
 
-var _ Node = (*WhereNode)(nil)
+var _ Node = (*IfNode)(nil)
 
-// WhereNode is a node of where.
+// WhereNode represents a SQL WHERE clause and its conditions.
+// It manages a group of condition nodes that form the complete WHERE clause.
 type WhereNode struct {
-	Nodes []Node
+	Nodes NodeGroup
 }
 
-// Accept accepts parameters and returns query and arguments.
+// Accept processes the WHERE clause and its conditions.
+// It handles several special cases:
+//  1. Removes leading "AND" or "OR" from the first condition
+//  2. Ensures the clause starts with "WHERE" if not already present
+//  3. Properly handles spacing between conditions
+//
+// Examples:
+//
+//	Input:  "AND id = ?"        -> Output: "WHERE id = ?"
+//	Input:  "OR name = ?"       -> Output: "WHERE name = ?"
+//	Input:  "WHERE age > ?"     -> Output: "WHERE age > ?"
+//	Input:  "status = ?"        -> Output: "WHERE status = ?"
 func (w WhereNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getStringBuilder()
-	defer putStringBuilder(builder)
-	for i, node := range w.Nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(w.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
+	query, args, err = w.Nodes.Accept(translator, p)
+	if err != nil {
+		return "", nil, err
 	}
-	query = builder.String()
 
-	if query == "" {
-		return
-	}
-	if strings.HasPrefix(query, "and") || strings.HasPrefix(query, "AND") {
+	// A space is required at the end; otherwise, it is meaningless.
+	switch {
+	case strings.HasPrefix(query, "and ") || strings.HasPrefix(query, "AND "):
+		query = query[4:]
+	case strings.HasPrefix(query, "or ") || strings.HasPrefix(query, "OR "):
 		query = query[3:]
-	} else if strings.HasPrefix(query, "or") || strings.HasPrefix(query, "OR") {
-		query = query[2:]
 	}
-	query = strings.TrimSpace(query)
 
-	if !(strings.HasPrefix(query, "where") || strings.HasPrefix(query, "WHERE")) {
-		if !strings.HasPrefix(query, " ") {
-			query = "WHERE " + query
-		} else {
-			query = "WHERE" + query
-		}
+	// A space is required at the end; otherwise, it is meaningless.
+	if !(strings.HasPrefix(query, "where ") || strings.HasPrefix(query, "WHERE ")) {
+		query = "WHERE " + query
 	}
 	return
 }
 
-var _ Node = (*TrimNode)(nil)
+var _ Node = (*WhereNode)(nil)
 
-// TrimNode is a node of trim.
+// TrimNode handles SQL fragment cleanup by managing prefixes, suffixes, and their overrides.
+// It's particularly useful for dynamically generated SQL where certain prefixes or suffixes
+// might need to be added or removed based on the context.
+//
+// Fields:
+//   - Nodes: Group of child nodes containing the SQL fragments
+//   - Prefix: String to prepend to the result if content exists
+//   - PrefixOverrides: Strings to remove if found at the start
+//   - Suffix: String to append to the result if content exists
+//   - SuffixOverrides: Strings to remove if found at the end
+//
+// Common use cases:
+//  1. Removing leading AND/OR from WHERE clauses
+//  2. Managing commas in clauses
+//  3. Handling dynamic UPDATE SET statements
+//
+// Example XML:
+//
+//	<trim prefix="WHERE" prefixOverrides="AND|OR">
+//	  <if test="id > 0">
+//	    AND id = #{id}
+//	  </if>
+//	  <if test='name != ""'>
+//	    AND name = #{name}
+//	  </if>
+//	</trim>
+//
+// Example Result:
+//
+//	Input:  "AND id = ? AND name = ?"
+//	Output: "WHERE id = ? AND name = ?"
 type TrimNode struct {
-	Nodes           []Node
+	Nodes           NodeGroup
 	Prefix          string
 	PrefixOverrides []string
 	Suffix          string
@@ -267,30 +400,13 @@ type TrimNode struct {
 
 // Accept accepts parameters and returns query and arguments.
 func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getStringBuilder()
-	defer putStringBuilder(builder)
+	query, args, err = t.Nodes.Accept(translator, p)
+	if err != nil {
+		return "", nil, err
+	}
 	if t.Prefix != "" {
-		builder.WriteString(t.Prefix)
+		query = t.Prefix + query
 	}
-	for i, node := range t.Nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if !strings.HasSuffix(q, " ") && i < len(t.Nodes)-1 {
-			builder.WriteString(" ")
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(t.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
-	}
-	query = builder.String()
 	if len(t.PrefixOverrides) > 0 {
 		for _, prefix := range t.PrefixOverrides {
 			if strings.HasPrefix(query, prefix) {
@@ -313,9 +429,48 @@ func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query strin
 	return query, args, nil
 }
 
-var _ Node = (*ForeachNode)(nil)
+var _ Node = (*TrimNode)(nil)
 
-// ForeachNode is a node of foreach.
+// ForeachNode represents a dynamic SQL fragment that iterates over a collection.
+// It's commonly used for IN clauses, batch inserts, or any scenario requiring
+// iteration over a collection of values in SQL generation.
+//
+// Fields:
+//   - Collection: Expression to get the collection to iterate over
+//   - Nodes: SQL fragments to be repeated for each item
+//   - Item: Variable name for the current item in iteration
+//   - Index: Variable name for the current index (optional)
+//   - Open: String to prepend before the iteration results
+//   - Close: String to append after the iteration results
+//   - Separator: String to insert between iterations
+//
+// Example XML:
+//
+//	<foreach collection="list" item="item" index="i" open="(" separator="," close=")">
+//	  #{item}
+//	</foreach>
+//
+// Usage scenarios:
+//
+//  1. IN clauses:
+//     WHERE id IN (#{item})
+//
+//  2. Batch inserts:
+//     INSERT INTO users VALUES
+//     <foreach collection="users" item="user" separator=",">
+//     (#{user.id}, #{user.name})
+//     </foreach>
+//
+//  3. Multiple conditions:
+//     <foreach collection="ids" item="id" separator="OR">
+//     id = #{id}
+//     </foreach>
+//
+// Example results:
+//
+//	Input collection: [1, 2, 3]
+//	Configuration: open="(", separator=",", close=")"
+//	Output: "(1,2,3)"
 type ForeachNode struct {
 	Collection string
 	Nodes      []Node
@@ -459,48 +614,105 @@ func (f ForeachNode) acceptMap(value reflect.Value, translator driver.Translator
 	return builder.String(), args, nil
 }
 
-// SetNode is a node of set.
+var _ Node = (*ForeachNode)(nil)
+
+// SetNode represents an SQL SET clause for UPDATE statements.
+// It manages a group of assignment expressions and automatically handles
+// the comma separators and SET prefix.
+//
+// Features:
+//   - Automatically adds "SET" prefix
+//   - Manages comma separators between assignments
+//   - Handles dynamic assignments based on conditions
+//
+// Example XML:
+//
+//	<update id="updateUser">
+//	  UPDATE users
+//	  <set>
+//	    <if test='name != ""'>
+//	      name = #{name},
+//	    </if>
+//	    <if test="age > 0">
+//	      age = #{age},
+//	    </if>
+//	    <if test="status != 0">
+//	      status = #{status}
+//	    </if>
+//	  </set>
+//	  WHERE id = #{id}
+//	</update>
+//
+// Example results:
+//
+//	Case 1 (name and age set):
+//	  UPDATE users SET name = ?, age = ? WHERE id = ?
+//
+//	Case 2 (only status set):
+//	  UPDATE users SET status = ? WHERE id = ?
+//
+// Note: The node automatically handles trailing commas and ensures
+// proper formatting of the SET clause regardless of which fields
+// are included dynamically.
 type SetNode struct {
-	Nodes []Node
+	Nodes NodeGroup
 }
 
 // Accept accepts parameters and returns query and arguments.
 func (s SetNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
-	var builder = getStringBuilder()
-	defer putStringBuilder(builder)
-	for i, node := range s.Nodes {
-		q, a, err := node.Accept(translator, p)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(q) > 0 {
-			builder.WriteString(q)
-		}
-		if len(a) > 0 {
-			args = append(args, a...)
-		}
-		if i < len(s.Nodes)-1 && len(q) > 0 && !strings.HasSuffix(q, " ") {
-			builder.WriteString(" ")
-		}
+	query, args, err = s.Nodes.Accept(translator, p)
+	if err != nil {
+		return "", nil, err
 	}
-	query = builder.String()
 	if query != "" {
 		query = "SET " + query
-	}
-	// trim space and comma
-	for strings.HasSuffix(query, " ") {
-		query = strings.TrimSuffix(query, " ")
 	}
 	query = strings.TrimSuffix(query, ",")
 	return query, args, nil
 }
 
-// SQLNode is a node of sql.
-// SQLNode defines a SQL query.
+var _ Node = (*SetNode)(nil)
+
+// SQLNode represents a complete SQL statement with its metadata and child nodes.
+// It serves as the root node for a single SQL operation (SELECT, INSERT, UPDATE, DELETE)
+// and manages the entire SQL generation process.
+//
+// Fields:
+//   - id: Unique identifier for the SQL statement within the mapper
+//   - nodes: Collection of child nodes that form the complete SQL
+//   - mapper: Reference to the parent Mapper for context and configuration
+//
+// Example XML:
+//
+//	<select id="getUserById">
+//	  SELECT *
+//	  FROM users
+//	  <where>
+//	    <if test="id != 0">
+//	      id = #{id}
+//	    </if>
+//	  </where>
+//	</select>
+//
+// Usage scenarios:
+//  1. SELECT statements with dynamic conditions
+//  2. INSERT statements with optional fields
+//  3. UPDATE statements with dynamic SET clauses
+//  4. DELETE statements with complex WHERE conditions
+//
+// Features:
+//   - Manages complete SQL statement generation
+//   - Handles parameter binding
+//   - Supports dynamic SQL through child nodes
+//   - Maintains connection to mapper context
+//   - Enables statement reuse through ID reference
+//
+// Note: The id must be unique within its mapper context to allow
+// proper statement lookup and execution.
 type SQLNode struct {
-	id     string
-	nodes  NodeGroup
-	mapper *Mapper
+	id     string    // Unique identifier for the SQL statement
+	nodes  NodeGroup // Child nodes forming the SQL statement
+	mapper *Mapper   // Parent mapper reference
 }
 
 // ID returns the id of the node.
@@ -513,8 +725,47 @@ func (s SQLNode) Accept(translator driver.Translator, p Parameter) (query string
 	return s.nodes.Accept(translator, p)
 }
 
-// IncludeNode is a node of include.
-// It includes another SQL.
+var _ Node = (*SQLNode)(nil)
+
+// IncludeNode represents a reference to another SQL fragment, enabling SQL reuse.
+// It allows common SQL fragments to be defined once and included in multiple places,
+// promoting code reuse and maintainability.
+//
+// Fields:
+//   - sqlNode: The referenced SQL fragment node
+//   - mapper: Reference to the parent Mapper for context
+//   - refId: ID of the SQL fragment to include
+//
+// Example XML:
+//
+//	<!-- Common WHERE clause -->
+//	<sql id="userFields">
+//	  id, name, age, status
+//	</sql>
+//
+//	<!-- Using the include -->
+//	<select id="getUsers">
+//	  SELECT
+//	  <include refid="userFields"/>
+//	  FROM users
+//	  WHERE status = #{status}
+//	</select>
+//
+// Features:
+//   - Enables SQL fragment reuse
+//   - Supports cross-mapper references
+//   - Maintains consistent SQL patterns
+//   - Reduces code duplication
+//
+// Usage scenarios:
+//  1. Common column lists
+//  2. Shared WHERE conditions
+//  3. Reusable JOIN clauses
+//  4. Standard filtering conditions
+//
+// Note: The refId must reference an existing SQL fragment defined with
+// the <sql> tag. The reference can be within the same mapper or from
+// another mapper if properly configured.
 type IncludeNode struct {
 	sqlNode Node
 	mapper  *Mapper
@@ -535,10 +786,53 @@ func (i *IncludeNode) Accept(translator driver.Translator, p Parameter) (query s
 	return i.sqlNode.Accept(translator, p)
 }
 
-// ChooseNode is a node of choose.
-// ChooseNode can have multiple when nodes and one otherwise node.
-// WhenNode is executed when test is true.
-// OtherwiseNode is executed when all when nodes are false.
+var _ Node = (*IncludeNode)(nil)
+
+// ChooseNode implements a switch-like conditional structure for SQL generation.
+// It evaluates multiple conditions in order and executes the first matching case,
+// with an optional default case (otherwise).
+//
+// Fields:
+//   - WhenNodes: Ordered list of conditional branches to evaluate
+//   - OtherwiseNode: Default branch if no when conditions match
+//
+// Example XML:
+//
+//	<choose>
+//	  <when test="id != 0">
+//	    AND id = #{id}
+//	  </when>
+//	  <when test='name != ""'>
+//	    AND name LIKE CONCAT('%', #{name}, '%')
+//	  </when>
+//	  <otherwise>
+//	    AND status = 'ACTIVE'
+//	  </otherwise>
+//	</choose>
+//
+// Behavior:
+//  1. Evaluates each <when> condition in order
+//  2. Executes SQL from first matching condition
+//  3. If no conditions match, executes <otherwise> if present
+//  4. If no conditions match and no otherwise, returns empty result
+//
+// Usage scenarios:
+//  1. Complex conditional logic in WHERE clauses
+//  2. Dynamic sorting options
+//  3. Different JOIN conditions
+//  4. Status-based queries
+//
+// Example results:
+//
+//	Case 1 (id present):
+//	  AND id = ?
+//	Case 2 (only name present):
+//	  AND name LIKE ?
+//	Case 3 (neither present):
+//	  AND status = 'ACTIVE'
+//
+// Note: Similar to a switch statement in programming languages,
+// only the first matching condition is executed.
 type ChooseNode struct {
 	WhenNodes     []Node
 	OtherwiseNode Node
@@ -563,14 +857,86 @@ func (c ChooseNode) Accept(translator driver.Translator, p Parameter) (query str
 	return "", nil, nil
 }
 
-// WhenNode is a node of when.
-// WhenNode like if node, but it can not be used alone.
-// While one of WhenNode is true, the query of ChooseNode will be returned.
+var _ Node = (*ChooseNode)(nil)
+
+// WhenNode is an alias for ConditionNode, representing a conditional branch
+// within a <choose> statement. It evaluates a condition and executes its
+// content if the condition is true and it's the first matching condition
+// in the choose block.
+//
+// Behavior:
+//   - Evaluates condition using same rules as ConditionNode
+//   - Only executes if it's the first true condition in choose
+//   - Subsequent true conditions are ignored
+//
+// Example XML:
+//
+//	<choose>
+//	  <when test='type == "PREMIUM"'>
+//	    AND membership_level = 'PREMIUM'
+//	  </when>
+//	  <when test='type == "BASIC"'>
+//	    AND membership_level IN ('BASIC', 'STANDARD')
+//	  </when>
+//	</choose>
+//
+// Supported conditions:
+//   - Boolean expressions
+//   - Numeric comparisons
+//   - String comparisons
+//   - Null checks
+//   - Property access
+//
+// Note: Unlike a standalone ConditionNode, WhenNode's execution
+// is controlled by its parent ChooseNode and follows choose-when
+// semantics similar to switch-case statements.
+//
+// See ConditionNode for detailed condition evaluation rules.
 type WhenNode = ConditionNode
 
-// OtherwiseNode is a node of otherwise.
-// OtherwiseNode like else node, but it can not be used alone.
-// If all WhenNode is false, the query of OtherwiseNode will be returned.
+var _ Node = (*WhenNode)(nil)
+
+// OtherwiseNode represents the default branch in a <choose> statement,
+// which executes when none of the <when> conditions are met.
+// It's similar to the 'default' case in a switch statement.
+//
+// Fields:
+//   - Nodes: Group of nodes containing the default SQL fragments
+//
+// Example XML:
+//
+//	<choose>
+//	  <when test="status != nil">
+//	    AND status = #{status}
+//	  </when>
+//	  <when test="type != nil">
+//	    AND type = #{type}
+//	  </when>
+//	  <otherwise>
+//	    AND is_deleted = 0
+//	    AND status = 'ACTIVE'
+//	  </otherwise>
+//	</choose>
+//
+// Behavior:
+//   - Executes only if all <when> conditions are false
+//   - No condition evaluation needed
+//   - Can contain multiple SQL fragments
+//   - Optional within <choose> block
+//
+// Usage scenarios:
+//  1. Default filtering conditions
+//  2. Fallback sorting options
+//  3. Default join conditions
+//  4. Error prevention (ensuring non-empty WHERE clauses)
+//
+// Example results:
+//
+//	When no conditions match:
+//	  AND is_deleted = 0 AND status = 'ACTIVE'
+//
+// Note: Unlike WhenNode, OtherwiseNode doesn't evaluate any conditions.
+// It simply provides default SQL fragments when needed.
 type OtherwiseNode struct {
 	Nodes NodeGroup
 }
@@ -579,6 +945,8 @@ type OtherwiseNode struct {
 func (o OtherwiseNode) Accept(translator driver.Translator, p Parameter) (query string, args []any, err error) {
 	return o.Nodes.Accept(translator, p)
 }
+
+var _ Node = (*OtherwiseNode)(nil)
 
 // valueItem is a element of ValuesNode.
 type valueItem struct {
@@ -591,7 +959,7 @@ type valueItem struct {
 type ValuesNode []*valueItem
 
 // Accept accepts parameters and returns query and arguments.
-func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query string, args []any, err error) {
+func (v ValuesNode) Accept(translator driver.Translator, param Parameter) (query string, args []any, err error) {
 	if len(v) == 0 {
 		return "", nil, nil
 	}
@@ -603,7 +971,7 @@ func (v ValuesNode) Accept(translater driver.Translator, param Parameter) (query
 	builder.WriteString(v.values())
 	builder.WriteString(")")
 	node := NewTextNode(builder.String())
-	return node.Accept(translater, param)
+	return node.Accept(translator, param)
 }
 
 // columns returns columns of values.

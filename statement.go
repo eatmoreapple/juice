@@ -17,8 +17,6 @@ limitations under the License.
 package juice
 
 import (
-	"regexp"
-
 	"github.com/eatmoreapple/juice/driver"
 )
 
@@ -31,8 +29,6 @@ type Statement interface {
 	ResultMap() (ResultMap, error)
 	Build(translator driver.Translator, param Param) (query string, args []any, err error)
 }
-
-var formatRegexp = regexp.MustCompile(`\$\{ *?([a-zA-Z0-9_\.]+) *?\}`)
 
 // xmlSQLStatement defines a sql xmlSQLStatement.
 type xmlSQLStatement struct {
