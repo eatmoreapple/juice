@@ -404,29 +404,44 @@ func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query strin
 	if err != nil {
 		return "", nil, err
 	}
-	if t.Prefix != "" {
-		query = t.Prefix + query
+
+	if len(query) == 0 {
+		return "", nil, nil
 	}
+
+	// Handle prefix overrides before adding prefix
 	if len(t.PrefixOverrides) > 0 {
 		for _, prefix := range t.PrefixOverrides {
 			if strings.HasPrefix(query, prefix) {
-				query = strings.TrimPrefix(query, prefix)
+				query = query[len(prefix):]
 				break
 			}
 		}
 	}
+
+	// Handle suffix overrides before adding suffix
 	if len(t.SuffixOverrides) > 0 {
 		for _, suffix := range t.SuffixOverrides {
 			if strings.HasSuffix(query, suffix) {
-				query = strings.TrimSuffix(query, suffix)
+				query = query[:len(query)-len(suffix)]
 				break
 			}
 		}
 	}
-	if t.Suffix != "" {
-		query += t.Suffix
+
+	// Build final query with prefix and suffix
+	var builder strings.Builder
+	builder.Grow(len(t.Prefix) + len(query) + len(t.Suffix))
+
+	if t.Prefix != "" {
+		builder.WriteString(t.Prefix)
 	}
-	return query, args, nil
+	builder.WriteString(query)
+	if t.Suffix != "" {
+		builder.WriteString(t.Suffix)
+	}
+
+	return builder.String(), args, nil
 }
 
 var _ Node = (*TrimNode)(nil)
