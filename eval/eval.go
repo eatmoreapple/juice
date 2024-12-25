@@ -149,6 +149,9 @@ var (
 	// DefaultExprCompiler is the default evaluator.
 	// Reset it to change the default behavior.
 	DefaultExprCompiler ExprCompiler = &goExprCompiler{pretreatment: exprPretreatmentChain}
+
+	// ErrNilExprCompiler returns when DefaultExprCompiler is changed to nil.
+	ErrNilExprCompiler = errors.New("expression compiler is nil")
 )
 
 // Compile compiles the expression and returns the expression.
@@ -161,7 +164,7 @@ func Eval(expr string, params Parameter) (Value, error) {
 	// cache the compiler, incase the DefaultExprCompiler is changed by other goroutine.
 	compiler := DefaultExprCompiler
 	if compiler == nil {
-		return reflect.Value{}, errors.New("evaluator is nil")
+		return reflect.Value{}, ErrNilExprCompiler
 	}
 	expression, err := compiler.Compile(expr)
 	if err != nil {
@@ -240,6 +243,8 @@ func evalSliceExpr(exp *ast.SliceExpr, params Parameter) (reflect.Value, error) 
 	return value.Slice3(low, high, sliceMax), nil
 }
 
+var errUnsupportedUnaryExpr = errors.New("unsupported unary expression")
+
 func evalUnaryExpr(exp *ast.UnaryExpr, params Parameter) (reflect.Value, error) {
 	value, err := eval(exp.X, params)
 	if err != nil {
@@ -259,9 +264,11 @@ func evalUnaryExpr(exp *ast.UnaryExpr, params Parameter) (reflect.Value, error) 
 	case token.MUL:
 		return reflect.ValueOf(value.Pointer()), nil
 	default:
-		return reflect.Value{}, errors.New("unsupported unary expression")
+		return reflect.Value{}, errUnsupportedUnaryExpr
 	}
 }
+
+var ErrIndexOutOfRange = errors.New("index out of range")
 
 func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) {
 	value, err := eval(exp.X, params)
@@ -278,7 +285,7 @@ func evalIndexExpr(exp *ast.IndexExpr, params Parameter) (reflect.Value, error) 
 	case reflect.Array, reflect.Slice, reflect.String:
 		i := index.Int()
 		if i >= int64(value.Len()) {
-			return reflect.Value{}, errors.New("index out of range")
+			return reflect.Value{}, ErrIndexOutOfRange
 		}
 		return value.Index(int(i)), nil
 	case reflect.Map:
@@ -365,15 +372,17 @@ func evalCallExpr(exp *ast.CallExpr, params Parameter) (reflect.Value, error) {
 	return rets[0], nil
 }
 
+var errInvalidSelectorExpr = errors.New("invalid selector expression")
+
 func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, error) {
 	if exp.Sel == nil {
-		return reflect.Value{}, errors.New("invalid selector expression")
+		return reflect.Value{}, errInvalidSelectorExpr
 	}
 
 	fieldOrTagOrMethodName := exp.Sel.Name
 
 	if len(fieldOrTagOrMethodName) == 0 {
-		return reflect.Value{}, errors.New("invalid selector expression")
+		return reflect.Value{}, errInvalidSelectorExpr
 	}
 
 	x, err := eval(exp.X, params)
@@ -417,6 +426,8 @@ func evalSelectorExpr(exp *ast.SelectorExpr, params Parameter) (reflect.Value, e
 		result = unwarned.MapIndex(reflect.ValueOf(fieldOrTagOrMethodName))
 		// select expression does not support get default value from map
 		// it might be ambiguous with calling a method
+	default:
+		return reflect.Value{}, fmt.Errorf("invalid selector expression: %s", fieldOrTagOrMethodName)
 	}
 
 	// try to find method from the type
@@ -445,6 +456,8 @@ func evalIdent(exp *ast.Ident, params Parameter) (reflect.Value, error) {
 	return value, nil
 }
 
+var errUnsupportedBasicLiteral = errors.New("unsupported basic literal")
+
 func evalBasicLit(exp *ast.BasicLit) (reflect.Value, error) {
 	switch exp.Kind {
 	case token.INT:
@@ -462,7 +475,7 @@ func evalBasicLit(exp *ast.BasicLit) (reflect.Value, error) {
 	case token.STRING, token.CHAR:
 		return reflect.ValueOf(exp.Value[1 : len(exp.Value)-1]), nil
 	default:
-		return reflect.Value{}, errors.New("unsupported basic literal")
+		return reflect.Value{}, errUnsupportedBasicLiteral
 	}
 }
 
