@@ -226,9 +226,15 @@ func (c *TextNode) build() {
 	}
 }
 
+// NewTextNode creates a new text node based on the input string.
+// It returns either a lightweight pureTextNode for static SQL,
+// or a full TextNode for dynamic SQL with placeholders/substitutions.
 func NewTextNode(str string) Node {
 	var node = &TextNode{value: str}
 	node.build()
+	if len(node.placeholder) == 0 && len(node.textSubstitution) == 0 {
+		return pureTextNode(str)
+	}
 	return node
 }
 
