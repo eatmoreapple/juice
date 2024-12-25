@@ -426,7 +426,9 @@ func (t TrimNode) Accept(translator driver.Translator, p Parameter) (query strin
 	}
 
 	// Build final query with prefix and suffix
-	var builder strings.Builder
+	var builder = getStringBuilder()
+	defer putStringBuilder(builder)
+
 	builder.Grow(len(t.Prefix) + len(query) + len(t.Suffix))
 
 	if t.Prefix != "" {
