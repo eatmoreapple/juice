@@ -214,28 +214,18 @@ func (c *TextNode) replaceTextSubstitution(query string, p Parameter) (string, e
 	return query, nil
 }
 
-// build builds TextNode.
-func (c *TextNode) build() {
-	placeholder := paramRegex.FindAllStringSubmatch(c.value, -1)
-	if len(placeholder) > 0 {
-		c.placeholder = placeholder
-	}
-	textSubstitution := formatRegexp.FindAllStringSubmatch(c.value, -1)
-	if len(textSubstitution) > 0 {
-		c.textSubstitution = textSubstitution
-	}
-}
-
 // NewTextNode creates a new text node based on the input string.
 // It returns either a lightweight pureTextNode for static SQL,
 // or a full TextNode for dynamic SQL with placeholders/substitutions.
 func NewTextNode(str string) Node {
-	var node = &TextNode{value: str}
-	node.build()
-	if len(node.placeholder) == 0 && len(node.textSubstitution) == 0 {
+	placeholder := paramRegex.FindAllStringSubmatch(str, -1)
+
+	textSubstitution := formatRegexp.FindAllStringSubmatch(str, -1)
+
+	if len(placeholder) == 0 && len(textSubstitution) == 0 {
 		return pureTextNode(str)
 	}
-	return node
+	return &TextNode{value: str, placeholder: placeholder, textSubstitution: textSubstitution}
 }
 
 // ConditionNode represents a conditional SQL fragment with its evaluation expression and child nodes.
