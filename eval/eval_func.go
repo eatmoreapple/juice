@@ -35,6 +35,7 @@ func length(v any) (int, error) {
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
 			return rv.Len(), nil
+		default:
 		}
 	}
 	return 0, errors.New("length: invalid argument type")
@@ -81,6 +82,7 @@ func strJoin(v any, sep string) (string, error) {
 			}
 			return strings.Join(list, sep), nil
 		}
+	default:
 	}
 	return "", errors.New("join: invalid argument type")
 }
@@ -104,6 +106,7 @@ func contains(s any, v any) (bool, error) {
 				}
 			}
 			return false, nil
+		default:
 		}
 	}
 	return false, errors.New("contains: invalid argument type")
@@ -120,6 +123,7 @@ func slice(v any, start, count int) ([]any, error) {
 			ret = append(ret, rt.Index(i).Interface())
 		}
 		return ret, nil
+	default:
 	}
 	return nil, errors.New("slice: invalid argument type")
 }
