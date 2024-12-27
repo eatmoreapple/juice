@@ -742,3 +742,185 @@ func TestMapDefaultMap(t *testing.T) {
 		return
 	}
 }
+
+// BenchmarkStaticExpr tests the performance of static expression evaluation
+func BenchmarkStaticExpr(b *testing.B) {
+	tests := []struct {
+		name string
+		expr string
+	}{
+		{"simple_bool", "1 == 1"},
+		{"simple_math", "1 + 2 * 3"},
+		{"complex_math", "10 + 20 * 3"},
+		{"string_concat", `"hello" + "world"`},
+		{"mixed_ops", "1 + 2 * 3 == 7"},
+	}
+
+	b.Run("without_optimization", func(b *testing.B) {
+		for _, tt := range tests {
+			b.Run(tt.name, func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					_, err := Eval(tt.expr, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	})
+
+	b.Run("with_optimization", func(b *testing.B) {
+		compiler := &goExprCompiler{pretreatment: exprPretreatmentChain}
+		for _, tt := range tests {
+			b.Run(tt.name, func(b *testing.B) {
+				// Pre-compile the expression
+				expr, err := compiler.Compile(tt.expr)
+				if err != nil {
+					b.Fatal(err)
+				}
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					_, err := expr.Execute(nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	})
+}
+
+// BenchmarkStaticExprOptimizer benchmarks the static expression optimizer
+func BenchmarkStaticExprOptimizer(b *testing.B) {
+	benchmarks := []struct {
+		name string
+		expr string
+		want interface{}
+	}{
+		{"simple_bool", "1 == 1", true},
+		{"simple_math", "1 + 2 * 3", int64(7)},
+		{"complex_math", "10 + 20 * 3", int64(70)},
+		{"string_concat", `"hello" + "world"`, "helloworld"},
+		{"mixed_ops", "1 + 2 * 3 == 7", true},
+		{"bool_chain", "true && false || true", true},
+		{"math_chain", "1 + 2 + 3 + 4 + 5", int64(15)},
+		{"complex_bool", "(1 < 2) && (3 > 2) || false", true},
+	}
+
+	optimizer := &StaticExprOptimizer{}
+	// Test optimization performance only
+	b.Run("optimization_only", func(b *testing.B) {
+		for _, bm := range benchmarks {
+			b.Run(bm.name, func(b *testing.B) {
+				exp, err := parser.ParseExpr(bm.expr)
+				if err != nil {
+					b.Fatal(err)
+				}
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					_, err := optimizer.Optimize(exp, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	})
+
+	// Test parsing and optimization performance
+	b.Run("parse_and_optimize", func(b *testing.B) {
+		for _, bm := range benchmarks {
+			b.Run(bm.name, func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					exp, err := parser.ParseExpr(bm.expr)
+					if err != nil {
+						b.Fatal(err)
+					}
+					_, err = optimizer.Optimize(exp, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	})
+
+	// Test full compilation and optimization process
+	b.Run("full_compile_and_optimize", func(b *testing.B) {
+		compiler := &goExprCompiler{pretreatment: exprPretreatmentChain}
+		for _, bm := range benchmarks {
+			b.Run(bm.name, func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					expr, err := compiler.Compile(bm.expr)
+					if err != nil {
+						b.Fatal(err)
+					}
+					result, err := expr.Execute(nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+					// Validate results
+					var got interface{}
+					switch result.Kind() {
+					case reflect.Bool:
+						got = result.Bool()
+					case reflect.Int64:
+						got = result.Int()
+					case reflect.String:
+						got = result.String()
+					default:
+						b.Fatalf("unexpected type: %v", result.Kind())
+					}
+					if got != bm.want {
+						b.Fatalf("got %v, want %v", got, bm.want)
+					}
+				}
+			})
+		}
+	})
+}
+
+// TestStaticExprOptimizer tests the correctness of static expression optimization
+func TestStaticExprOptimizer(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		expected interface{}
+	}{
+		{"bool_eq", "1 == 1", true},
+		{"bool_neq", "1 != 2", true},
+		{"math_add", "1 + 2", int64(3)},
+		{"math_mul", "2 * 3", int64(6)},
+		{"math_complex", "10 + 20 * 3", int64(70)},
+		{"string_concat", `"hello" + "world"`, "helloworld"},
+		{"mixed_ops", "1 + 2 * 3 == 7", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Eval(tt.expr, nil)
+			if err != nil {
+				t.Fatalf("failed to eval expression: %v", err)
+			}
+
+			var actual interface{}
+			switch result.Kind() {
+			case reflect.Bool:
+				actual = result.Bool()
+			case reflect.Int64:
+				actual = result.Int()
+			case reflect.String:
+				actual = result.String()
+			default:
+				t.Fatalf("unexpected result type: %v", result.Kind())
+			}
+
+			if actual != tt.expected {
+				t.Errorf("got %v, want %v", actual, tt.expected)
+			}
+		})
+	}
+}
