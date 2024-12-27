@@ -56,7 +56,7 @@ func (e *Engine) executor(v any) (*sqlRowsExecutor, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler := DefaultStatementHandler(e.driver, e.DB(), e.middlewares...)
+	handler := NewDefaultStatementHandler(e.driver, e.DB(), e.middlewares...)
 	return &sqlRowsExecutor{
 		statement:        stat,
 		statementHandler: handler,
