@@ -21,10 +21,8 @@ import "reflect"
 // Unwrap returns the value of the element if the type is a pointer or interface type.
 func Unwrap(value reflect.Value) reflect.Value {
 	for {
-		switch {
-		case value.Kind() == reflect.Ptr:
-			value = value.Elem()
-		case value.Kind() == reflect.Interface:
+		switch value.Kind() {
+		case reflect.Ptr, reflect.Interface:
 			value = value.Elem()
 		default:
 			return value
