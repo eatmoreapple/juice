@@ -126,8 +126,8 @@ func (s *PreparedStatementHandler) ExecContext(ctx context.Context, statement St
 // that occurred during the process. Multiple errors are joined together.
 func (s *PreparedStatementHandler) Close() error {
 	var errs []error
-	for _, sqlStmt := range s.stmts {
-		if err := sqlStmt.Close(); err != nil {
+	for _, preparedStmt := range s.stmts {
+		if err := preparedStmt.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -191,9 +191,9 @@ func NewSQLRowsStatementHandler(driver driver.Driver, session session.Session, m
 	}
 }
 
-// BatchSQLRowsStatementHandler handles the execution of SQL statements in batches.
+// DefaultStatementHandler handles the execution of SQL statements in batches.
 // It integrates a driver, middlewares, and a session to manage the execution flow.
-type BatchSQLRowsStatementHandler struct {
+type DefaultStatementHandler struct {
 	driver      driver.Driver   // The driver used to execute SQL statements.
 	middlewares MiddlewareGroup // The group of middlewares to apply to the SQL statements.
 	session     session.Session // The session used to manage the database connection.
@@ -203,7 +203,7 @@ type BatchSQLRowsStatementHandler struct {
 // and returns the resulting rows. It builds the query using the provided Param values,
 // processes the query through any configured middlewares, and then executes it using
 // the associated driver.
-func (b *BatchSQLRowsStatementHandler) QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error) {
+func (b *DefaultStatementHandler) QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error) {
 	statementHandler := NewSQLRowsStatementHandler(b.driver, b.session, b.middlewares...)
 	return statementHandler.QueryContext(ctx, statement, param)
 }
@@ -212,7 +212,7 @@ func (b *BatchSQLRowsStatementHandler) QueryContext(ctx context.Context, stateme
 // the execution of SQL statements in batches if the action is an Insert and a
 // batch size is specified. If the action is not an Insert or no batch size is
 // specified, it delegates to the execContext method.
-func (b *BatchSQLRowsStatementHandler) ExecContext(ctx context.Context, statement Statement, param Param) (result sql.Result, err error) {
+func (b *DefaultStatementHandler) ExecContext(ctx context.Context, statement Statement, param Param) (result sql.Result, err error) {
 	if statement.Action() != Insert {
 		return b.execContext(ctx, statement, param)
 	}
@@ -280,21 +280,16 @@ func (b *BatchSQLRowsStatementHandler) ExecContext(ctx context.Context, statemen
 	return result, nil
 }
 
-func (b *BatchSQLRowsStatementHandler) execContext(ctx context.Context, statement Statement, param Param) (sql.Result, error) {
+func (b *DefaultStatementHandler) execContext(ctx context.Context, statement Statement, param Param) (sql.Result, error) {
 	statementHandler := NewSQLRowsStatementHandler(b.driver, b.session, b.middlewares...)
 	return statementHandler.ExecContext(ctx, statement, param)
 }
 
-// NewBatchSQLRowsStatementHandler creates a new instance of BatchSQLRowsStatementHandler
-func NewBatchSQLRowsStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
-	return &BatchSQLRowsStatementHandler{
+// NewDefaultStatementHandler returns a new instance of StatementHandler with the default behavior.
+func NewDefaultStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
+	return &DefaultStatementHandler{
 		driver:      driver,
 		middlewares: middlewares,
 		session:     session,
 	}
-}
-
-// DefaultStatementHandler returns a new instance of StatementHandler with the default behavior.
-func DefaultStatementHandler(driver driver.Driver, session session.Session, middlewares ...Middleware) StatementHandler {
-	return NewBatchSQLRowsStatementHandler(driver, session, middlewares...)
 }
