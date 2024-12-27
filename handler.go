@@ -87,23 +87,3 @@ func SessionExecHandler(ctx context.Context, query string, args ...any) (sql.Res
 
 // ensure SessionExecHandler implements ExecHandler
 var _ ExecHandler = SessionExecHandler
-
-// CombineQueryHandler will combine the middlewares and the default QueryHandler.
-// If the middlewares is empty, it will return the default QueryHandler.
-func CombineQueryHandler(stmt Statement, middlewares ...Middleware) QueryHandler {
-	if len(middlewares) > 0 {
-		group := MiddlewareGroup(middlewares)
-		return group.QueryContext(stmt, SessionQueryHandler)
-	}
-	return SessionQueryHandler
-}
-
-// CombineExecHandler will combine the middlewares and the default ExecHandler.
-// If the middlewares is empty, it will return the default ExecHandler.
-func CombineExecHandler(stmt Statement, middlewares ...Middleware) ExecHandler {
-	if len(middlewares) > 0 {
-		group := MiddlewareGroup(middlewares)
-		return group.ExecContext(stmt, SessionExecHandler)
-	}
-	return SessionExecHandler
-}

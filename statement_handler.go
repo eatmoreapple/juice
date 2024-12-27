@@ -157,7 +157,7 @@ func (s *SQLRowsStatementHandler) QueryContext(ctx context.Context, statement St
 		ctxreducer.NewParamContextReducer(param),
 	}
 	ctx = contextReducer.Reduce(ctx)
-	queryHandler := CombineQueryHandler(statement, s.middlewares...)
+	queryHandler := s.middlewares.QueryContext(statement, SessionQueryHandler)
 	return queryHandler(ctx, query, args...)
 }
 
@@ -174,7 +174,7 @@ func (s *SQLRowsStatementHandler) ExecContext(ctx context.Context, statement Sta
 		ctxreducer.NewParamContextReducer(param),
 	}
 	ctx = contextReducer.Reduce(ctx)
-	execHandler := CombineExecHandler(statement, s.middlewares...)
+	execHandler := s.middlewares.ExecContext(statement, SessionExecHandler)
 	return execHandler(ctx, query, args...)
 }
 
