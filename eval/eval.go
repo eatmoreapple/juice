@@ -132,7 +132,19 @@ func (e *goExprCompiler) Compile(expr string) (Expression, error) {
 	if err != nil {
 		return nil, &SyntaxError{err}
 	}
-	return &goExpression{exp}, nil
+
+	// Optimize static expressions at compile time.
+	// This optimization process:
+	// 1. Evaluates expressions that don't depend on runtime values (e.g., "1 + 2", "true && false")
+	// 2. Replaces the expression with its computed result as a literal
+	// 3. Reduces runtime overhead by pre-computing constant expressions
+	optimizer := &StaticExprOptimizer{}
+	optimizedExp, err := optimizer.Optimize(exp, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &goExpression{optimizedExp}, nil
 }
 
 // goExpression is an expression who uses the go/ast package.
@@ -515,4 +527,64 @@ func evalBinaryExpr(exp *ast.BinaryExpr, params Parameter) (reflect.Value, error
 	// for lazy evaluation
 	y := func() (reflect.Value, error) { return eval(exp.Y, params) }
 	return binaryExprExecutor.Exec(x, y)
+}
+
+// StaticExprOptimizer is used to optimize static expressions at compile time
+type StaticExprOptimizer struct{}
+
+// isStaticExpr checks if an expression is static (does not depend on runtime values)
+func (s *StaticExprOptimizer) isStaticExpr(exp ast.Expr) bool {
+	switch exp := exp.(type) {
+	case *ast.BasicLit:
+		return true
+	case *ast.BinaryExpr:
+		return s.isStaticExpr(exp.X) && s.isStaticExpr(exp.Y)
+	case *ast.ParenExpr:
+		return s.isStaticExpr(exp.X)
+	case *ast.UnaryExpr:
+		return s.isStaticExpr(exp.X)
+	default:
+		return false
+	}
+}
+
+// Optimize optimizes static expressions by evaluating them at compile time
+func (s *StaticExprOptimizer) Optimize(exp ast.Expr, params Parameter) (ast.Expr, error) {
+	if !s.isStaticExpr(exp) {
+		return exp, nil
+	}
+
+	// Evaluate the static expression
+	value, err := eval(exp, params)
+	if err != nil {
+		return exp, err
+	}
+
+	// Convert the evaluation result to the corresponding literal expression
+	switch value.Kind() {
+	case reflect.Bool:
+		return &ast.Ident{Name: strconv.FormatBool(value.Bool())}, nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return &ast.BasicLit{
+			Kind:  token.INT,
+			Value: strconv.FormatInt(value.Int(), 10),
+		}, nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return &ast.BasicLit{
+			Kind:  token.INT,
+			Value: strconv.FormatUint(value.Uint(), 10),
+		}, nil
+	case reflect.Float32, reflect.Float64:
+		return &ast.BasicLit{
+			Kind:  token.FLOAT,
+			Value: strconv.FormatFloat(value.Float(), 'f', -1, 64),
+		}, nil
+	case reflect.String:
+		return &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: strconv.Quote(value.String()),
+		}, nil
+	default:
+		return exp, nil
+	}
 }
