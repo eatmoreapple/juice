@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	_ "github.com/go-sql-driver/mysql"
 	"testing"
 )
@@ -187,11 +188,11 @@ func TestEngineCRUD(t *testing.T) {
 			t.Fatalf("Failed to delete test user: no rows affected")
 		}
 		// check if the user is deleted
-		user, err := repo.GetById(ctx, 1)
+		_, err = repo.GetById(ctx, 1)
 		if err == nil {
 			t.Fatalf("Failed to delete test user: user still exists")
 		}
-		if user != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
 			t.Fatalf("Failed to delete test user: user still exists")
 		}
 	})
