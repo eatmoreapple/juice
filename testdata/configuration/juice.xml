@@ -4,9 +4,9 @@
 
 <configuration>
     <environments default="prod">
-        <environment id="prod">
-            <dataSource>fake</dataSource>
-            <driver>fake</driver>
+        <environment id="prod" provider="env">
+            <dataSource>${DB_DATA_SOURCE}</dataSource>
+            <driver>${DB_DRIVER}</driver>
         </environment>
     </environments>
 
