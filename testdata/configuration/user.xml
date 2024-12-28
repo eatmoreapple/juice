@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//juice.org//DTD Config 1.0//EN"
+        "https://raw.githubusercontent.com/eatmoreapple/juice/main/mapper.dtd">
+
+<mapper namespace="github.com.eatmoreapple.juice.UserRepository">
+    <insert id="Create">
+        insert into test_users (name, age)
+        values (#{name}, #{age})
+    </insert>
+
+    <select id="GetById">
+        select * from test_users where id = #{id}
+    </select>
+
+    <update id="UpdateNameById">
+        update test_users set name = #{name} where id = #{id} limit 1
+    </update>
+
+    <delete id="DeleteById">
+        delete from test_users where id = #{id} limit 1
+    </delete>
+</mapper>
