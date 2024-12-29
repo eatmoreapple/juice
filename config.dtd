@@ -30,6 +30,7 @@
         <!ELEMENT mappers (mapper*)>
         <!ATTLIST mappers
                 prefix CDATA #IMPLIED
+                pattern CDATA #IMPLIED
                 >
 
         <!ELEMENT mapper EMPTY>
