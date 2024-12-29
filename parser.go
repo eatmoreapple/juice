@@ -266,6 +266,20 @@ func (p *XMLMappersElementParser) parseMappers(start xml.StartElement, decoder *
 	for _, attr := range start.Attr {
 		mappers.setAttribute(attr.Name.Local, attr.Value)
 	}
+
+	// parse mappers by pattern
+	if pattern := mappers.Attribute("pattern"); pattern != "" {
+		matchedMappers, err := p.parseMapperByPattern(pattern)
+		if err != nil {
+			return nil, err
+		}
+		for _, mapper := range matchedMappers {
+			if err = mappers.setMapper(mapper.namespace, mapper); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -432,6 +446,52 @@ func (p *XMLMappersElementParser) parseMapperByURL(path string) (*Mapper, error)
 	default:
 		return nil, errors.New("invalid url schema")
 	}
+}
+
+func (p *XMLMappersElementParser) parseMapperByPattern(pattern string) ([]*Mapper, error) {
+	fsys := p.parser.FS
+	// Find files matching the pattern using fs.Glob
+	matches, err := fs.Glob(fsys, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid pattern %q: %w", pattern, err)
+	}
+
+	if len(matches) == 0 {
+		return nil, nil
+	}
+
+	handler := func(match string) (*Mapper, error) {
+		// Open and read the file
+		file, err := fsys.Open(match)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open mapper file %q: %w", match, err)
+		}
+		defer func() { _ = file.Close() }()
+
+		// Parse mapper from file content
+		mapper, err := p.parseMapperByReader(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse mapper %q: %w", match, err)
+		}
+
+		return mapper, nil
+	}
+
+	// Pre-allocate slice with capacity matching number of files
+	mappers := make([]*Mapper, 0, len(matches))
+
+	// Process each matched file
+	for _, match := range matches {
+		// Parse mapper from file content
+		mapper, err := handler(match)
+		if err != nil {
+			return nil, err
+		}
+
+		mappers = append(mappers, mapper)
+	}
+
+	return mappers, nil
 }
 
 func (p *XMLMappersElementParser) parseStatement(stmt *xmlSQLStatement, decoder *xml.Decoder, token xml.StartElement) error {
