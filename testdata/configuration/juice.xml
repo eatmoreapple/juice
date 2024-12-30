@@ -4,7 +4,7 @@
 
 <configuration>
     <environments default="prod">
-        <environment id="prod">
+        <environment id="prod" provider="env">
             <dataSource>${DB_DATA_SOURCE}</dataSource>
             <driver>${DB_DRIVER}</driver>
         </environment>
