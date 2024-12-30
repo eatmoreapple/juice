@@ -47,33 +47,32 @@ type StatementHandler interface {
 	QueryContext(ctx context.Context, statement Statement, param Param) (*sql.Rows, error)
 }
 
-// PreparedStatementHandler implements the StatementHandler interface and manages
-// prepared statements' execution. It maintains a pool of prepared statements that
-// can be reused to improve execution efficiency.
+// PreparedStatementHandler implements the StatementHandler interface.
+// It maintains a single prepared statement that can be reused if the query is the same.
+// When a different query is encountered, it closes the existing statement and creates a new one.
 type PreparedStatementHandler struct {
-	stmts       []*sql.Stmt
+	stmts       *sql.Stmt
 	middlewares MiddlewareGroup
 	driver      driver.Driver
 	session     session.Session
 }
 
-// getOrPrepare retrieves or prepares a SQL statement.
-// If a prepared statement for the given query already exists in the pool,
-// it returns the existing statement. Otherwise, it creates a new prepared
-// statement and adds it to the pool.
+// getOrPrepare retrieves an existing prepared statement if the query matches,
+// otherwise closes the current statement (if any) and creates a new one.
 func (s *PreparedStatementHandler) getOrPrepare(ctx context.Context, query string) (*sql.Stmt, error) {
-	for _, preparedStmt := range s.stmts {
-		if stmt.Query(preparedStmt) == query {
-			return preparedStmt, nil
-		}
+	if s.stmts != nil && stmt.Query(s.stmts) == query {
+		return s.stmts, nil
 	}
-
-	preparedStmt, err := s.session.PrepareContext(ctx, query)
+	// it means the prepared statement is not what we want
+	if s.stmts != nil {
+		_ = s.stmts.Close()
+	}
+	var err error
+	s.stmts, err = s.session.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("prepare statement failed: %w", err)
 	}
-	s.stmts = append(s.stmts, preparedStmt)
-	return preparedStmt, nil
+	return s.stmts, nil
 }
 
 // QueryContext executes a query that returns rows. It builds the query using
@@ -125,13 +124,10 @@ func (s *PreparedStatementHandler) ExecContext(ctx context.Context, statement St
 // Close closes all prepared statements in the pool and returns any error
 // that occurred during the process. Multiple errors are joined together.
 func (s *PreparedStatementHandler) Close() error {
-	var errs []error
-	for _, preparedStmt := range s.stmts {
-		if err := preparedStmt.Close(); err != nil {
-			errs = append(errs, err)
-		}
+	if s.stmts != nil {
+		return s.stmts.Close()
 	}
-	return errors.Join(errs...)
+	return nil
 }
 
 // SQLRowsStatementHandler handles the execution of SQL statements and returns
@@ -258,7 +254,6 @@ func (b *DefaultStatementHandler) ExecContext(ctx context.Context, statement Sta
 		driver:      b.driver,
 		middlewares: b.middlewares,
 		session:     b.session,
-		stmts:       make([]*sql.Stmt, 0, 2), // at most 2 statements
 	}
 
 	// Ensure all prepared statements are properly closed after use
