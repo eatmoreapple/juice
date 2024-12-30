@@ -266,7 +266,7 @@ func TestRowDestination(t *testing.T) {
 
 		var result TestResult
 		dest := &rowDestination{}
-		destinations, err := dest.Destination(reflect.ValueOf(result), columns)
+		destinations, err := dest.Destination(reflect.ValueOf(&result).Elem(), columns)
 		if err != nil {
 			t.Fatalf("Failed to create destinations: %v", err)
 		}
