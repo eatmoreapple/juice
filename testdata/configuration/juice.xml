@@ -4,14 +4,11 @@
 
 <configuration>
     <environments default="prod">
-        <environment id="prod" provider="env">
+        <environment id="prod">
             <dataSource>${DB_DATA_SOURCE}</dataSource>
             <driver>${DB_DRIVER}</driver>
         </environment>
     </environments>
 
-    <mappers>
-        <mapper resource="mappers.xml"/>
-        <mapper resource="user.xml"/>
-    </mappers>
+    <mappers pattern="mappers/*.xml"/>
 </configuration>
