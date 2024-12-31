@@ -19,7 +19,7 @@ package ctxreducer
 import (
 	"context"
 
-	"github.com/eatmoreapple/juice/eval"
+	"github.com/go-juicedev/juice/eval"
 )
 
 // paramWithContextReducer is a ContextReducer that adds a Param to the context.

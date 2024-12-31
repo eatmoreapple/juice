@@ -19,7 +19,7 @@ package juice
 import (
 	"testing"
 
-	"github.com/eatmoreapple/juice/driver"
+	"github.com/go-juicedev/juice/driver"
 )
 
 func TestForeachNode_Accept(t *testing.T) {

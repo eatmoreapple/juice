@@ -24,9 +24,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/eatmoreapple/juice/cache"
-	"github.com/eatmoreapple/juice/driver"
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/cache"
+	"github.com/go-juicedev/juice/driver"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 // ErrInvalidExecutor is a custom error type that is used when an invalid executor is found.

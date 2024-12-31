@@ -19,7 +19,7 @@ package expr
 import (
 	"reflect"
 
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 func isInt(r reflect.Value) bool {

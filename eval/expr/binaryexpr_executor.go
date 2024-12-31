@@ -22,7 +22,7 @@ import (
 	"go/token"
 	"reflect"
 
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 var (

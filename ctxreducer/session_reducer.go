@@ -19,7 +19,7 @@ package ctxreducer
 import (
 	"context"
 
-	"github.com/eatmoreapple/juice/session"
+	"github.com/go-juicedev/juice/session"
 )
 
 // SessionWithContextReducer is a ContextReducer that adds a Session to the context.

@@ -16,7 +16,7 @@ func TestTypeIdentify_StructType(t *testing.T) {
 		field string // nolint:unused
 	}
 	result := TypeIdentify[testType]()
-	if result != "github.com/eatmoreapple/juice/internal/reflectlite.testType" {
+	if result != "github.com/go-juicedev/juice/internal/reflectlite.testType" {
 		t.Errorf("Expected 'reflectlite.testType', got '%s'", result)
 	}
 }

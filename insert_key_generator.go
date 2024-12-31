@@ -23,7 +23,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 // BatchInsertIDGenerateStrategy is an interface that defines a method for generating batch insert IDs.

@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/eatmoreapple/juice/eval"
+	"github.com/go-juicedev/juice/eval"
 
-	"github.com/eatmoreapple/juice/driver"
+	"github.com/go-juicedev/juice/driver"
 )
 
 var (

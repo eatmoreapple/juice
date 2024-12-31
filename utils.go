@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 // replacer defines the replacer of function name

@@ -24,12 +24,12 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/eatmoreapple/juice/internal/stmt"
+	"github.com/go-juicedev/juice/internal/stmt"
 
-	"github.com/eatmoreapple/juice/ctxreducer"
-	"github.com/eatmoreapple/juice/driver"
-	"github.com/eatmoreapple/juice/internal/reflectlite"
-	"github.com/eatmoreapple/juice/session"
+	"github.com/go-juicedev/juice/ctxreducer"
+	"github.com/go-juicedev/juice/driver"
+	"github.com/go-juicedev/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/session"
 )
 
 // StatementHandler is an interface that defines methods for executing SQL statements.

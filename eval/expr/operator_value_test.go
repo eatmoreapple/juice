@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/eatmoreapple/juice/eval/expr"
+	"github.com/go-juicedev/juice/eval/expr"
 )
 
 func TestIntOperator_Addition(t *testing.T) {

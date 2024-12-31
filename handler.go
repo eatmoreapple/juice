@@ -22,7 +22,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/eatmoreapple/juice/session"
+	"github.com/go-juicedev/juice/session"
 )
 
 // Handler defines a generic query handler function that executes database operations.

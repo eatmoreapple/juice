@@ -27,7 +27,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/eatmoreapple/juice/eval"
+	"github.com/go-juicedev/juice/eval"
 )
 
 // ConfigurationParser is the interface for parsing configuration.

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/eatmoreapple/juice/internal/container"
+	"github.com/go-juicedev/juice/internal/container"
 )
 
 // Mapper defines a set of statements.

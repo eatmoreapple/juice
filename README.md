@@ -1,8 +1,8 @@
 ## Juice SQL Mapper Framework For Golang
 
-[![Go Doc](https://pkg.go.dev/badge/github.com/eatmoreapple/juice)](https://godoc.org/github.com/eatmoreapple/juice)
-[![Release](https://img.shields.io/github/v/release/eatmoreapple/juice.svg?style=flat-square)](https://github.com/eatmoreapple/juice/releases)
-![Go Report Card](https://goreportcard.com/badge/github.com/eatmoreapple/juice)
+[![Go Doc](https://pkg.go.dev/badge/github.com/go-juicedev/juice)](https://godoc.org/github.com/go-juicedev/juice)
+[![Release](https://img.shields.io/github/v/release/eatmoreapple/juice.svg?style=flat-square)](https://github.com/go-juicedev/juice/releases)
+![Go Report Card](https://goreportcard.com/badge/github.com/go-juicedev/juice)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 Juice is a SQL mapper framework for Golang, inspired by MyBatis. It is simple, lightweight, and easy to use and extend.
@@ -19,7 +19,7 @@ This document provides a brief introduction to Juice and its usage.
 To install Juice, use the following command:
 
 ```shell
-go get github.com/eatmoreapple/juice
+go get github.com/go-juicedev/juice
 ```
 
 ### Example
@@ -81,7 +81,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/eatmoreapple/juice"
+	"github.com/go-juicedev/juice"
 	_ "github.com/go-sql-driver/mysql"
 )
 

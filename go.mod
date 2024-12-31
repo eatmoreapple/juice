@@ -1,3 +1,3 @@
-module github.com/eatmoreapple/juice
+module github.com/go-juicedev/juice
 
 go 1.23

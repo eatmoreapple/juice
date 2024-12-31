@@ -20,8 +20,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/eatmoreapple/juice/cache"
-	"github.com/eatmoreapple/juice/session"
+	"github.com/go-juicedev/juice/cache"
+	"github.com/go-juicedev/juice/session"
 )
 
 // Manager is an interface for managing database operations.

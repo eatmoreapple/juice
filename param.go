@@ -3,7 +3,7 @@ package juice
 import (
 	"context"
 
-	"github.com/eatmoreapple/juice/eval"
+	"github.com/go-juicedev/juice/eval"
 )
 
 // Param is an alias of eval.Param.

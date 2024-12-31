@@ -24,7 +24,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/eatmoreapple/juice/internal/reflectlite"
+	"github.com/go-juicedev/juice/internal/reflectlite"
 )
 
 // Param is an alias of any type.

@@ -20,8 +20,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/eatmoreapple/juice/cache"
-	"github.com/eatmoreapple/juice/driver"
+	"github.com/go-juicedev/juice/cache"
+	"github.com/go-juicedev/juice/driver"
 )
 
 // Engine is the implementation of Manager interface and the core of juice.

@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/eatmoreapple/juice/driver"
+	"github.com/go-juicedev/juice/driver"
 )
 
 // Environment defines a environment.

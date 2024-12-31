@@ -17,7 +17,7 @@ limitations under the License.
 package juice
 
 import (
-	"github.com/eatmoreapple/juice/driver"
+	"github.com/go-juicedev/juice/driver"
 )
 
 type Statement interface {
