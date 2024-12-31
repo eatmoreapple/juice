@@ -18,43 +18,38 @@ package stmt
 
 import (
 	"database/sql"
+	"reflect"
 	"unsafe"
 )
 
-// Query extracts the SQL query string from a *sql.Stmt using unsafe pointer arithmetic.
-//
-// How it works:
-// 1. sql.Stmt struct memory layout (only relevant fields):
-//
-//   - First field (*DB): 8 bytes (on 64-bit systems)
-//
-//   - Second field (query string): 16 bytes  <- we want this
-//
-// 2. To get the query string, we:
-//
-//	a. Start at the beginning of the struct (sql.Stmt)
-//	b. Skip the first field (8 bytes) to reach query string
-//	c. Read the string value
-//
-// Note: This implementation relies on the internal structure of sql.Stmt
-// and may break if the struct layout changes in future Go versions.
-func Query(s *sql.Stmt) string {
-	return *(*string)(unsafe.Pointer(uintptr(unsafe.Pointer(s)) + unsafe.Sizeof(uintptr(0))))
+// queryFieldOffset stores the offset of the 'query' field in sql.Stmt struct
+var queryFieldOffset uintptr
+
+func init() {
+	typ := reflect.TypeFor[sql.Stmt]()
+	field, ok := typ.FieldByName("query")
+	if !ok {
+		panic("sql.Stmt structure has changed: 'query' field not found")
+	}
+	queryFieldOffset = field.Offset
 }
 
-/* Memory Layout Visualization:
+// Query returns the underlying SQL query string from a *sql.Stmt.
+// The offset of the query field is determined at init time using reflection,
+// ensuring both safety and runtime performance.
+//
+// Note: This is an internal function that relies on the sql.Stmt structure.
+// It will panic during package initialization if the structure changes.
+func Query(s *sql.Stmt) string {
+	return *(*string)(unsafe.Pointer(uintptr(unsafe.Pointer(s)) + queryFieldOffset))
+}
 
-32-bit system:
-sql.Stmt:
-┌─────────────┬──────────────────────────┐
-│     *DB     │          query           │
-│  (4 bytes)  │        (8 bytes)         │
-└─────────────┴──────────────────────────┘
+/* Implementation Notes:
+This implementation uses reflection during initialization to safely obtain
+the memory offset of the 'query' field in sql.Stmt. Once the offset is
+determined, it uses unsafe.Pointer for efficient runtime access.
 
-64-bit system:
-sql.Stmt:
-┌─────────────┬──────────────────────────┐
-│     *DB     │          query           │
-│  (8 bytes)  │        (16 bytes)        │
-└─────────────┴──────────────────────────┘
-*/
+Benefits:
+1. Safe: Field offset is obtained through reflection, not hardcoded
+2. Fast: Runtime access uses direct pointer arithmetic
+3. Maintainable: Will panic if sql.Stmt structure changes */
