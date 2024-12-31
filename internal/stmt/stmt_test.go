@@ -31,6 +31,8 @@ func BenchmarkQuery(b *testing.B) {
 	sqlStmt := (*sql.Stmt)(unsafe.Pointer(&s))
 
 	for i := 0; i < b.N; i++ {
-		Query(sqlStmt)
+		if Query(sqlStmt) != query {
+			b.Errorf("Query() = %q; want %q", Query(sqlStmt), query)
+		}
 	}
 }
