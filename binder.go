@@ -162,3 +162,18 @@ func List[T any](rows *sql.Rows) (result []T, err error) {
 	err = bindWithResultMap(rows, &result, multiRowsResultMap)
 	return
 }
+
+// List2 converts database query results into a slice of pointers.
+// Unlike List function, List2 returns a slice of pointers []*T instead of a slice of values []T.
+// This is particularly useful when you need to modify slice elements or handle large structs.
+func List2[T any](rows *sql.Rows) ([]*T, error) {
+	items, err := List[T](rows)
+	if err != nil {
+		return nil, err
+	}
+	var result = make([]*T, len(items))
+	for i := range items {
+		result[i] = &items[i]
+	}
+	return result, nil
+}
