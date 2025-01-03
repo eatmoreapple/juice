@@ -338,6 +338,9 @@ func (w WhereNode) Accept(translator driver.Translator, p Parameter) (query stri
 		return "", nil, err
 	}
 
+	if query == "" {
+		return "", args, nil
+	}
 	// A space is required at the end; otherwise, it is meaningless.
 	switch {
 	case strings.HasPrefix(query, "and ") || strings.HasPrefix(query, "AND "):
