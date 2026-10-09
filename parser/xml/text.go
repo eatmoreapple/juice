@@ -99,6 +99,12 @@ func (c *TextNode) Accept(translator driver.Translator, p eval.Parameter) (query
 		if !exists {
 			return "", nil, fmt.Errorf("parameter %s not found", t.name)
 		}
+		// A parameter may resolve to a read-only value (for example an
+		// unexported struct field). Such values cannot be turned into an
+		// interface without panicking, so reject them explicitly.
+		if !value.CanInterface() {
+			return "", nil, fmt.Errorf("parameter %s is not readable", t.name)
+		}
 
 		if t.isFormat {
 			builder.WriteString(reflectValueToString(value))

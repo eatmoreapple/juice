@@ -14,6 +14,7 @@ import (
 
 	jdriver "github.com/go-juicedev/juice/driver"
 	"github.com/go-juicedev/juice/eval"
+	xmlbackend "github.com/go-juicedev/juice/parser/xml"
 	"github.com/go-juicedev/juice/session"
 	jsql "github.com/go-juicedev/juice/sql"
 )
@@ -325,6 +326,31 @@ func TestBuildStatementQuery_statement_handler_test(t *testing.T) {
 
 	if len(args) != 1 || args[0] != int64(7) && args[0] != 7 {
 		t.Fatalf("unexpected args: %#v", args)
+	}
+}
+
+// TestBuildStatementQueryUnexportedParamField_statement_handler_test guards
+// against a panic when a parameter resolves to an unexported struct field.
+// The lookup must not return read-only fields, so rendering reports a missing
+// parameter instead of crashing.
+func TestBuildStatementQueryUnexportedParamField_statement_handler_test(t *testing.T) {
+	type param struct {
+		Exported int
+		hidden   string `param:"hidden"`
+	}
+
+	statement := NewRawSQLStatement(
+		xmlbackend.Backend{},
+		"SELECT * FROM t WHERE a = #{hidden}",
+		jsql.Select,
+	)
+
+	_, _, err := buildStatementQuery(statement, &jdriver.SQLiteDriver{}, param{hidden: "x"})
+	if err == nil {
+		t.Fatal("expected error for unexported parameter field, got nil")
+	}
+	if !strings.Contains(err.Error(), "hidden") {
+		t.Fatalf("expected error to mention the parameter name, got %v", err)
 	}
 }
 
