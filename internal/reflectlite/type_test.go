@@ -81,13 +81,13 @@ func TestLookupFieldIndexByTagSkipsUnexported_type_test(t *testing.T) {
 	type embedded struct {
 		Promoted int `tag:"promoted"` // exported field promoted via unexported embedded struct
 	}
-	type inner struct {
+	type inner struct { //nolint:unused // referenced via reflection only
 		Inner int `tag:"inner"`
 	}
 	type Outer struct {
 		embedded
-		named  inner  // named unexported struct field
-		secret string `tag:"secret"` // unexported leaf
+		named  inner  //nolint:unused // named unexported struct field
+		secret string `tag:"secret"` //nolint:unused // unexported leaf
 	}
 
 	rt := reflect.TypeFor[Outer]()
