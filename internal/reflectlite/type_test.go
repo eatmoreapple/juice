@@ -72,3 +72,46 @@ func TestLookupFieldIndexByTag_type_test(t *testing.T) {
 		})
 	}
 }
+
+// TestLookupFieldIndexByTagSkipsUnexported_type_test verifies that the lookup
+// never returns the index path of an unexported field. Such a field's
+// reflect.Value is read-only and cannot be passed to Interface(), which would
+// panic in callers that render parameters.
+func TestLookupFieldIndexByTagSkipsUnexported_type_test(t *testing.T) {
+	type embedded struct {
+		Promoted int `tag:"promoted"` // exported field promoted via unexported embedded struct
+	}
+	type inner struct { //nolint:unused // referenced via reflection only
+		Inner int `tag:"inner"`
+	}
+	type Outer struct {
+		embedded
+		named  inner  //nolint:unused // named unexported struct field
+		secret string `tag:"secret"` //nolint:unused // unexported leaf
+	}
+
+	rt := reflect.TypeFor[Outer]()
+
+	tests := []struct {
+		name  string
+		value string
+		want  []int
+		ok    bool
+	}{
+		{"unexported leaf is skipped", "secret", nil, false},
+		{"field of unexported named struct is skipped", "inner", nil, false},
+		{"exported field promoted through unexported embedded struct", "promoted", []int{0, 0}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := LookupFieldIndexByTag(rt, "tag", tt.value)
+			if ok != tt.ok {
+				t.Fatalf("LookupFieldIndexByTag(%v, tag, %q) ok = %v, want %v", rt, tt.value, ok, tt.ok)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("LookupFieldIndexByTag(%v, tag, %q) = %v, want %v", rt, tt.value, got, tt.want)
+			}
+		})
+	}
+}

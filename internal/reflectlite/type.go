@@ -23,18 +23,32 @@ func IndirectType(t reflect.Type) reflect.Type {
 // If found, it returns the field's index path and true. Otherwise, nil and false.
 // It recursively searches embedded structs if the direct field does not have the tag
 // or if the field is an anonymous struct.
+//
+// Unexported fields are skipped: their reflect.Value is read-only, so callers cannot
+// call Interface() on it without panicking. Exported fields promoted through an
+// unexported embedded struct remain reachable and are still returned.
 func getFieldIndexesFromTagRecursive(typ reflect.Type, tagName, tagValue string) ([]int, bool) {
 	for field := range typ.Fields() {
 		// Check the tag on the current field.
 		tag := field.Tag.Get(tagName)
 		if tag == tagValue {
+			if !field.IsExported() {
+				continue // Unexported fields are not readable by callers.
+			}
 			return field.Index, true // Found the tag directly on this field.
 		}
 
 		// If the field is a struct, and it's either anonymous (embedded)
 		// or it does not have the searched tag itself (meaning the tag might be in a sub-field of this struct field),
 		// then recurse into this struct field.
+		//
+		// Unexported non-anonymous struct fields are skipped because their
+		// promoted fields are read-only; unexported anonymous (embedded)
+		// structs are still traversed since they may promote exported fields.
 		if field.Type.Kind() == reflect.Struct && (field.Anonymous || tag == "") {
+			if !field.IsExported() && !field.Anonymous {
+				continue
+			}
 			if indexes, ok := getFieldIndexesFromTagRecursive(field.Type, tagName, tagValue); ok {
 				// Prepend current field's index to the indexes found in the nested struct.
 				// This correctly builds the path to the tagged field.
